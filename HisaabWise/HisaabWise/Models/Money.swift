@@ -8,10 +8,10 @@ import Foundation
 /// no `Double`. Defects D10, D11, and D16 were each produced by one such rule living in two places,
 /// so the client is structurally unable to hold the second copy.
 ///
-/// The only client-side arithmetic ADR-0003 permits is summing the ``minor`` units of the app's own
-/// *pending* entries for the offline badge (ADR-0004). Those are single-currency by construction.
-/// The same-currency `+` that serves it arrives with the write queue in Phase 2; until there is a
-/// caller, the operator does not exist either.
+/// It has **no arithmetic at all**, and that is now unconditional. ADR-0003 carved out one exception
+/// — summing the ``minor`` units of the app's own *pending* entries for the offline badge — but
+/// ADR-0019 removed offline writes, so the badge that was the operator's only caller no longer
+/// exists. There is nothing left that needs to add two `Money` values.
 struct Money: Sendable, Hashable, Decodable {
     /// An integer count of the currency's smallest unit — fils, cents. Never a float: summing
     /// entries and taking percentages of doubles makes an exactly-at-goal month non-deterministic

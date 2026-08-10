@@ -1,6 +1,6 @@
 # ADR-0009 — Offline-critical content is an explicit on-disk store, not `URLCache`
 
-**Status:** accepted
+**Status:** accepted, amended by [ADR-0019](0019-no-offline-writes-curriculum-pdf.md) — the store survives, but its rationale is latency and data use, not making a commute session work.
 
 ## Context
 

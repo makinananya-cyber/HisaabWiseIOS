@@ -1,6 +1,6 @@
 # ADR-0006 — Learn plays offline; a completion counts for the day it arrives
 
-**Status:** accepted
+**Status:** superseded in full by [ADR-0019](0019-no-offline-writes-curriculum-pdf.md) — there are no offline writes. Kept for the reasoning; do not build to it.
 **Amends:** Product Spec §5.2 (the offline queue carries lesson completions, not only expenses)
 
 ## Context

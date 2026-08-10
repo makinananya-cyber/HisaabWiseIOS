@@ -19,7 +19,8 @@ Coverage that earns its place:
 
 - DTO decoding against fixture JSON;
 - `Money` display-string rendering (ADR-0003);
-- `PendingWrite` drain ordering, `MONTH_CLOSED` re-filing, poison-message handling (ADR-0005);
+- `MONTH_CLOSED` re-filing (§4.5). *`PendingWrite` drain ordering and poison-message handling are
+  gone with the write queue — ADR-0019.*
 - local unlock ordering (ADR-0006);
 - numeric input parsing at the 0.5 boundary (ADR-0011);
 - single-flight refresh under concurrent 401s (ADR-0007).

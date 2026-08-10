@@ -6,7 +6,10 @@
 /// - `KeychainTokenStore` — the refresh token behind `HWCore`'s `TokenStore` protocol
 ///   (ADR-0007), with `kSecAttrAccessibleAfterFirstUnlockThisDeviceOnly` so a session does not
 ///   travel with an iCloud backup restore.
-/// - The SwiftData write queue of `PendingWrite` rows, drained in `createdAt` order (ADR-0005).
+/// - The on-disk curriculum PDF the user downloads (ADR-0019).
+///
+/// There is deliberately **no** write queue and no SwiftData: every write needs a connection
+/// (ADR-0019, superseding ADR-0005).
 /// - The on-disk content store with a persisted ETag per resource, distinct from `URLCache`
 ///   (ADR-0009).
 ///

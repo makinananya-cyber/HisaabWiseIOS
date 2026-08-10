@@ -39,37 +39,28 @@ being a convention.
 returns alongside each `Money`. **The only thing the client renders for a monetary value.**
 See [ADR-0003](docs/adr/0003-money-presentation.md).
 
-**client money arithmetic** — forbidden, with exactly one exception: summing the `minor`
-units of the app's own *pending* entries for the pending badge. The client never converts,
-never rounds, never applies symbol spacing, and never sums server-supplied entries.
+**client money arithmetic** — forbidden, without exception. The client never converts, never
+rounds, never applies symbol spacing, and never sums monetary values. The one carve-out
+ADR-0003 allowed was for the pending badge, whose only caller went away with offline writes
+([ADR-0019](docs/adr/0019-no-offline-writes-curriculum-pdf.md)).
 
-## Offline
+## Working without a connection
 
-**pending** — a state, not an error. A write the user has made that the server has not yet
-acknowledged. Pending entries appear in lists with a distinct treatment and are counted in a
-banner; the figures on cards remain the last server-supplied ones.
-See [ADR-0004](docs/adr/0004-offline-model.md).
+**no offline writes** — every write needs a connection. There is no queue, no SwiftData, no
+pending state, no drain. A write attempted offline fails to `LoadState.offline` and the user
+retries. See [ADR-0019](docs/adr/0019-no-offline-writes-curriculum-pdf.md), which supersedes
+ADR-0004, ADR-0005, and ADR-0006 in full. **Retired terms:** *pending*, *stale*,
+*PendingWrite*, *drain*, *poison message*, *arrival-day attribution*. If you find one in an
+older document, it no longer describes this app.
 
-**stale** — server figures that predate one or more pending writes. Displayed as-is, never
-adjusted locally, never styled as a failure.
+**curriculum PDF** — the curriculum as a **server-generated**, locale-aware PDF that the user
+downloads and keeps. This is what "take the learning content away with you" means here; it is
+not a client-rendered document, so the layout has one owner and every figure inside it stays
+formatted server-side (ADR-0003).
 
-**PendingWrite** — one row in the single offline queue:
-`{id: UUID, kind, payload, createdAt, attempts, lastError}`. Kinds: `createExpense`,
-`deleteExpense`, `completeLesson`. Drained in `createdAt` order.
-See [ADR-0005](docs/adr/0005-write-queue.md).
-
-**drain** — one attempt to flush the queue. Guaranteed at foreground and on network regain;
-opportunistic in a `BGAppRefreshTask`. Rejected synonym: *sync* (there is no bidirectional
-sync — this is a write queue).
-See [ADR-0008](docs/adr/0008-app-lifecycle.md).
-
-**poison message** — a queued write the server will never accept (a `422` lesson completion,
-a `404` delete). Dropped, not retried.
-
-**arrival-day attribution** — the rule that an offline lesson completion counts for the day
-the *server receives* it, not the day the device believes it happened. `completedAt` is sent
-for analytics only and is explicitly untrusted.
-See [ADR-0006](docs/adr/0006-learn-offline.md).
+**`MONTH_CLOSED`** — still live. A request in flight across a rollover boundary, or a client
+left open past midnight on the 1st, still hits it, and the client still offers re-filing into
+the live month (Product Spec §4.5). What went away is the queue-replay machinery around it.
 
 ## Session
 
@@ -84,9 +75,11 @@ revoked token and trigger backend family revocation, logging the user out.
 
 ## Content
 
-**content store** — the explicit on-disk JSON store for offline-critical content (curriculum,
-picklists, categories, reference lists) with a persisted ETag per resource. Distinct from
-`URLCache`, which carries only tips and articles.
+**content store** — the explicit on-disk JSON store for curriculum, picklists, categories, and
+the reference lists, with a persisted ETag per resource. Distinct from `URLCache`, which carries
+only tips and articles. It exists for latency and data use; it is **not** what makes the app
+usable without a connection — the curriculum PDF is
+([ADR-0019](docs/adr/0019-no-offline-writes-curriculum-pdf.md)).
 See [ADR-0009](docs/adr/0009-content-cache.md).
 
 **`{c}`** — the currency token left verbatim in tip text. Substituted client-side from
@@ -119,10 +112,11 @@ Recorded here because they are commitments, not suggestions. None has been made 
 |---|---|
 | [ADR-0003](docs/adr/0003-money-presentation.md) | Technical Spec §5 — state the currency of `GET /v1/budget`'s figures; every monetary field gains a server-formatted display string honouring `Accept-Language` |
 | [ADR-0003](docs/adr/0003-money-presentation.md) | Technical Spec §1 — drop FX from the iOS content cache; `GET /v1/expenses` returns per-category totals |
-| [ADR-0005](docs/adr/0005-write-queue.md) | `DELETE /v1/expenses/:id` must be explicitly idempotent — a `404` on an already-deleted id is success, or a retried delete becomes a poison message |
+| [ADR-0019](docs/adr/0019-no-offline-writes-curriculum-pdf.md) | **New endpoint** — the curriculum as a **server-generated PDF**, honouring `Accept-Language`, cacheable (not per-user) with an ETag. The iOS download ticket is blocked on it and is built against a fixture PDF until it lands |
+| ~~[ADR-0005](docs/adr/0005-write-queue.md)~~ | ~~`DELETE /v1/expenses/:id` must be explicitly idempotent~~ — **downgraded to optional** by [ADR-0019](docs/adr/0019-no-offline-writes-curriculum-pdf.md): with no retries, an already-deleted id can never be re-sent. Still good hygiene |
 | [ADR-0010](docs/adr/0010-configuration-and-auth-links.md) | `POST /v1/auth/reset-password` must be callable from a web form, not only from the app |
 | [ADR-0015](docs/adr/0015-deletion-and-demo-account.md) | Technical Spec §5 — sign-in during the grace period returns `ACCOUNT_PENDING_DELETION` with the erase date; add `POST /v1/auth/restore` |
-| [ADR-0004](docs/adr/0004-offline-model.md) | Product Spec §6 — "enables offline lessons" should read *after one online session* |
+| [ADR-0019](docs/adr/0019-no-offline-writes-curriculum-pdf.md) | Product Spec §6 — answer keys no longer ship "to enable offline lessons"; they ship because grading is client-side for responsiveness and the server recomputes (invariant 10) |
 | [ADR-0016](docs/adr/0016-presentation-details.md) | Product Spec §6 — amounts inside tips are illustrative and are never converted |
 | [ADR-0001](docs/adr/0001-platform-baseline.md) | Product Spec §5.2 — record iPhone-only, portrait-only |
 | [ADR-0011](docs/adr/0011-localisation.md) | `DEVELOPMENT_PLAN.md` §5 — string externalisation moves from Phase 5 to Phase 1 (translation stays in Phase 5) |

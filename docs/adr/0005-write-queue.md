@@ -1,6 +1,6 @@
 # ADR-0005 — One write queue; the client-generated UUID is the only idempotency key
 
-**Status:** accepted
+**Status:** superseded in full by [ADR-0019](0019-no-offline-writes-curriculum-pdf.md) — there are no offline writes. Kept for the reasoning; do not build to it.
 **Amends:** Technical Spec §5 (`DELETE /v1/expenses/:id` must be idempotent; the
 `Idempotency-Key` header is not used by this client)
 

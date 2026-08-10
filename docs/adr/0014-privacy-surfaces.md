@@ -14,7 +14,7 @@ sentence requires actual work — it is not a no-op.
 expense amounts. Library defaults are not sufficient.
 
 **Telemetry.** §8's event list must reach `POST /v1/events` without competing with ADR-0005's
-must-never-lose write queue.
+must-never-lose user data. (The write queue that comparison referred to is gone — ADR-0019.)
 
 **Push permission.** §4.4 makes the streak reminder opt-in only, and no spec says when the system
 prompt appears — which in practice means it appears at launch and gets denied permanently.
@@ -30,7 +30,7 @@ view-hierarchy attachment, **no** Session Replay; no request or response bodies;
 strips `Authorization` and scrubs keys matching amount/salary/email/phone/dob/token. The user is
 identified by **server user id only** — never email or display name.
 
-**Telemetry gets its own buffer**, file-backed, not `PendingWrite`. Flush at 20 events / 60 s /
+**Telemetry gets its own buffer**, file-backed, and separate from anything else. Flush at 20 events / 60 s /
 backgrounding; hard cap ~500 with oldest dropped; at most one retry. `installId` is a UUID in
 `UserDefaults`, **not** the Keychain. A **typed event enum in `HWCore`** mirrors the server's name
 allowlist (backend ADR-0012).

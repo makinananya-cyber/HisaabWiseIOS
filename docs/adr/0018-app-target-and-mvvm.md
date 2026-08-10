@@ -34,7 +34,7 @@ HisaabWise/HisaabWise/
 ├── Networking/             Transport, APIClient, APIError
 ├── Fixtures/               canned HTTP payloads + FixtureTransport, #if DEBUG
 ├── DesignSystem/           tokens and StateView, when they arrive
-├── Persistence/            Keychain token store, write queue, content store, when they arrive
+├── Persistence/            Keychain token store, content store, downloaded PDF, when they arrive
 └── Resources/              Assets.xcassets, Localizable.xcstrings
 ```
 

@@ -1,6 +1,6 @@
 # ADR-0008 — Foreground and network regain are the only guaranteed drain points
 
-**Status:** accepted
+**Status:** accepted, amended by [ADR-0019](0019-no-offline-writes-curriculum-pdf.md) — the drain step and the network-regain/background-refresh hooks are gone; the rest of the foreground sequence stands.
 
 ## Context
 
