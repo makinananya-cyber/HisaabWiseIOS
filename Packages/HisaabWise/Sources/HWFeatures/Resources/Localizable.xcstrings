@@ -1,0 +1,66 @@
+{
+  "sourceLanguage" : "en",
+  "strings" : {
+    "home.empty" : {
+      "comment" : "Home, when the server has figures for no months yet.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Nothing to show yet."
+          }
+        }
+      }
+    },
+    "home.failed" : {
+      "comment" : "Home, when the server answered unsuccessfully. Never the server's own message.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Something went wrong. Try again."
+          }
+        }
+      }
+    },
+    "home.income.accessibilityLabel" : {
+      "comment" : "VoiceOver label for the income figure. %@ is the server-formatted amount and is never reformatted.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Income %@"
+          }
+        }
+      }
+    },
+    "home.income.label" : {
+      "comment" : "Caption above the income figure on Home.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Income"
+          }
+        }
+      }
+    },
+    "home.offline" : {
+      "comment" : "Home, when the device cannot reach the server. Offline is a supported mode, not a fault.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You're offline. These figures are the last ones we received."
+          }
+        }
+      }
+    }
+  },
+  "version" : "1.0"
+}
