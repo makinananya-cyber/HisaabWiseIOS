@@ -2,23 +2,28 @@ import SwiftUI
 
 /// The composition root.
 ///
-/// This is the only place that decides which `Transport` the app runs on and what base URL it points
-/// at. Nothing below here knows what an environment is (ADR-0010): `APIClient` takes a URL, and
-/// `URLSessionTransport` plus the three `.xcconfig` files arrive with the real-transport work. Until
-/// then the app runs on the fixture transport, which is why it builds and runs today with no backend.
+/// This is the only place that decides which `Transport` the app runs on and what base URL it points at.
+/// Nothing below here knows what an environment is (ADR-0010): `APIClient` takes a URL, and
+/// `URLSessionTransport` plus the three `.xcconfig` files arrive with the real-transport work. Until then
+/// the app runs on the fixture transport, which is why it builds and runs today with no backend.
+///
+/// Everything the decision produces is handed to ``AppEnvironment``, which is the graph. The root makes
+/// one client, one theme, and one view model per screen, and injects them once.
 @main
 struct HisaabWiseApp: App {
+    private let environment: AppEnvironment
     private let homeViewModel: HomeViewModel
-    private let theme = ThemeManager()
 
     init() {
-        homeViewModel = HomeViewModel(client: Self.makeClient())
+        let environment = AppEnvironment(client: Self.makeClient())
+        self.environment = environment
+        homeViewModel = environment.makeHomeViewModel()
     }
 
     var body: some Scene {
         WindowGroup {
             HomeView(viewModel: homeViewModel)
-                .hwTheme(theme)
+                .hwEnvironment(environment)
         }
     }
 

@@ -13,18 +13,6 @@
         }
       }
     },
-    "home.failed" : {
-      "comment" : "Home, when the server answered unsuccessfully. Never the server's own message.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Something went wrong. Try again."
-          }
-        }
-      }
-    },
     "home.income.accessibilityLabel" : {
       "comment" : "VoiceOver label for the income figure. %@ is the server-formatted amount and is never reformatted.",
       "extractionState" : "manual",
@@ -49,14 +37,86 @@
         }
       }
     },
-    "home.offline" : {
-      "comment" : "Home, when the device cannot reach the server. Offline is a supported mode, not a fault.",
+    "state.failed.generic" : {
+      "comment" : "Every failure whose code this build does not recognise. Never the server's own message.",
       "extractionState" : "manual",
       "localizations" : {
         "en" : {
           "stringUnit" : {
             "state" : "translated",
-            "value" : "You're offline. These figures are the last ones we received."
+            "value" : "Something went wrong. Try again."
+          }
+        }
+      }
+    },
+    "state.failed.malformedResponse" : {
+      "comment" : "The server answered with a body the app could not read. Our bug, not the user's.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "We couldn't read the server's answer. Try again."
+          }
+        }
+      }
+    },
+    "state.failed.monthClosed" : {
+      "comment" : "MONTH_CLOSED — the month has been archived since the screen was opened.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "That month has closed. Reload to see the current one."
+          }
+        }
+      }
+    },
+    "state.failed.rateLimited" : {
+      "comment" : "RATE_LIMITED — too many requests in the window.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Too many tries. Wait a moment, then try again."
+          }
+        }
+      }
+    },
+    "state.loading" : {
+      "comment" : "Shared across every screen: a request is in flight. Read aloud beside the spinner.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Loading…"
+          }
+        }
+      }
+    },
+    "state.offline" : {
+      "comment" : "Shared across every screen: the device cannot reach the server. Offline is a supported mode, not a fault, so this must not read as one.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "You're offline. Reconnect and we'll fetch your figures."
+          }
+        }
+      }
+    },
+    "state.retry" : {
+      "comment" : "The retry CTA on the offline and failed states.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Try again"
           }
         }
       }

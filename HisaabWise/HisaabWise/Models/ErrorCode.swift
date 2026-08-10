@@ -24,10 +24,22 @@ extension ErrorCode: Decodable {
     }
 }
 
+/// The codes this build recognises.
+///
+/// Naming one here is not the same as giving it copy — that is `ErrorCopy`'s job, and a code with no
+/// entry there reads as generic. A constant earns its place when code refers to the code itself.
 extension ErrorCode {
     /// The fallback when a response carries no usable code, or one the client cannot recognise.
     static let unknown = ErrorCode(rawValue: "UNKNOWN")
 
-    /// The response body did not match the shape the client decodes.
+    /// The response body did not match the shape the client decodes. Client-side: no server sends it.
     static let malformedResponse = ErrorCode(rawValue: "MALFORMED_RESPONSE")
+
+    /// Too many requests in the window (Technical Spec §7's rate limiting).
+    static let rateLimited = ErrorCode(rawValue: "RATE_LIMITED")
+
+    /// The write was addressed to a month the rollover has since archived. Still live with no write
+    /// queue in the app: a request in flight across the boundary, or a client left open past midnight
+    /// on the 1st, still hits it (Product Spec §4.5, ADR-0019).
+    static let monthClosed = ErrorCode(rawValue: "MONTH_CLOSED")
 }

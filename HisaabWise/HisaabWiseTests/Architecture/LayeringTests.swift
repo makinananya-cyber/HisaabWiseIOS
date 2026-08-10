@@ -54,6 +54,20 @@ struct LayeringTests {
         )
     }
 
+    /// Everything long-lived is composed in `AppEnvironment` and handed down (issue #11). A `.shared` is
+    /// the shortcut that undoes that: it makes a dependency invisible at the use site and makes two
+    /// tests able to see each other's state. Framework singletons are not in scope here — this is about
+    /// ours.
+    @Test("nothing in the app is a singleton")
+    func nothingIsASingleton() throws {
+        try SourceTree.expectAbsent(
+            ["static let shared", "static var shared", "static let current", "static var current"],
+            from: SourceTree.layers,
+            includingRoot: true,
+            because: "the object graph is composed in AppEnvironment and injected (issue #11)"
+        )
+    }
+
     /// ADR-0001 makes dark mode "architected for, not shipped", and the architecture is that every
     /// colour reaches a use site through a semantic name in the asset catalogue. One inline literal is
     /// one colour the later palette swap will miss — and it will miss it silently.

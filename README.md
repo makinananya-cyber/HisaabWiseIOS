@@ -16,13 +16,14 @@ HisaabWise/
 ├── HisaabWise.xcodeproj
 ├── HisaabWise/
 │   ├── HisaabWiseApp.swift   composition root — the only place that picks a Transport
+│   ├── AppEnvironment.swift  the object graph the root assembles and injects
 │   ├── Models/               Money, CurrencyCode, BudgetSummary, ErrorCode, LoadState
-│   ├── ViewModels/           one @Observable @MainActor view model per screen
-│   ├── Views/                SwiftUI views; they read a view model and nothing else
+│   ├── ViewModels/           BaseViewModel + one @Observable @MainActor view model per screen
+│   ├── Views/                BaseView + SwiftUI screens; they read a view model and nothing else
 │   ├── Components/           shared controls — buttons, fields, labels, cards, chips
 │   ├── Networking/           Transport, APIClient, APIError
 │   ├── Fixtures/             canned HTTP payloads + FixtureTransport, #if DEBUG only
-│   ├── DesignSystem/         palette, type scale, motion, radii, elevation
+│   ├── DesignSystem/         palette, type scale, motion, radii, elevation, StateView
 │   ├── Persistence/          Keychain token store, content store, downloaded PDF, when they arrive
 │   └── Resources/            Assets.xcassets, Localizable.xcstrings
 └── HisaabWiseTests/          mirrors the layers, plus Architecture/
@@ -58,6 +59,15 @@ builds, so `HomeView` renders the INR budget fixture.
   ([ADR-0013](docs/adr/0013-testing-and-previews.md)).
 - **`offline` is never rendered as `failed`**, and the server's `message` field is never displayed
   ([ADR-0016](docs/adr/0016-presentation-details.md)).
+- **An in-app screen is a `BaseView` over a `BaseViewModel`.** It declares its view model, the copy
+  for the states with nothing in them, and what to draw when it has data — and inherits the spinner,
+  the empty state, the offline state, the failure state, the retry, the ground it sits on, and the
+  `.task` that starts the load. `APIError` becomes a `LoadState` in one place (`BaseViewModel
+  .load()`), the taxonomy is switched on in one place (`StateView`), and an error code becomes copy
+  in one place (`ErrorCopy`). All three are asserted by source scans in
+  `HisaabWiseTests/Architecture/StateTaxonomyTests.swift`. The chrome paints the **`surface`**
+  appearance, so it covers the five in-app screens; Landing and Auth are `brand`-backed and are not
+  conformances ([ADR-0021](docs/adr/0021-two-surfaces-and-token-collapse.md)).
 - **Every calculation is server-side, and reads are screen-shaped.** One endpoint per screen
   returning exactly what it renders — no figure, percentage, count, date label, or total is derived
   on the client. The one exception is Learn grading, client-side for responsiveness and recomputed

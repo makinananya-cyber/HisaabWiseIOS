@@ -1,0 +1,82 @@
+import SwiftUI
+
+/// The contract every screen conforms to, so that writing a screen is converting a design and nothing
+/// else.
+///
+/// A conformance declares three things — the view model, the copy for its non-loaded states, and what
+/// to draw when it has data — and inherits the rest: the spinner, the empty state, the offline state,
+/// the failure state, the retry, the ground the screen sits on, and the `.task` that starts the load.
+/// **It cannot re-invent any of them**, which is the point: five tabs times four data states is where
+/// bespoke copy and bespoke VoiceOver come from (ADR-0016).
+///
+/// A **protocol with a defaulted `body`** rather than a container view a screen wraps itself in. Both
+/// work; this one cannot be forgotten. A wrapper is opt-in, and the screen that forgets it is exactly
+/// the screen that then grows its own `switch`.
+///
+/// **It covers the five in-app screens, not all twelve.** The chrome paints the `surface` ground and
+/// ``StateView`` draws `surface` ink and `feedback.danger`; Landing and Auth sit on `brand`, which has
+/// a ground and a `danger` of its own, and both appearances ship together rather than one being a mode
+/// of the other (ADR-0021). Those screens are issues #13–#16 and are not conformances. Making the
+/// chrome appearance-agnostic is the work to do *then*, with two real callers to shape it, rather than
+/// now with one.
+@MainActor
+protocol BaseView: View {
+    associatedtype Model: BaseViewModel
+    associatedtype LoadedContent: View
+
+    /// Held by the screen rather than read from `@Environment`, so a test or a preview can construct
+    /// the screen over a fixture transport (ADR-0013).
+    var viewModel: Model { get }
+
+    /// Copy for the states in which there is nothing to draw. Only ``StateCopy/empty`` has no shared
+    /// default.
+    var stateCopy: StateCopy { get }
+
+    /// The screen — the part that is actually this screen and not any other.
+    @ViewBuilder func loadedContent(_ value: Model.Value) -> LoadedContent
+}
+
+extension BaseView {
+    var body: some View {
+        ScreenChrome(viewModel: viewModel, copy: stateCopy, loadedContent: loadedContent)
+    }
+}
+
+/// What every screen has in common, as a view rather than as an extension.
+///
+/// It exists because a protocol extension cannot declare `@Environment` — a default `body` has no way
+/// to read the theme. So the chrome is a real view that reads it, and the default `body` is one line.
+struct ScreenChrome<Model: BaseViewModel, LoadedContent: View>: View {
+    @Environment(ThemeManager.self) private var theme
+
+    let viewModel: Model
+    let copy: StateCopy
+    @ViewBuilder let loadedContent: (Model.Value) -> LoadedContent
+
+    var body: some View {
+        StateView(
+            state: viewModel.state,
+            copy: copy,
+            // The initial load and the retry are the same call on purpose: a CTA that did something
+            // subtly different from the first fetch is a second code path to keep in step.
+            reload: { await load() },
+            loadedContent: loadedContent
+        )
+        // Fills the screen and starts at the top. Without `maxHeight` the background paints only the
+        // band behind the content and the rest of the screen stays white.
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        // `ignoresSafeArea` on the colour alone: the ground runs under the status bar, the content
+        // does not.
+        .background(theme.palette.surface.background.ignoresSafeArea())
+        .task { await load() }
+        // TODO(#7): the layout direction is the system's until `LanguageManager` owns it. RTL follows
+        // the device locale today, which is right for Arabic and wrong once the in-app language picker
+        // can disagree with it.
+    }
+
+    private func load() async {
+        // `CancellationError` is the only thing `load()` throws, and swallowing it here is what it is
+        // thrown for: the screen is going away, so there is nobody to tell and no state to set.
+        try? await viewModel.load()
+    }
+}

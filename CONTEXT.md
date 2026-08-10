@@ -22,10 +22,32 @@ topology and its six `HW*` library targets. Where a spec or issue still says `HW
 **composition root** — `HisaabWiseApp.swift`. The only place that decides which `Transport` the
 app runs on and what base URL it points at. Nothing below it knows what an environment is.
 
-**view model** — an `@Observable` `@MainActor` class owning one screen's presentation state,
-holding the fetch and the ``LoadState`` mapping. It never *derives* a figure: every figure is
-computed server-side (invariant 3) and `Money` exposes no arithmetic to derive one with.
-Formerly called a *store* (ADR-0002); that term is retired.
+**app environment** — `AppEnvironment`, the object graph the composition root assembles: the
+`APIClient`, the `ThemeManager`, and (issue #7) the `LanguageManager`. It is *not* the composition
+root — it owns the wiring on the far side of the root's one decision. **No singletons and no
+globals**: nothing in the app reaches for a `.shared`, and a source scan in `LayeringTests` keeps it
+that way. View models are *made* here, not held here.
+
+**view model** — an `@Observable` `@MainActor` class owning one screen's presentation state. It
+conforms to **`BaseViewModel`**: it declares `fetch()`, optionally `isEmpty(_:)`, and gets `load()`
+— the one `APIError` → ``LoadState`` mapping in the app — from the protocol extension. It never
+*derives* a figure: every figure is computed server-side (invariant 3) and `Money` exposes no
+arithmetic to derive one with. Formerly called a *store* (ADR-0002); that term is retired.
+
+**base contract** — the pair of protocols an in-app screen is written against: `BaseViewModel` in
+`ViewModels/` (one request, one state, no mapping of its own) and `BaseView` in `Views/` (a
+defaulted `body` supplying the chrome, the `StateView`, and the `.task` that starts the load). A
+screen declares three things — the view model, its `StateCopy`, and `loadedContent` — and inherits
+the rest. **A conforming view model cannot declare `private(set) var state`**: the protocol needs a
+settable `state`, so confining mutation to `load()` is a convention here rather than a compiler
+guarantee. That trade-off is accepted, not worked around.
+
+**screen chrome** — `ScreenChrome`, the view that carries what every screen has in common: the
+ground, the `StateView`, and the `.task`. It exists because a protocol extension cannot declare
+`@Environment`, so a defaulted `body` has no way to read the theme. **It paints `surface`**, which
+is the five in-app screens; Landing and Auth are `brand` (ADR-0021) and are not `BaseView`
+conformances. Making the chrome appearance-agnostic is work for whichever of #13–#16 needs it, with
+two real callers to shape it.
 
 **component** — one entry in the shared control vocabulary in `Components/`: a button variant,
 a field, a label style, a card, a chip, a sheet, a row. **Presentational** — it takes values and
@@ -122,8 +144,25 @@ font sizes and dozen radii are **collapsed** into steps on the way in; a screen 
 300ms is noise, and removing that noise is what a design system is for.
 
 
-**LoadState** — the four-case enum every screen's data goes through: loading, empty, offline,
-failed. `offline` is never rendered as `failed`.
+**LoadState** — the enum every screen's data goes through: `loaded`, plus the four states in which
+there is nothing to draw — loading, empty, offline, failed. `offline` is never rendered as `failed`.
+It is written in exactly one place, `BaseViewModel.load()`, and switched on in exactly one place,
+`StateView` — both asserted by `StateTaxonomyTests`.
+
+**StateView** — the one view in `DesignSystem/` covering the four empty-handed states, and the
+passthrough for `loaded`. It takes a **`StateCopy`** from the screen: only `empty` has no shared
+default, because an empty expense list and an empty reports archive are different sentences while
+twenty rewordings of "you're offline" are not. `offline` and `failed` are **visually distinct** — a
+different symbol and a different tint, not merely different words.
+
+**`StatePresentation`** — the symbol, tint, sentence, and CTA for one empty-handed state, as a
+value rather than as view code. It exists so that "offline is not styled as failed" is something a
+test asserts rather than something a reviewer eyeballs.
+
+**ErrorCopy** — the **one** table turning a server `ErrorCode` into localised copy. An unrecognised
+code yields generic copy; the server's `message` is never displayed, and is never decoded either
+(ADR-0016). A code with a flow of its own rather than a sentence — `ACCOUNT_PENDING_DELETION` gets
+the restore screen — is deliberately absent.
 
 **privacy overlay** — the logo-on-`galaxy` view applied at `scenePhase == .inactive` so the
 app-switcher snapshot carries no financial figures. Not app lock: returning requires no

@@ -1,59 +1,48 @@
 import SwiftUI
 
-/// The far end of the walking skeleton: a canned HTTP payload, decoded through the real client, shown
-/// as text.
+/// The far end of the walking skeleton: a canned HTTP payload, decoded through the real client, shown as
+/// text.
 ///
 /// A placeholder in the literal sense — Home's actual content is Phase 2. What it establishes is that
-/// the only thing a view does with money is render the server's ``Money/display`` string, and that
-/// every screen goes through ``LoadState``.
+/// the only thing a view does with money is render the server's ``Money/display`` string, and that every
+/// screen goes through ``LoadState``.
 ///
-/// The four non-loaded states are drawn inline here. They move to `DesignSystem`'s single `StateView`,
-/// with its own copy and its own error-code mapping, when that arrives.
-struct HomeView: View {
+/// It is also the first ``BaseView``, and so the shape every later screen copies: declare the view model,
+/// declare the copy for the states with nothing in them, draw the loaded case. The four non-loaded states
+/// it used to draw inline are ``StateView``'s now, and the error mapping it used to carry is
+/// ``BaseViewModel/load()``'s.
+struct HomeView: BaseView {
     @Environment(ThemeManager.self) private var theme
 
-    /// The view model is held rather than read from `@Environment` so that a test can construct the
-    /// view over a fixture transport. The five-tab shell puts one per tab in the environment.
-    private let viewModel: HomeViewModel
+    /// Held rather than read from `@Environment` so that a test can construct the view over a fixture
+    /// transport. The five-tab shell puts one per tab in the environment.
+    let viewModel: HomeViewModel
 
     init(viewModel: HomeViewModel) {
         self.viewModel = viewModel
     }
 
-    var body: some View {
+    /// Home overrides only `empty`. Offline, loading, and retry read the same here as anywhere, and
+    /// twenty rewordings of "you're offline" is the outcome ADR-0016 exists to prevent.
+    var stateCopy: StateCopy {
+        StateCopy(empty: "home.empty")
+    }
+
+    @ViewBuilder
+    func loadedContent(_ budget: BudgetSummary) -> some View {
         VStack(alignment: .leading, spacing: 12) {
-            switch viewModel.state {
-            case .loading:
-                ProgressView()
-            case .empty:
-                Text("home.empty")
-            case .offline:
-                // Offline is a supported mode, not a fault — so it does not read as one.
-                Text("home.offline")
-            case .failed:
-                // The code is deliberately not rendered: the copy for it is the design system's job,
-                // and the server's own message is never shown (ADR-0016).
-                Text("home.failed")
-            case .loaded(let budget):
-                Text("home.income.label")
-                    .font(.hw(.caption))
-                    .foregroundStyle(theme.palette.surface.inkSecondary)
-                Text(verbatim: budget.income.display)
-                    .font(.hw(.display))
-                    .foregroundStyle(theme.palette.surface.ink)
-                    // Composed from a catalogue format string plus the server's display string, so
-                    // the sentence is translatable and the figure is never reformatted (ADR-0012).
-                    .accessibilityLabel(Text("home.income.accessibilityLabel \(budget.income.display)"))
-            }
+            Text("home.income.label")
+                .font(.hw(.caption))
+                .foregroundStyle(theme.palette.surface.inkSecondary)
+            Text(verbatim: budget.income.display)
+                .font(.hw(.display))
+                .foregroundStyle(theme.palette.surface.ink)
+                // Composed from a catalogue format string plus the server's display string, so the
+                // sentence is translatable and the figure is never reformatted (ADR-0012).
+                .accessibilityLabel(Text("home.income.accessibilityLabel \(budget.income.display)"))
         }
+        // No `.frame(maxWidth:)` here: the chrome already sizes and aligns what it is handed.
         .padding()
-        // Fills the screen and starts at the top. Without `maxHeight` the background painted only the
-        // band behind the content and the rest of the screen stayed white.
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        // `ignoresSafeArea` on the colour alone: the ground runs under the status bar, the content does
-        // not.
-        .background(theme.palette.surface.background.ignoresSafeArea())
-        .task { await viewModel.load() }
     }
 }
 
