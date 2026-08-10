@@ -34,7 +34,10 @@ extension HomeViewModel {
                 transport: FixtureTransport(stubs: [Endpoint.budget: outcome]),
                 // An explicit language rather than the device's: a preview's `Accept-Language` should
                 // not depend on the Mac Xcode is running on.
-                language: LanguageManager(selected: .english)
+                language: LanguageManager(selected: .english),
+                // No session, and nothing on the device: a preview renders the stub above, and one that
+                // could refresh would be a preview that reaches the Keychain of the machine drawing it.
+                refreshTokens: InMemoryTokenStore()
             )
         )
     }

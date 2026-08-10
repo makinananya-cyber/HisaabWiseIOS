@@ -188,12 +188,50 @@ the live month (Product Spec §4.5). What went away is the queue-replay machiner
 
 **TokenStore** — the protocol in `Models` behind which the refresh token lives.
 `KeychainTokenStore` when "Keep me signed in" is checked, `InMemoryTokenStore` when it is
-not. O3's app lock would be a third conformance, not a refactor.
-See [ADR-0007](docs/adr/0007-session-and-refresh.md).
+not. O3's app lock would be a third conformance, not a refactor. **The access token is not in
+it** and has no store to put it in: it is held in memory by the client actor and never
+persisted, which two source scans now assert.
+Its read is allowed to `throw` for one reason — a Keychain protected by `AfterFirstUnlock`
+cannot be read before the first unlock after a reboot, and mistaking that for *empty* would
+sign a user out for having restarted their phone.
+See [ADR-0007](docs/adr/0007-session-and-refresh.md), [ADR-0023](docs/adr/0023-session-plumbing.md).
 
 **single-flight refresh** — at most one refresh in progress per process. Every caller that
 sees a 401 awaits the same `Task`. Not an optimisation: concurrent refreshes present a
-revoked token and trigger backend family revocation, logging the user out.
+revoked token and trigger backend family revocation, logging the user out. Two guards, for
+the two ways callers arrive: **overlapping** (a refresh is in flight, so join it) and
+**staggered** (it already landed, so the token is replaced and retrying is the whole answer).
+Neither is reachable on demand from a test; the assertion is the property true of both —
+exactly one refresh at the transport.
+
+**authorization** — `APIClient.Authorization`, a property of the *request*: `.session`
+presents the access token and answers a 401 by refreshing and retrying **once**, `.anonymous`
+presents nothing. Two cases rather than a `/v1/auth/` prefix rule, which would be wrong on its
+first exception — `POST /v1/auth/logout` is an auth route that needs the session. `.session`
+is the default, because the mistake a default has to make impossible is forgetting to
+authenticate a per-user route.
+
+**presented** — what a request carries: the access token **exactly as issued**, signature and
+unread claims included. The `sec` claim rides along there, so a re-encoding of the claims the
+client happens to read would drop it. A 401 refreshes even when the clock says the token is
+fresh, which is what makes a `securityEpoch` bump a prompt sign-out rather than fifteen
+minutes of failures.
+
+**hard logout** — the session ending because the **server** refused it: a definitive 401 on
+refresh, or a 401 with nothing left to refresh with. The store is cleared and
+`APIClient.sessionEnded` yields. A local sign-out does **not** yield — the caller already
+knows. A transport failure, a 5xx, and an unreadable store all **keep** the session; the first
+and last are `offline`.
+
+**`SessionCoordinator`** — who is signed in, at the app root beside `AppEnvironment` and
+`AppConfig` rather than in a layer: it owns no screen, so it is not a view model.
+`restore()` · `signIn(email:password:keepMeSignedIn:)` · `signOut()` · `onForeground()`.
+**It maps no `APIError`** — that has one owner and this is not it, so what it takes from a
+failed request is `client.hasSession`, not an error code. `onForeground()` is a directly
+awaitable method, not a `scenePhase` observer, so ADR-0008's ordering — refresh-if-near-expiry
+**then** `GET /v1/me` — is something a test asserts. The composition root observes
+`scenePhase` and calls it; issue #5 takes that over.
+See [ADR-0023](docs/adr/0023-session-plumbing.md).
 
 ## Content
 
@@ -276,3 +314,7 @@ Recorded here because they are commitments, not suggestions. None has been made 
 | [ADR-0001](docs/adr/0001-platform-baseline.md) | Product Spec §5.2 — record iPhone-only, portrait-only |
 | [ADR-0011](docs/adr/0011-localisation.md) | `DEVELOPMENT_PLAN.md` §5 — string externalisation moves from Phase 5 to Phase 1 (translation stays in Phase 5) |
 | [ADR-0007](docs/adr/0007-session-and-refresh.md) | Technical Spec §9 — add a concurrency case: several in-flight requests across an access-token expiry must not log the user out |
+| [ADR-0023](docs/adr/0023-session-plumbing.md) | **The auth wire contract**, written by the client because the backend has no `/v1/auth/*` routes yet: `POST /v1/auth/login {email, password, timeZone}` and `POST /v1/auth/refresh {refreshToken, timeZone}` both answer `{accessToken, refreshToken}` — a refresh returns a **new refresh token**, not only an access token; `POST /v1/auth/logout {refreshToken}` is **authenticated** |
+| [ADR-0023](docs/adr/0023-session-plumbing.md) | `timeZone` (IANA) on **login and refresh**. Invariant 6 captures the user's stored timezone "at login and refresh", and those two requests are the only places it can happen — without the field it never happens after registration |
+| [ADR-0023](docs/adr/0023-session-plumbing.md) | The access token is a **JWT carrying `exp` and `sec`**. The client reads `exp` from the payload rather than from a sibling `expiresIn`, so there is no second copy of the token's lifetime to fall out of step |
+| [ADR-0023](docs/adr/0023-session-plumbing.md) | **New endpoint** — `GET /v1/me` returning `{email, displayName, emailVerified}`. Identity only: figures reach a screen through that screen's endpoint (ADR-0020), and a second copy here is one a stale revalidation could disagree with |

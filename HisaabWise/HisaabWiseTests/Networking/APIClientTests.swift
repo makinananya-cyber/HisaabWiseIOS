@@ -11,7 +11,15 @@ struct APIClientTests {
         _ transport: FixtureTransport,
         in language: AppLanguage = .english
     ) -> APIClient {
-        APIClient(baseURL: baseURL, transport: transport, language: LanguageManager(selected: language))
+        // No session: this suite is about what every request carries, and a client with a refresh token
+        // would answer a `401` with a refresh rather than reporting it. The session's own behaviour is
+        // `SessionTests`.
+        APIClient(
+            baseURL: baseURL,
+            transport: transport,
+            language: LanguageManager(selected: language),
+            refreshTokens: InMemoryTokenStore()
+        )
     }
 
     private struct Payload: Decodable, Sendable, Equatable {

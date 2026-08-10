@@ -20,6 +20,15 @@ struct HisaabWiseApp: App {
     private let environment: AppEnvironment
     private let homeViewModel: HomeViewModel
 
+    /// The lifecycle observer ADR-0008's sequence needs, and the one place it may live: a `scenePhase`
+    /// observer is a *view* concern, and the reason `SessionCoordinator.onForeground()` is a plain
+    /// awaitable method is so that the ordering inside it can be tested without one.
+    ///
+    /// The five-tab shell (#5) takes this over along with the privacy overlay it also needs `scenePhase`
+    /// for. Until then it sits here, because a foreground sequence nobody calls is a sequence that is
+    /// wrong by the time somebody does.
+    @Environment(\.scenePhase) private var scenePhase
+
     init() {
         let environment = AppEnvironment(
             baseURL: Self.configuration().apiBaseURL,
@@ -33,6 +42,16 @@ struct HisaabWiseApp: App {
         WindowGroup {
             HomeView(viewModel: homeViewModel)
                 .hwEnvironment(environment)
+                .task { await environment.session.restore() }
+                .onChange(of: scenePhase) { previous, phase in
+                    // A launch that arrives `.inactive` and then `.active` can put this alongside the
+                    // restore above rather than after it. That is safe rather than co-ordinated:
+                    // `onForeground()` returns immediately while `isSignedIn` is still false, and if the
+                    // restore has already set it, both do the same idempotent revalidation. Serialising
+                    // them would be machinery for the shell (#5) to inherit and then rewrite.
+                    guard phase == .active, previous != .active else { return }
+                    Task { await environment.session.onForeground() }
+                }
         }
     }
 

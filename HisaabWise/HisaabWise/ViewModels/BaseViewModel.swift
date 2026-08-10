@@ -86,7 +86,12 @@ extension BaseViewModel {
         switch apiError {
         case .offline:
             return .offline
-        case .server, .malformedResponse:
+        case .server, .malformedResponse, .unauthenticated:
+            // `.unauthenticated` renders as a fault for the moment it is on screen. It arrives with the
+            // session already ended (ADR-0007), so the next thing the user sees is Landing — and the
+            // alternative, a fifth `LoadState` case, would add a state to the taxonomy that every screen
+            // has to handle and none can do anything about.
+            //
             // `APIError.offline` is the only case with no code, and it is handled above — so the
             // fallback here is a belt, not a route anything takes.
             return .failed(apiError.errorCode ?? .unknown)

@@ -50,29 +50,75 @@ actor FixtureTransport: Transport {
     }
 
     private var queue: [Outcome]
+    private var sequences: [String: [Outcome]]
     private let stubs: [String: Outcome]
     private var recorded: [RecordedRequest] = []
 
+    /// How many requests to hold before answering any of them, or `0` for none.
+    ///
+    /// The one thing a test about **concurrency** cannot get from stubs: several requests genuinely in
+    /// flight at the same moment. Without it, "three callers across one token expiry" is at the
+    /// scheduler's mercy — the three may serialise, the second then presents the token the first already
+    /// refreshed into, and the test passes or fails on timing rather than on behaviour.
+    ///
+    /// One-shot: once the count is reached everything is released and nothing is held again, so the
+    /// retries that follow are not caught by it.
+    private var holdingFor: Int
+    private var held: [CheckedContinuation<Void, Never>] = []
+
     /// - Parameters:
-    ///   - queue: Outcomes served in order, one per request, before any stub is consulted. This is
+    ///   - queue: Outcomes served in order, one per request, before anything else is consulted. This is
     ///     how a test drives a *sequence* — a `401` then a success, say.
+    ///   - sequences: Outcomes keyed by path and served in order **per path**, which is what `queue`
+    ///     cannot do: with several requests in flight at once, the order they reach the transport is not
+    ///     the order the test wrote them in, and a global queue then answers the wrong caller. A path
+    ///     whose sequence has run out falls through to `stubs`.
     ///   - stubs: Outcomes keyed by request path, serving every request to that path.
-    init(queue: [Outcome] = [], stubs: [String: Outcome] = [:]) {
+    ///   - holdingFirst: hold this many requests until all of them have arrived, then answer them all and
+    ///     stop holding. How a test puts requests genuinely in flight together.
+    init(
+        queue: [Outcome] = [],
+        sequences: [String: [Outcome]] = [:],
+        stubs: [String: Outcome] = [:],
+        holdingFirst holdingFor: Int = 0
+    ) {
         self.queue = queue
+        self.sequences = sequences
         self.stubs = stubs
+        self.holdingFor = holdingFor
     }
 
     /// Every request the transport has seen, in order. The count is what proves single-flight
     /// refresh: exactly one refresh reaches the transport however many callers saw a `401`.
     var recordedRequests: [RecordedRequest] { recorded }
 
+    /// How many requests reached a given path. The single-flight assertion, said plainly.
+    func requestCount(for path: String) -> Int {
+        recorded.count { $0.path == path }
+    }
+
     func send(_ request: URLRequest) async throws -> (Data, HTTPURLResponse) {
         let recordedRequest = RecordedRequest(request)
         recorded.append(recordedRequest)
 
+        if holdingFor > 0 {
+            if recorded.count < holdingFor {
+                // The closure runs before the suspension, so appending inside the actor is safe.
+                await withCheckedContinuation { held.append($0) }
+            } else {
+                let waiting = held
+                held = []
+                holdingFor = 0
+                for continuation in waiting { continuation.resume() }
+            }
+        }
+
         let outcome: Outcome
         if !queue.isEmpty {
             outcome = queue.removeFirst()
+        } else if var sequence = sequences[recordedRequest.path], !sequence.isEmpty {
+            outcome = sequence.removeFirst()
+            sequences[recordedRequest.path] = sequence
         } else if let stubbed = stubs[recordedRequest.path] {
             outcome = stubbed
         } else {

@@ -40,7 +40,10 @@ struct LiveWorkerTests {
         APIClient(
             baseURL: try LiveWorker.baseURL(),
             transport: URLSessionTransport(),
-            language: LanguageManager(selected: .english)
+            language: LanguageManager(selected: .english),
+            // No session, deliberately: the two routes below are unauthenticated, and a live suite that
+            // could refresh would be a live suite that could sign somebody out.
+            refreshTokens: InMemoryTokenStore()
         )
     }
 

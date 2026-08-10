@@ -19,14 +19,15 @@ HisaabWise/
 │   ├── HisaabWiseApp.swift   composition root — the only place that picks a Transport
 │   ├── AppConfig.swift       the base URL, parsed out of the build configuration
 │   ├── AppEnvironment.swift  the object graph the root assembles and injects
-│   ├── Models/               Money, CurrencyCode, BudgetSummary, ErrorCode, LoadState, AppLanguage
+│   ├── SessionCoordinator.swift  who is signed in — restore, sign in, sign out, foreground
+│   ├── Models/               Money, CurrencyCode, BudgetSummary, ErrorCode, LoadState, AppLanguage, AccessToken, TokenStore
 │   ├── ViewModels/           BaseViewModel + one @Observable @MainActor view model per screen
 │   ├── Views/                BaseView + SwiftUI screens; they read a view model and nothing else
 │   ├── Components/           shared controls — buttons, fields, labels, cards, chips
 │   ├── Networking/           Transport, URLSessionTransport, APIClient, APIError
 │   ├── Fixtures/             canned HTTP payloads + FixtureTransport, #if DEBUG only
 │   ├── DesignSystem/         palette, type scale, motion, radii, elevation, StateView, LanguageManager
-│   ├── Persistence/          Keychain token store, content store, downloaded PDF, when they arrive
+│   ├── Persistence/          the two token stores; content store and downloaded PDF when they arrive
 │   └── Resources/            Assets.xcassets, Localizable.xcstrings
 └── HisaabWiseTests/          mirrors the layers, plus Architecture/
 ```
@@ -82,6 +83,16 @@ that Worker and **skips, rather than fails**, when it is not answering.
   ([ADR-0003](docs/adr/0003-money-presentation.md), [ADR-0022](docs/adr/0022-production-transport.md)).
 - **`offline` is never rendered as `failed`**, and the server's `message` field is never displayed
   ([ADR-0016](docs/adr/0016-presentation-details.md)).
+- **One refresh, however many callers.** A request presents the access token by default; a 401 is
+  answered by refreshing once — shared by every caller that saw one — and retrying once. Concurrent
+  refreshes would present a spent token, and the backend revokes the whole family for that, so the
+  bug it prevents is a silent logout. A definitive 401 on refresh clears the store and signals a hard
+  logout; a transport failure, a 5xx, and a Keychain that cannot be read all **keep** the session
+  ([ADR-0007](docs/adr/0007-session-and-refresh.md),
+  [ADR-0023](docs/adr/0023-session-plumbing.md)).
+- **The access token is never persisted and never leaves the client.** It lives in memory on the
+  `APIClient` actor; only the refresh token reaches a `TokenStore`, and no view, component, or view
+  model may name a token at all. Both are source scans.
 - **An in-app screen is a `BaseView` over a `BaseViewModel`.** It declares its view model, the copy
   for the states with nothing in them, and what to draw when it has data — and inherits the spinner,
   the empty state, the offline state, the failure state, the retry, the ground it sits on, and the

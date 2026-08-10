@@ -2,8 +2,8 @@ import SwiftUI
 
 /// The object graph, assembled once.
 ///
-/// Everything long-lived the app needs is held here and handed down: the HTTP client, the theme, and
-/// the language manager. **No singletons and no globals** — nothing in the app reaches for a
+/// Everything long-lived the app needs is held here and handed down: the HTTP client, the theme, the
+/// language manager, and the session. **No singletons and no globals** — nothing in the app reaches for a
 /// `.shared`, which is what makes a test able to stand up a whole app's worth of objects over a
 /// fixture transport without touching a build configuration.
 ///
@@ -24,16 +24,38 @@ final class AppEnvironment {
     let client: APIClient
     let theme: ThemeManager
     let language: LanguageManager
+    let session: SessionCoordinator
 
+    /// - Parameters:
+    ///   - keptTokens: where a session the user asked to keep is stored. The Keychain in the app; a test
+    ///     substitutes an in-memory store so that running the suite does not write a credential to the
+    ///     machine it runs on.
+    ///   - transientTokens: where an unkept session lives — memory, ending with the process (ADR-0007).
     init(
         baseURL: URL,
         transport: any Transport,
         theme: ThemeManager = ThemeManager(),
-        language: LanguageManager = LanguageManager()
+        language: LanguageManager = LanguageManager(),
+        keptTokens: any TokenStore = KeychainTokenStore(),
+        transientTokens: any TokenStore = InMemoryTokenStore()
     ) {
         self.theme = theme
         self.language = language
-        client = APIClient(baseURL: baseURL, transport: transport, language: language)
+        let client = APIClient(
+            baseURL: baseURL,
+            transport: transport,
+            language: language,
+            refreshTokens: keptTokens
+        )
+        self.client = client
+        // The client is built with the *kept* store, because that is the one a launch has to consult to
+        // find a session at all. Which store a new session goes to is the checkbox's decision and is made
+        // at sign-in, by the coordinator.
+        session = SessionCoordinator(
+            client: client,
+            keptStore: keptTokens,
+            transientStore: transientTokens
+        )
     }
 
     func makeHomeViewModel() -> HomeViewModel {

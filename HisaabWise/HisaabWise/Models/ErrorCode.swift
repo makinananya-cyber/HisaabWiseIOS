@@ -35,6 +35,11 @@ extension ErrorCode {
     /// The response body did not match the shape the client decodes. Client-side: no server sends it.
     static let malformedResponse = ErrorCode(rawValue: "MALFORMED_RESPONSE")
 
+    /// The request needed a session and there was none left to present (ADR-0007). Client-side: the
+    /// server's own 401 carries whatever code it likes, and this is what the client says when it did not
+    /// get as far as asking.
+    static let unauthenticated = ErrorCode(rawValue: "UNAUTHENTICATED")
+
     /// Too many requests in the window (Technical Spec §7's rate limiting).
     static let rateLimited = ErrorCode(rawValue: "RATE_LIMITED")
 

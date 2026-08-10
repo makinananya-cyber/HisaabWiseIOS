@@ -132,6 +132,59 @@ struct LayeringTests {
         )
     }
 
+    /// ADR-0007 — **the access token is never persisted.** It lives in memory on the client actor and is
+    /// re-minted from the refresh token, which is what makes a stolen device backup worth nothing. The
+    /// failure mode is a store that grows a second property "for convenience", so `Persistence/` must not
+    /// know the type exists.
+    @Test("nothing on the device can hold the access token")
+    func theAccessTokenIsNeverPersisted() throws {
+        try SourceTree.expectAbsent(
+            ["AccessToken", "accessToken"],
+            from: ["Persistence"],
+            because: "the access token is held in memory by the client and never persisted (ADR-0007)"
+        )
+    }
+
+    /// One file may reach the Keychain, and it is the one whose attributes are asserted.
+    ///
+    /// This is the unconditional half of "unchecked leaves nothing behind" (ADR-0007). The round-trip
+    /// assertion that an `InMemoryTokenStore` writes nothing to the Keychain can only run where there *is*
+    /// a writable Keychain, and skips otherwise; a scan runs everywhere. It also covers the wider rule —
+    /// an item written from anywhere else would carry whatever accessibility class that call site chose,
+    /// and `TokenStoreTests` would still be green.
+    @Test("only KeychainTokenStore reaches the Keychain")
+    func theKeychainHasOneCaller() throws {
+        let keychainAPI = ["SecItem", "kSecClass", "kSecAttr", "import Security"]
+        let owner = "KeychainTokenStore.swift"
+
+        for layer in SourceTree.layers {
+            for file in try SourceTree.swiftFiles(in: layer) where file.lastPathComponent != owner {
+                let code = try SourceTree.codeLines(of: file)
+                for symbol in keychainAPI {
+                    #expect(
+                        code.first { $0.contains(symbol) } == nil,
+                        """
+                        \(layer)/\(file.lastPathComponent) reaches the Keychain — only \(owner) may, \
+                        because its item's accessibility class is what ADR-0007 decided
+                        """
+                    )
+                }
+            }
+        }
+    }
+
+    /// A screen never sees a token. It asks `SessionCoordinator` to sign in and reads whether anyone is
+    /// signed in; the credentials themselves stay between the client and the store. One view model holding
+    /// a token is one place it can be logged, put in a snapshot, or passed to an analytics call.
+    @Test("no token reaches the presentation layers")
+    func tokensStayOutOfThePresentationLayers() throws {
+        try SourceTree.expectAbsent(
+            ["AccessToken", "accessToken", "refreshToken", "TokenStore", "Bearer"],
+            from: ["Views", "Components", "ViewModels"],
+            because: "the session's credentials live between APIClient and the TokenStore (ADR-0007)"
+        )
+    }
+
     /// Every layer is covered by the scans. A folder missing from `SourceTree.layers` fails silently,
     /// so the list is checked against what is actually on disk rather than trusted.
     @Test("every layer folder on disk is in SourceTree.layers")
