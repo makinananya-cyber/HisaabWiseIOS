@@ -1,0 +1,46 @@
+# macOS
+.DS_Store
+.AppleDouble
+.LSOverride
+Icon?
+
+# Xcode — user-specific state
+xcuserdata/
+*.xcuserstate
+*.xcuserdatad/
+*.xcscmblueprint
+*.xccheckout
+
+# Xcode — build products
+build/
+DerivedData/
+*.moved-aside
+*.hmap
+*.ipa
+*.dSYM.zip
+*.dSYM
+*.xcarchive
+
+# Swift Package Manager
+# Package.resolved is deliberately NOT ignored — it pins dependency versions
+# (see docs/adr/0013-testing-and-previews.md).
+.build/
+.swiftpm/xcode/package.xcworkspace/xcuserdata/
+.swiftpm/configuration/
+
+# Playgrounds
+timeline.xctimeline
+playground.xcworkspace
+
+# Signing material — never committed (ADR-0010, Rule 3: secrets live in GitHub
+# secrets and Cloudflare per-environment secrets, never in the repo)
+*.mobileprovision
+*.p12
+*.cer
+*.certSigningRequest
+*.p8
+AuthKey_*.p8
+
+# Local overrides
+*.local.xcconfig
+.env
