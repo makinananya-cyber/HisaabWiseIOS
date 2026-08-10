@@ -19,6 +19,7 @@ HisaabWise/
 │   ├── Models/               Money, CurrencyCode, BudgetSummary, ErrorCode, LoadState
 │   ├── ViewModels/           one @Observable @MainActor view model per screen
 │   ├── Views/                SwiftUI views; they read a view model and nothing else
+│   ├── Components/           shared controls — buttons, fields, labels, cards, chips
 │   ├── Networking/           Transport, APIClient, APIError
 │   ├── Fixtures/             canned HTTP payloads + FixtureTransport, #if DEBUG only
 │   ├── DesignSystem/         tokens and StateView, when they arrive
@@ -57,6 +58,13 @@ builds, so `HomeView` renders the INR budget fixture.
   ([ADR-0013](docs/adr/0013-testing-and-previews.md)).
 - **`offline` is never rendered as `failed`**, and the server's `message` field is never displayed
   ([ADR-0016](docs/adr/0016-presentation-details.md)).
+- **Every calculation is server-side, and reads are screen-shaped.** One endpoint per screen
+  returning exactly what it renders — no figure, percentage, count, date label, or total is derived
+  on the client. The one exception is Learn grading, client-side for responsiveness and recomputed
+  server-side ([ADR-0020](docs/adr/0020-screen-scoped-endpoints.md)).
+- **A screen never styles a control itself.** New variants go in `Components/`, which is
+  presentational: it takes values and closures and cannot fetch.
 - **The layering is enforced by source scans, not the compiler.** `HisaabWiseTests/Architecture`
-  asserts that views do not reach the network and models depend on nothing. Add a new layer folder
-  to `SourceTree.layers` or it goes unchecked.
+  asserts that views do not reach the network, models depend on nothing, and components hold no view
+  model. A new layer folder must go in `SourceTree.layers` — and a test now checks that list against
+  what is on disk, so forgetting fails rather than passing quietly.

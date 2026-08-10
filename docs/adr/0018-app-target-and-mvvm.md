@@ -31,6 +31,7 @@ HisaabWise/HisaabWise/
 ├── Models/                 Money, CurrencyCode, BudgetSummary, ErrorCode, LoadState
 ├── ViewModels/             one @Observable @MainActor view model per screen
 ├── Views/                  SwiftUI views; they read a view model and nothing else
+├── Components/             the shared control vocabulary; presentational, knows nothing
 ├── Networking/             Transport, APIClient, APIError
 ├── Fixtures/               canned HTTP payloads + FixtureTransport, #if DEBUG
 ├── DesignSystem/           tokens and StateView, when they arrive

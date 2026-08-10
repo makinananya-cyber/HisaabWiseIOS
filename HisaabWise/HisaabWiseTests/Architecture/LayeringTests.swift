@@ -1,3 +1,4 @@
+import Foundation
 import Testing
 
 /// The load-bearing suite.
@@ -39,6 +40,37 @@ struct LayeringTests {
             from: ["ViewModels"],
             because: "presentation state is not presentation (ADR-0018)"
         )
+    }
+
+    /// Components take values and closures. One that can fetch, or that holds a view model, is a
+    /// screen wearing a component's name — and it stops being reusable the moment it knows what it is
+    /// showing.
+    @Test("no component fetches or holds a view model")
+    func componentsArePresentational() throws {
+        try SourceTree.expectAbsent(
+            ["APIClient", "URLSession", "URLRequest", "Transport", "ViewModel"],
+            from: ["Components"],
+            because: "components are presentational — they take values and closures (ADR-0018)"
+        )
+    }
+
+    /// Every layer is covered by the scans. A folder missing from `SourceTree.layers` fails silently,
+    /// so the list is checked against what is actually on disk rather than trusted.
+    @Test("every layer folder on disk is in SourceTree.layers")
+    func layerListIsComplete() throws {
+        let onDisk = try FileManager.default
+            .contentsOfDirectory(at: SourceTree.appSources, includingPropertiesForKeys: nil)
+            .filter { (try? $0.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) == true }
+            .map(\.lastPathComponent)
+            // `Resources` holds the asset catalogue and String Catalogue, not Swift.
+            .filter { $0 != "Resources" }
+
+        for folder in onDisk {
+            #expect(
+                SourceTree.layers.contains(folder),
+                "\(folder)/ is not in SourceTree.layers, so no layering rule covers it"
+            )
+        }
     }
 
     /// ADR-0013 — fixture *code* never compiles into a release build. The `.json` payloads do ship in

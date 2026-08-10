@@ -13,8 +13,8 @@ Decisions that established these terms live in `docs/adr/`.
 ## Structure
 
 **app target** — `HisaabWise`, the single target holding all of the app's Swift, grouped by
-MVVM layer: `Models` · `ViewModels` · `Views` · `Networking` · `Fixtures` · `DesignSystem` ·
-`Persistence` · `Resources`. `Fixtures` code is `#if DEBUG` only.
+MVVM layer: `Models` · `ViewModels` · `Views` · `Components` · `Networking` · `Fixtures` ·
+`DesignSystem` · `Persistence` · `Resources`. `Fixtures` code is `#if DEBUG` only.
 See [ADR-0018](docs/adr/0018-app-target-and-mvvm.md), which supersedes ADR-0002's package
 topology and its six `HW*` library targets. Where a spec or issue still says `HWCore`,
 `HWNetworking`, or `HWDesignSystem`, read the corresponding folder.
@@ -27,9 +27,29 @@ holding the fetch and the ``LoadState`` mapping. It never *derives* a figure: ev
 computed server-side (invariant 3) and `Money` exposes no arithmetic to derive one with.
 Formerly called a *store* (ADR-0002); that term is retired.
 
+**component** — one entry in the shared control vocabulary in `Components/`: a button variant,
+a field, a label style, a card, a chip, a sheet, a row. **Presentational** — it takes values and
+closures, holds no view model, and cannot fetch. A screen never styles a control itself; a new
+variant is added here rather than inlined there. The inventory follows the design's own CSS
+(`.btn` and its four variants, `.iconbtn`, `.field-box`, `.label`, `.eyebrow`, `.card`, the chip
+and sheet families, `.row` / `.key-row`, `.toast`).
+
+**screen endpoint** — one read endpoint per screen — `GET /v1/screens/home`, `/expenses`,
+`/learn`, `/reports`, `/reports/:monthKey`, `/account` — returning exactly what that screen
+renders, fully formatted. Writes keep their own resource addresses but **return the updated screen
+payload**, so the client re-renders from server truth instead of patching its own copy. Cacheable
+content (article bodies, curriculum, reference lists) stays on its own ETag'd endpoints.
+See [ADR-0020](docs/adr/0020-screen-scoped-endpoints.md).
+
+**server-side calculation** — every figure, percentage, count, date label, verdict, total, and
+ordering comes from a response. The client renders; it never derives. **One deliberate
+exception:** Learn grading is client-side for responsiveness (invariant 10), submitted per
+question and recomputed server-side, and the client's answer is never authoritative. Local input
+validation is not a calculation in this sense.
+
 **layering scans** — the source scans in `HisaabWiseTests/Architecture` that assert no view
-touches `Networking`, no model touches `Networking` or SwiftUI, and no view model imports
-SwiftUI. In one target the compiler enforces no layer boundary, so these are the enforcement —
+touches `Networking`, no model touches `Networking` or SwiftUI, no view model imports SwiftUI, and
+no component fetches or holds a view model. In one target the compiler enforces no layer boundary, so these are the enforcement —
 weaker than the package graph they replaced, and the only thing that keeps the layering from
 being a convention.
 
@@ -112,6 +132,8 @@ Recorded here because they are commitments, not suggestions. None has been made 
 |---|---|
 | [ADR-0003](docs/adr/0003-money-presentation.md) | Technical Spec §5 — state the currency of `GET /v1/budget`'s figures; every monetary field gains a server-formatted display string honouring `Accept-Language` |
 | [ADR-0003](docs/adr/0003-money-presentation.md) | Technical Spec §1 — drop FX from the iOS content cache; `GET /v1/expenses` returns per-category totals |
+| [ADR-0020](docs/adr/0020-screen-scoped-endpoints.md) | **Six new endpoints** — `GET /v1/screens/{home,expenses,learn,reports,account}` and `/v1/screens/reports/:monthKey`, each returning exactly what the screen renders, fully formatted. Every derived value included: "% of pay", the meter percentage, "Today / Yesterday / N days ago", per-category totals, Learn accuracy and progress fractions, the goal verdict, per-year totals |
+| [ADR-0020](docs/adr/0020-screen-scoped-endpoints.md) | Writes — `POST /v1/expenses`, `DELETE /v1/expenses/:id`, `POST /v1/learn/lessons/:id/complete`, `PUT /v1/me/*` — **return the updated screen payload**, so the client never patches its own copy |
 | [ADR-0019](docs/adr/0019-no-offline-writes-curriculum-pdf.md) | **New endpoint** — the curriculum as a **server-generated PDF**, honouring `Accept-Language`, cacheable (not per-user) with an ETag. The iOS download ticket is blocked on it and is built against a fixture PDF until it lands |
 | ~~[ADR-0005](docs/adr/0005-write-queue.md)~~ | ~~`DELETE /v1/expenses/:id` must be explicitly idempotent~~ — **downgraded to optional** by [ADR-0019](docs/adr/0019-no-offline-writes-curriculum-pdf.md): with no retries, an already-deleted id can never be re-sent. Still good hygiene |
 | [ADR-0010](docs/adr/0010-configuration-and-auth-links.md) | `POST /v1/auth/reset-password` must be callable from a web form, not only from the app |

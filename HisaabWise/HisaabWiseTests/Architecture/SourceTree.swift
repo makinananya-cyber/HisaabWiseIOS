@@ -16,7 +16,12 @@ enum SourceTree {
         .deletingLastPathComponent()
         .appending(path: "HisaabWise")
 
-    static let layers = ["Models", "ViewModels", "Views", "Networking", "Fixtures", "DesignSystem", "Persistence"]
+    /// Every layer folder under the app target. **A new folder must be added here**, or the scans
+    /// below silently stop covering it — the failure mode is a green suite, not an error.
+    static let layers = [
+        "Models", "ViewModels", "Views", "Components",
+        "Networking", "Fixtures", "DesignSystem", "Persistence",
+    ]
 
     static func swiftFiles(in layer: String) throws -> [URL] {
         let directory = appSources.appending(path: layer)
