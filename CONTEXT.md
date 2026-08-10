@@ -12,17 +12,26 @@ Decisions that established these terms live in `docs/adr/`.
 
 ## Structure
 
-**app shell** — the `.xcodeproj` target. Owns `Info.plist`, entitlements, app icon, launch
-screen, and the composition root. Contains no feature code.
-See [ADR-0002](docs/adr/0002-project-topology.md).
+**app target** — `HisaabWise`, the single target holding all of the app's Swift, grouped by
+MVVM layer: `Models` · `ViewModels` · `Views` · `Networking` · `Fixtures` · `DesignSystem` ·
+`Persistence` · `Resources`. `Fixtures` code is `#if DEBUG` only.
+See [ADR-0018](docs/adr/0018-app-target-and-mvvm.md), which supersedes ADR-0002's package
+topology and its six `HW*` library targets. Where a spec or issue still says `HWCore`,
+`HWNetworking`, or `HWDesignSystem`, read the corresponding folder.
 
-**HWCore · HWNetworking · HWPersistence · HWDesignSystem · HWFeatures · HWFixtures** — the
-six library targets of `Packages/HisaabWise`. `HWCore` has no dependency on `HWNetworking`,
-which is what stops a raw number reaching a view. `HWFixtures` is `#if DEBUG` only.
+**composition root** — `HisaabWiseApp.swift`. The only place that decides which `Transport` the
+app runs on and what base URL it points at. Nothing below it knows what an environment is.
 
-**store** — an `@Observable` class owning one tab's state, injected via `@Environment`.
-Rejected synonym: *view model* (there is no per-screen view model; the server is the model
-layer).
+**view model** — an `@Observable` `@MainActor` class owning one screen's presentation state,
+holding the fetch and the ``LoadState`` mapping. It never *derives* a figure: every figure is
+computed server-side (invariant 3) and `Money` exposes no arithmetic to derive one with.
+Formerly called a *store* (ADR-0002); that term is retired.
+
+**layering scans** — the source scans in `HisaabWiseTests/Architecture` that assert no view
+touches `Networking`, no model touches `Networking` or SwiftUI, and no view model imports
+SwiftUI. In one target the compiler enforces no layer boundary, so these are the enforcement —
+weaker than the package graph they replaced, and the only thing that keeps the layering from
+being a convention.
 
 ## Money on the client
 
@@ -64,7 +73,7 @@ See [ADR-0006](docs/adr/0006-learn-offline.md).
 
 ## Session
 
-**TokenStore** — the protocol in `HWCore` behind which the refresh token lives.
+**TokenStore** — the protocol in `Models` behind which the refresh token lives.
 `KeychainTokenStore` when "Keep me signed in" is checked, `InMemoryTokenStore` when it is
 not. O3's app lock would be a third conformance, not a refactor.
 See [ADR-0007](docs/adr/0007-session-and-refresh.md).
@@ -95,7 +104,7 @@ app-switcher snapshot carries no financial figures. Not app lock: returning requ
 authentication.
 See [ADR-0014](docs/adr/0014-privacy-surfaces.md).
 
-**fixture corpus** — the JSON files in `HWFixtures`, read by both the decoding tests and the
+**fixture corpus** — the JSON files in `Fixtures/Resources`, read by both the decoding tests and the
 SwiftUI previews, so a fixture that drifts from the API breaks a test rather than rotting a
 preview.
 See [ADR-0013](docs/adr/0013-testing-and-previews.md).

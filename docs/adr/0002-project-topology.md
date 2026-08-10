@@ -1,6 +1,7 @@
 # ADR-0002 — A local Swift package holds the app; the Xcode project is a thin shell
 
-**Status:** accepted
+**Status:** superseded in full by [ADR-0018](0018-app-target-and-mvvm.md) — both the package
+topology and the MV-with-stores pattern. Kept for the reasoning; do not build to it.
 **Supersedes:** `DEVELOPMENT_PLAN.md` §1 ("Xcode project … **hard blocker on all iOS work**")
 and the §5 task 25 → 26 ordering
 

@@ -1,6 +1,7 @@
 # ADR-0017 — Two amendments to the package topology, found while building it
 
-**Status:** accepted
+**Status:** superseded by [ADR-0018](0018-app-target-and-mvvm.md), which removed the package this
+amended. Its one lasting observation is the String Catalogue note under Consequences.
 **Amends:** [ADR-0002](0002-project-topology.md) (the `HWFixtures` row of the target table);
 [ADR-0001](0001-platform-baseline.md) (adds a host platform for testing, not for shipping)
 

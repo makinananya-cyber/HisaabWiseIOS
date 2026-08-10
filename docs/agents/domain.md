@@ -18,10 +18,12 @@ If any of these files don't exist, **proceed silently**. Don't flag their absenc
 ├── CONTEXT.md
 ├── docs/adr/
 │   ├── 0001-platform-baseline.md
-│   ├── 0002-project-topology.md
-│   └── …0016-presentation-details.md
-├── Packages/HisaabWise/          ← the app (ADR-0002)
-└── HisaabWiseIOS.xcodeproj       ← thin shell
+│   ├── 0002-project-topology.md   ← superseded by 0018
+│   └── …0018-app-target-and-mvvm.md
+└── HisaabWise/
+    ├── HisaabWise.xcodeproj
+    ├── HisaabWise/               ← the app, by MVVM layer (ADR-0018)
+    └── HisaabWiseTests/
 ```
 
 ## Use the glossary's vocabulary

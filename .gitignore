@@ -21,8 +21,8 @@ DerivedData/
 *.dSYM
 *.xcarchive
 
-# Swift Package Manager
-# Package.resolved is deliberately NOT ignored — it pins dependency versions
+# Swift Package Manager — no package in the tree today (ADR-0018), but any that
+# arrives keeps its Package.resolved committed, to pin dependency versions
 # (see docs/adr/0013-testing-and-previews.md).
 .build/
 .swiftpm/xcode/package.xcworkspace/xcuserdata/
