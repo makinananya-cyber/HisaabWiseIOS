@@ -37,10 +37,16 @@ struct HomeView: BaseView {
             Text(verbatim: budget.income.display)
                 .font(.hw(.display))
                 .foregroundStyle(theme.palette.surface.ink)
-                // Composed from a catalogue format string plus the server's display string, so the
-                // sentence is translatable and the figure is never reformatted (ADR-0012).
-                .accessibilityLabel(Text("home.income.accessibilityLabel \(budget.income.display)"))
         }
+        // **A caption over a figure is one thing to read, not two.** Left as two elements VoiceOver says
+        // "Income" and then "Income 65,000 rupees" — the caption twice, and the second time as part of a
+        // sentence that already contains it. `children: .ignore` collapses the pair and the label below is
+        // what is read in its place.
+        .accessibilityElement(children: .ignore)
+        // Composed from a catalogue format string plus the server's ``Money/display`` string: the sentence
+        // is translatable, and the figure is spoken exactly as the server formatted it rather than being
+        // re-spelled from the number (ADR-0003, ADR-0012).
+        .accessibilityLabel(Text("home.income.accessibilityLabel \(budget.income.display)"))
         // No `.frame(maxWidth:)` here: the chrome already sizes and aligns what it is handed.
         .padding()
     }

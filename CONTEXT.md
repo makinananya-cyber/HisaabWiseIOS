@@ -97,6 +97,39 @@ beside it: the design draws `.iconbtn` at 40 and `.mchip` at ~34, and both are r
 ADR-0012 makes the Accessibility Inspector a per-screen gate — four points of fidelity is the cheaper
 thing to give up.
 
+**the clamp pattern** — `hwVisualisation(replacedBy:)` and `HWScaling` in `DesignSystem/`, the **only** place
+in the app that clamps Dynamic Type. Below `HWScaling.visualisationCeiling` (`xxxLarge`) the visualisation is
+drawn and capped; at and above it — every `isAccessibilitySize` — the chart is **gone** and the alternative
+layout is what the screen shows. Not shrunk: a donut at 310% type is a circle with three overlapping labels
+in it. The alternative is *also* installed as the chart's `accessibilityRepresentation`, so one argument
+serves the AX3 reader and the VoiceOver user both. The four consumers are the donut, the savings meter, the
+split bar, and the week strip (#17, #21, #22). Everything else — tips, articles, lesson steps, every label —
+**scales unclamped to AX5**, and `AccessibilityTests` asserts the range form of `dynamicTypeSize` appears in
+one file. See [ADR-0012](docs/adr/0012-accessibility.md), [ADR-0025](docs/adr/0025-accessibility-plumbing.md).
+
+**entrance** — `HWEntrance`, how a view arrives: `rise` · `pop` · `fade`, each carrying its transition,
+curve, and duration. Its `reduced` form is a **cross-fade of the same length** — never `nil`, never
+`.identity`, and never a different pace. This is ADR-0012's *replace, never remove* as a value rather than as
+a ternary at each call site, because a ternary has a third option in it and the third option is the defect.
+The worked example is the toast. **There is no in-app motion toggle**: the OS setting is the contract, every
+mention of `accessibilityReduceMotion` in the app is an `@Environment` read, and nothing may store a motion
+preference.
+
+**announcement** — `HWAnnouncement.post(_:in:priority:)`, the one caller of `AccessibilityNotification` in
+the app. It exists because an announcement is the only copy no `Text` draws, so it is the only copy that does
+not get the environment locale for free — `String(localized:)` honours the *resource's* locale, which for a
+literal created in a type initialiser is the **device's** (ADR-0011, ADR-0024). The locale is therefore
+passed in, from `@Environment(\.locale)`. `.immediate` interrupts, for feedback about what the user just did;
+`.standard` queues. Three callers: the toast, `StateView`, and Learn's combo and completion (#20).
+
+**accessibility defaults** — what a screen inherits by conforming to `BaseView` rather than by remembering:
+`ScreenChrome` makes the screen one accessibility container, `StateView` announces a placeholder replaced by
+a *different* placeholder (nothing is announced for `loaded`), text is unclamped, and focus order is document
+order — `accessibilitySortPriority` is banned app-wide. What a screen still writes itself is its own words:
+labels, the heading trait, and the alternative layout for any visualisation it draws. **The Accessibility
+Inspector audit is still a manual pass**; its automatable form, `XCUIApplication.performAccessibilityAudit()`,
+needs a UI-test target this project does not have (ADR-0025).
+
 **press treatment** — `HWPressStyle`, the one `ButtonStyle` behind every tappable component. It exists so
 that the design's `:active` scale is picked once and, more importantly, so **Reduce Motion is handled
 once**: the scale is *replaced* by a dip in opacity rather than dropped (ADR-0012). `accessibilityReduceMotion`
@@ -125,6 +158,14 @@ switched on. Plus the two that read the String Catalogue: **every key a view ren
 key with nothing behind it renders the key — and **no catalogue entry is orphaned**. Keys are found by
 reading the source, not by being listed in a test, so a screen added next month is covered without anybody
 remembering.
+
+**accessibility scans** — the source scans in `HisaabWiseTests/Architecture/AccessibilityTests.swift`, which
+make ADR-0012's per-screen gate something checked on every screen rather than agreed once: the clamp has one
+owner, nothing shrinks text to fit, nothing reorders VoiceOver focus, Reduce Motion is only ever read from the
+environment and never stored, no view or component can name `Money.minor` and so cannot re-spell a figure,
+every screen in `Views/` carries an accessibility-size preview, and the chrome still carries its defaults.
+Same standing as the layering and localisation scans — weaker than a compiler, and the only enforcement there
+is.
 
 **layering scans** — the source scans in `HisaabWiseTests/Architecture` that assert no view
 touches `Networking`, no model touches `Networking` or SwiftUI, no view model imports SwiftUI, and

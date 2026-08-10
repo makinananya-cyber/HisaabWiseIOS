@@ -108,6 +108,25 @@ struct HomeViewTests {
         #expect(CatalogueCopy.english(in: entry)?.contains("%@") == true)
     }
 
+    /// ADR-0012's rule about money and VoiceOver, at the one screen that has a figure on it: the sentence is
+    /// the app's and the **figure is the server's, character for character**. Re-spelling it is the tempting
+    /// mistake — "₹65,000" read out as digits sounds wrong and the fix looks local — and the client has no
+    /// formatter with which to make a better one (ADR-0003).
+    @Test("the figure VoiceOver reads is the server's display string, not a spelled-out number")
+    func theSpokenFigureIsTheServersString() async throws {
+        let viewModel = makeViewModel(FixtureTransport(stubs: ["/v1/budget": try .ok(.budgetINR)]))
+        try await viewModel.load()
+        let display = try #require(viewModel.state.value?.income.display)
+
+        // The label the screen composes, resolved the way a `Text` would resolve it.
+        let spoken = String(localized: "home.income.accessibilityLabel \(display)")
+
+        #expect(spoken.contains(display))
+        // And it is a sentence rather than the bare figure: a label that was only the number would read
+        // identically to the text beside it and say nothing the caption was there to say.
+        #expect(spoken != display)
+    }
+
     @Test("supplies the one piece of copy only a screen can write, and inherits the rest")
     func suppliesOnlyItsOwnCopy() {
         let copy = HomeView(viewModel: makeViewModel(FixtureTransport())).stateCopy

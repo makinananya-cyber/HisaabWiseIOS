@@ -114,6 +114,10 @@ struct StatePresentation: Sendable, Equatable {
 struct StateView<Value: Sendable, Loaded: View>: View {
     @Environment(ThemeManager.self) private var theme
 
+    /// For the announcement, not for a format string: it is the language `hwLanguage(_:)` put in the
+    /// environment, and an announcement is the one piece of copy that has to resolve itself (ADR-0024).
+    @Environment(\.locale) private var locale
+
     let state: LoadState<Value>
     let copy: StateCopy
 
@@ -123,10 +127,38 @@ struct StateView<Value: Sendable, Loaded: View>: View {
 
     @ViewBuilder let loadedContent: (Value) -> Loaded
 
+    /// `nil` while there is data, which is what makes the announcement below say nothing on arrival.
+    private var presentation: StatePresentation? {
+        StatePresentation(state: state, copy: copy, palette: theme.palette)
+    }
+
     var body: some View {
+        drawn
+            // **The accessibility default every screen inherits** (ADR-0012). A placeholder replaced by a
+            // *different* placeholder — retry tapped, back to offline — is the same layout with different
+            // words in it, and VoiceOver has no way to discover that: focus was on a button that no longer
+            // exists, and nothing moved.
+            //
+            // Keyed on the **sentence**, not on the presentation: the sentence is what would be said, and
+            // `StatePresentation` also carries a tint. Watching the whole value would re-speak the same
+            // words on a palette swap, which is the one mutation `ThemeManager` exists to allow.
+            //
+            // Two silences, both deliberate. **Nothing on first appearance** — the placeholder is text on
+            // screen, and VoiceOver reads a screen it has just moved to. **Nothing for `loaded`** — there is
+            // content to explore and VoiceOver reads it on the next swipe; a sentence saying the screen has
+            // loaded is the app talking about itself rather than about the user's money.
+            .onChange(of: presentation?.message) { _, message in
+                guard let message else { return }
+                // Standard priority: the same words are on screen, so interrupting would be shouting.
+                HWAnnouncement.post(message, in: locale)
+            }
+    }
+
+    @ViewBuilder
+    private var drawn: some View {
         if let value = state.value {
             loadedContent(value)
-        } else if let presentation = StatePresentation(state: state, copy: copy, palette: theme.palette) {
+        } else if let presentation {
             placeholder(presentation)
         }
     }
