@@ -54,6 +54,47 @@ struct LayeringTests {
         )
     }
 
+    /// ADR-0001 makes dark mode "architected for, not shipped", and the architecture is that every
+    /// colour reaches a use site through a semantic name in the asset catalogue. One inline literal is
+    /// one colour the later palette swap will miss — and it will miss it silently.
+    @Test("no colour reaches a use site except by semantic name")
+    func noColourLiterals() throws {
+        try SourceTree.expectAbsent(
+            [
+                // Built from components — invisible to a palette swap.
+                "Color(red:", "Color(hue:", "Color(.sRGB", "Color(white:", "#colorLiteral",
+                "UIColor(red:", "UIColor(hue:", "UIColor(white:",
+                // Looked up by string, which bypasses the generated symbols and so bypasses the
+                // compile error that a deleted asset should cause.
+                #"Color(""#, "UIColor(named:",
+                // Bridged in from UIKit, semantic name or not.
+                "Color(uiColor:", "Color(UIColor",
+                // System colours. A palette swap cannot reach these either.
+                "Color.red", "Color.green", "Color.blue", "Color.orange", "Color.yellow",
+                "Color.pink", "Color.purple", "Color.gray", "Color.black", "Color.white",
+                "Color.primary", "Color.secondary", "Color.accentColor",
+            ],
+            from: SourceTree.layers,
+            includingRoot: true,
+            because: "colours come from the asset catalogue by semantic name (ADR-0001, issue #6)"
+        )
+    }
+
+    /// The seven palette values are `galaxy`, `planetary`, `universe`, `venus`, `sky`, `meteor`, and
+    /// `milky`. None of them may name a colour at a use site — a screen asks for a *role* — which is
+    /// the whole mechanism behind "dark mode is a later palette swap" (ADR-0001).
+    @Test("no raw palette name appears anywhere")
+    func noRawPaletteNames() throws {
+        try SourceTree.expectAbsent(
+            ["hwGalaxy", "hwPlanetary", "hwUniverse", "hwVenus", "hwSky", "hwMeteor", "hwMilky",
+             "Color.galaxy", "Color.planetary", "Color.universe", "Color.venus", "Color.meteor",
+             "Color.milky"],
+            from: SourceTree.layers,
+            includingRoot: true,
+            because: "the palette reaches a use site only through a role (ADR-0001, ADR-0021)"
+        )
+    }
+
     /// Every layer is covered by the scans. A folder missing from `SourceTree.layers` fails silently,
     /// so the list is checked against what is actually on disk rather than trusted.
     @Test("every layer folder on disk is in SourceTree.layers")

@@ -109,6 +109,19 @@ See [ADR-0016](docs/adr/0016-presentation-details.md).
 
 ## Presentation
 
+**surface vs brand** — the two appearances the design ships **at the same time**: `surface` is the
+light, off-white ground of the five in-app screens; `brand` is the galaxy ground of Landing and
+Auth. Not a light and a dark mode — `--danger` has a different value on each, and both ship. The
+asset catalogue therefore has exactly one appearance per colour set.
+See [ADR-0021](docs/adr/0021-two-surfaces-and-token-collapse.md).
+
+**token** — one entry in the design system: a semantic colour, a ``HWTextStyle`` step, an
+``HWCurve``, an ``HWDuration``, an ``HWRadius``, an ``HWShadow``. Every one is transcribed from the
+design's CSS custom properties and, for colours, asserted against them. The design's thirty-plus
+font sizes and dozen radii are **collapsed** into steps on the way in; a screen picking 320ms over
+300ms is noise, and removing that noise is what a design system is for.
+
+
 **LoadState** — the four-case enum every screen's data goes through: loading, empty, offline,
 failed. `offline` is never rendered as `failed`.
 

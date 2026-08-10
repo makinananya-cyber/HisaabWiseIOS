@@ -9,6 +9,7 @@ import SwiftUI
 @main
 struct HisaabWiseApp: App {
     private let homeViewModel: HomeViewModel
+    private let theme = ThemeManager()
 
     init() {
         homeViewModel = HomeViewModel(client: Self.makeClient())
@@ -17,6 +18,7 @@ struct HisaabWiseApp: App {
     var body: some Scene {
         WindowGroup {
             HomeView(viewModel: homeViewModel)
+                .hwTheme(theme)
         }
     }
 

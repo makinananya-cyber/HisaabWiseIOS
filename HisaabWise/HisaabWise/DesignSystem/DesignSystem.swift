@@ -1,18 +1,19 @@
 /// Everything every screen draws with.
 ///
-/// The target exists from the first commit so that no screen invents its own spinner, empty state,
-/// or colour. What lands here:
+/// | Token | Type | Source |
+/// |---|---|---|
+/// | Colours | ``HWPalette`` over `Assets.xcassets` | the design's `:root` blocks |
+/// | Type scale | ``HWTextStyle`` | the design's `font-size` clusters |
+/// | Motion | ``HWMotion`` · ``HWDuration`` | `--ease-out` · `--ease-io` · `--ease-back` |
+/// | Radii and elevation | ``HWRadius`` · ``HWShadow`` | `border-radius` · `--shadow-s/m/l` |
 ///
-/// - The asset catalogue of **semantic** colour names over galaxy / planetary / universe / venus /
-///   sky / meteor / milky, plus six category slots and five Learn unit accents. Light-only, named
-///   semantically so dark mode later is a palette swap rather than a rewrite.
-/// - The single `StateView` covering `HWCore`'s `LoadState`, in which `offline` is visually distinct
-///   from `failed` (ADR-0016), and the one error-code-to-copy mapping.
-/// - The type scale, the two easing curves from the design CSS, and the
-///   clamp-plus-alternative-layout pattern the donut, meter, split bar, and week strip will use
-///   (ADR-0012).
+/// Reached through ``ThemeManager`` in the environment, so the later dark palette is a swap rather than
+/// a rewrite (ADR-0001, ADR-0021).
 ///
-/// Until then the tab placeholders render their states inline.
+/// **Still to arrive here:** the single `StateView` over `LoadState`, with the one error-code-to-copy
+/// mapping (issue #11), and the clamp-plus-alternative-layout pattern the donut, meter, split bar, and
+/// week strip will use (ADR-0012, issue #8).
 ///
-/// The namespace is empty until the first of those lands.
+/// The namespace itself is empty — the tokens are top-level types so a call site reads
+/// `.font(.hw(.caption))` rather than `DesignSystem.font(...)`.
 enum DesignSystem {}

@@ -1,5 +1,6 @@
 import Foundation
 import SwiftUI
+import UIKit
 @testable import HisaabWise
 import Testing
 
@@ -18,19 +19,25 @@ struct HomeViewTests {
         )
     }
 
-    @Test("builds a body for every state without reaching for a formatter")
-    func buildsABodyForEveryState() async throws {
+    @Test("renders in every state, through the real environment")
+    func rendersInEveryState() async throws {
+        // Rendered rather than poked at: the view reads `ThemeManager` from `@Environment`, so touching
+        // `body` directly would trap on a missing object and prove nothing about the real hierarchy.
         let transport = FixtureTransport(stubs: ["/v1/budget": try .ok(.budgetINR)])
         let viewModel = makeViewModel(transport)
 
         // Loading, before anything is fetched.
-        _ = HomeView(viewModel: viewModel).body
+        #expect(render(HomeView(viewModel: viewModel)) != nil)
 
         await viewModel.load()
         #expect(viewModel.state.value != nil)
 
-        // Loaded, which is the branch that reads the money.
-        _ = HomeView(viewModel: viewModel).body
+        // Loaded, which is the branch that reads the money and the theme.
+        #expect(render(HomeView(viewModel: viewModel)) != nil)
+    }
+
+    private func render(_ view: some View) -> UIImage? {
+        ImageRenderer(content: view.hwTheme().frame(width: 390, height: 300)).uiImage
     }
 
     @Test("renders the exact display string the server sent")

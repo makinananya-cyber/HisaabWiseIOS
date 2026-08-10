@@ -22,7 +22,7 @@ HisaabWise/
 │   ├── Components/           shared controls — buttons, fields, labels, cards, chips
 │   ├── Networking/           Transport, APIClient, APIError
 │   ├── Fixtures/             canned HTTP payloads + FixtureTransport, #if DEBUG only
-│   ├── DesignSystem/         tokens and StateView, when they arrive
+│   ├── DesignSystem/         palette, type scale, motion, radii, elevation
 │   ├── Persistence/          Keychain token store, content store, downloaded PDF, when they arrive
 │   └── Resources/            Assets.xcassets, Localizable.xcstrings
 └── HisaabWiseTests/          mirrors the layers, plus Architecture/
@@ -64,6 +64,11 @@ builds, so `HomeView` renders the INR budget fixture.
   server-side ([ADR-0020](docs/adr/0020-screen-scoped-endpoints.md)).
 - **A screen never styles a control itself.** New variants go in `Components/`, which is
   presentational: it takes values and closures and cannot fetch.
+- **Colours come from the asset catalogue by semantic name**, reached through `ThemeManager` in the
+  environment. Two scans enforce it — no raw palette name anywhere, and no colour built from
+  components, looked up by string, bridged from UIKit, or taken from the system palette — and
+  `ColorAssetTests` checks every value against the design's own hex
+  ([ADR-0021](docs/adr/0021-two-surfaces-and-token-collapse.md)).
 - **The layering is enforced by source scans, not the compiler.** `HisaabWiseTests/Architecture`
   asserts that views do not reach the network, models depend on nothing, and components hold no view
   model. A new layer folder must go in `SourceTree.layers` — and a test now checks that list against

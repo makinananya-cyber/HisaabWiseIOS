@@ -10,8 +10,10 @@ import SwiftUI
 /// The four non-loaded states are drawn inline here. They move to `DesignSystem`'s single `StateView`,
 /// with its own copy and its own error-code mapping, when that arrives.
 struct HomeView: View {
-    /// Held by the view rather than read from `@Environment` so that a test can construct the view
-    /// over a fixture transport. The five-tab shell puts one view model per tab in the environment.
+    @Environment(ThemeManager.self) private var theme
+
+    /// The view model is held rather than read from `@Environment` so that a test can construct the
+    /// view over a fixture transport. The five-tab shell puts one per tab in the environment.
     private let viewModel: HomeViewModel
 
     init(viewModel: HomeViewModel) {
@@ -34,9 +36,11 @@ struct HomeView: View {
                 Text("home.failed")
             case .loaded(let budget):
                 Text("home.income.label")
-                    .font(.subheadline)
+                    .font(.hw(.caption))
+                    .foregroundStyle(theme.palette.surface.inkSecondary)
                 Text(verbatim: budget.income.display)
-                    .font(.largeTitle)
+                    .font(.hw(.display))
+                    .foregroundStyle(theme.palette.surface.ink)
                     // Composed from a catalogue format string plus the server's display string, so
                     // the sentence is translatable and the figure is never reformatted (ADR-0012).
                     .accessibilityLabel(Text("home.income.accessibilityLabel \(budget.income.display)"))
@@ -44,6 +48,7 @@ struct HomeView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding()
+        .background(theme.palette.surface.background)
         .task { await viewModel.load() }
     }
 }
@@ -52,10 +57,10 @@ struct HomeView: View {
 // The view models these use are assembled in `Fixtures/PreviewViewModels.swift` — a view has no
 // business building a client, and `LayeringTests` holds this file to that.
 #Preview("Home — INR salary") {
-    HomeView(viewModel: .previewINRSalary)
+    HomeView(viewModel: .previewINRSalary).hwTheme()
 }
 
 #Preview("Home — offline") {
-    HomeView(viewModel: .previewOffline)
+    HomeView(viewModel: .previewOffline).hwTheme()
 }
 #endif
