@@ -46,9 +46,13 @@ struct HomeView: View {
                     .accessibilityLabel(Text("home.income.accessibilityLabel \(budget.income.display)"))
             }
         }
-        .frame(maxWidth: .infinity, alignment: .leading)
         .padding()
-        .background(theme.palette.surface.background)
+        // Fills the screen and starts at the top. Without `maxHeight` the background painted only the
+        // band behind the content and the rest of the screen stayed white.
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+        // `ignoresSafeArea` on the colour alone: the ground runs under the status bar, the content does
+        // not.
+        .background(theme.palette.surface.background.ignoresSafeArea())
         .task { await viewModel.load() }
     }
 }
