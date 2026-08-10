@@ -82,8 +82,14 @@ struct TokenStoreTests {
     /// Skipped, not failed, where there is no keychain to test against — the same trade `LiveWorkerTests`
     /// makes. The attribute suite above is where the decision lives and it runs unconditionally; these
     /// prove the four operations agree with each other on a real store.
+    ///
+    /// `.serialized` because there is exactly **one** Keychain item and four tests that clear, write, and
+    /// read it. Run in parallel they race: one test's `clear()` lands between another's `save` and its
+    /// read, and the read comes back `nil` for a reason that has nothing to do with the store. There is no
+    /// per-test isolation available here — the item is process-wide by definition, which is the point of it.
     @Suite(
         "KeychainTokenStore against the real Keychain",
+        .serialized,
         .enabled("This host has no writable Keychain for the test bundle.") {
             await KeychainProbe.isWritable
         }

@@ -69,9 +69,10 @@ struct ScreenChrome<Model: BaseViewModel, LoadedContent: View>: View {
         // does not.
         .background(theme.palette.surface.background.ignoresSafeArea())
         .task { await load() }
-        // TODO(#7): the layout direction is the system's until `LanguageManager` owns it. RTL follows
-        // the device locale today, which is right for Arabic and wrong once the in-app language picker
-        // can disagree with it.
+        // The layout direction and the locale are **not** set here. Both come from the app's
+        // `LanguageManager` at the root, through `hwLanguage(_:)`: Landing and Auth are not `BaseView`
+        // conformances (ADR-0021) and have to mirror too, so setting them in the chrome would cover five
+        // screens of twelve. There is nothing left for this view to decide about direction.
     }
 
     private func load() async {

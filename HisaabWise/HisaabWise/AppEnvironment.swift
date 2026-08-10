@@ -27,6 +27,10 @@ final class AppEnvironment {
     let session: SessionCoordinator
 
     /// - Parameters:
+    ///   - language: the app's language choice, over the store that **persists** it — `UserDefaults`, so
+    ///     that a chosen language survives a relaunch. `LanguageManager`'s own default store is in-memory,
+    ///     for the same reason `keptTokens` is substituted below: constructing one in a test or a preview
+    ///     must not write a preference to the machine it runs on. The real store is chosen here, once.
     ///   - keptTokens: where a session the user asked to keep is stored. The Keychain in the app; a test
     ///     substitutes an in-memory store so that running the suite does not write a credential to the
     ///     machine it runs on.
@@ -35,7 +39,7 @@ final class AppEnvironment {
         baseURL: URL,
         transport: any Transport,
         theme: ThemeManager = ThemeManager(),
-        language: LanguageManager = LanguageManager(),
+        language: LanguageManager = LanguageManager(store: UserDefaultsLanguageStore()),
         keptTokens: any TokenStore = KeychainTokenStore(),
         transientTokens: any TokenStore = InMemoryTokenStore()
     ) {
@@ -48,6 +52,11 @@ final class AppEnvironment {
             refreshTokens: keptTokens
         )
         self.client = client
+        // The one genuine cycle in the graph, closed here: the client reads the language on every request,
+        // and a language change is recorded *through* the client. One of the two has to be connected
+        // rather than injected, and the manager is the cheaper half to leave half-built — until this line
+        // runs, `select(_:)` throws rather than switching the language on this device alone (ADR-0024).
+        language.connect(to: client)
         // The client is built with the *kept* store, because that is the one a launch has to consult to
         // find a session at all. Which store a new session goes to is the checkbox's decision and is made
         // at sign-in, by the coordinator.
@@ -67,12 +76,10 @@ extension View {
     /// Injects everything screens read from `@Environment`.
     ///
     /// One call site, so that the list of injected objects grows in one place rather than in each new
-    /// tab's `body`.
-    ///
-    /// The language manager is **not** injected yet: issue #7 owns that, along with the `Locale` and
-    /// `LayoutDirection` a view would read it for. Injecting it now would mean guessing at the shape
-    /// of an object no view has asked for.
+    /// tab's `body`. Two entries so far: the theme, and the language — the latter bringing the `Locale`
+    /// and the `LayoutDirection` with it, so that no screen has to remember to set either.
     func hwEnvironment(_ environment: AppEnvironment) -> some View {
         hwTheme(environment.theme)
+            .hwLanguage(environment.language)
     }
 }

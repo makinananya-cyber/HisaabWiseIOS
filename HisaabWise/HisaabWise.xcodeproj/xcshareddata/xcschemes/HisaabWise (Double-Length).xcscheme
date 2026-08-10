@@ -1,0 +1,112 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+   The double-length pseudolanguage run, per ADR-0011: every catalogue string is served twice over, so a
+   label that will overflow in German or Arabic overflows here, in English, on the first screen it exists
+   on rather than in Phase 5.
+
+   Shared rather than personal, and driven by explicit launch arguments rather than by the scheme editor's
+   "App Language" popup, for two reasons: the argument names are stable across Xcode versions where the
+   popup's encoding is not, and a `LocalisationTests` scan can assert this file still carries them. A
+   pseudolanguage harness nobody notices has stopped working is not a harness.
+
+   There is deliberately no RTL pseudolanguage scheme beside it. Right-to-left is reachable through the
+   app's own mechanism — select Arabic, and `LanguageManager` sets the locale and the layout direction —
+   which exercises the code that ships instead of a launch argument that does not.
+-->
+<Scheme
+   LastUpgradeVersion = "2660"
+   version = "1.7">
+   <BuildAction
+      parallelizeBuildables = "YES"
+      buildImplicitDependencies = "YES">
+      <BuildActionEntries>
+         <BuildActionEntry
+            buildForTesting = "YES"
+            buildForRunning = "YES"
+            buildForProfiling = "NO"
+            buildForArchiving = "NO"
+            buildForAnalyzing = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "9A407CF03029D1D600A9FA73"
+               BuildableName = "HisaabWise.app"
+               BlueprintName = "HisaabWise"
+               ReferencedContainer = "container:HisaabWise.xcodeproj">
+            </BuildableReference>
+         </BuildActionEntry>
+      </BuildActionEntries>
+   </BuildAction>
+   <TestAction
+      buildConfiguration = "Debug"
+      selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
+      selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
+      shouldUseLaunchSchemeArgsEnv = "YES">
+      <Testables>
+         <TestableReference
+            skipped = "NO">
+            <BuildableReference
+               BuildableIdentifier = "primary"
+               BlueprintIdentifier = "HW00000000000000000010"
+               BuildableName = "HisaabWiseTests.xctest"
+               BlueprintName = "HisaabWiseTests"
+               ReferencedContainer = "container:HisaabWise.xcodeproj">
+            </BuildableReference>
+         </TestableReference>
+      </Testables>
+   </TestAction>
+   <LaunchAction
+      buildConfiguration = "Debug"
+      selectedDebuggerIdentifier = "Xcode.DebuggerFoundation.Debugger.LLDB"
+      selectedLauncherIdentifier = "Xcode.DebuggerFoundation.Launcher.LLDB"
+      launchStyle = "0"
+      useCustomWorkingDirectory = "NO"
+      ignoresPersistentStateOnLaunch = "NO"
+      debugDocumentVersioning = "YES"
+      debugServiceExtension = "internal"
+      allowLocationSimulation = "YES">
+      <BuildableProductRunnable
+         runnableDebuggingMode = "0">
+         <BuildableReference
+            BuildableIdentifier = "primary"
+            BlueprintIdentifier = "9A407CF03029D1D600A9FA73"
+            BuildableName = "HisaabWise.app"
+            BlueprintName = "HisaabWise"
+            ReferencedContainer = "container:HisaabWise.xcodeproj">
+         </BuildableReference>
+      </BuildableProductRunnable>
+      <CommandLineArguments>
+         <CommandLineArgument
+            argument = "-NSDoubleLocalizedStrings"
+            isEnabled = "YES">
+         </CommandLineArgument>
+         <CommandLineArgument
+            argument = "YES"
+            isEnabled = "YES">
+         </CommandLineArgument>
+      </CommandLineArguments>
+   </LaunchAction>
+   <ProfileAction
+      buildConfiguration = "Release"
+      shouldUseLaunchSchemeArgsEnv = "YES"
+      savedToolIdentifier = ""
+      useCustomWorkingDirectory = "NO"
+      debugDocumentVersioning = "YES">
+      <BuildableProductRunnable
+         runnableDebuggingMode = "0">
+         <BuildableReference
+            BuildableIdentifier = "primary"
+            BlueprintIdentifier = "9A407CF03029D1D600A9FA73"
+            BuildableName = "HisaabWise.app"
+            BlueprintName = "HisaabWise"
+            ReferencedContainer = "container:HisaabWise.xcodeproj">
+         </BuildableReference>
+      </BuildableProductRunnable>
+   </ProfileAction>
+   <AnalyzeAction
+      buildConfiguration = "Debug">
+   </AnalyzeAction>
+   <ArchiveAction
+      buildConfiguration = "Release"
+      revealArchiveInOrganizer = "YES">
+   </ArchiveAction>
+</Scheme>

@@ -10,9 +10,14 @@ struct AccessTokenTests {
     func readsTheExpiryClaim() throws {
         let token = try AccessToken(raw: TestBench.accessToken(expiresIn: 900))
 
-        // Within a second of fifteen minutes from now: the fixture stamps `exp` from the clock, so the
-        // assertion is on the parse, not on the arithmetic.
-        #expect(abs(token.expiresAt.timeIntervalSinceNow - 900) < 1)
+        // Close to fifteen minutes from now: the fixture stamps `exp` from the clock, so the assertion is on
+        // the parse, not on the arithmetic.
+        //
+        // The tolerance has to exceed **one** second, not equal it. `exp` is a whole number of seconds, so
+        // `Int(...)` truncates up to a second of the sub-second offset the clock happened to be at, and the
+        // measured difference reaches 1.0 on its own without anything being slow. `< 1` was therefore a
+        // coin-flip against the wall clock rather than a bound on the parse.
+        #expect(abs(token.expiresAt.timeIntervalSinceNow - 900) < 2)
     }
 
     @Test("reads the sec claim, which is what makes a securityEpoch bump visible at all")

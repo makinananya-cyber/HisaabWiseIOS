@@ -144,6 +144,11 @@ struct StateView<Value: Sendable, Loaded: View>: View {
                     .accessibilityHidden(true)
             }
 
+            // `Text(LocalizedStringResource)` resolves against the **environment's** locale, not the one the
+            // resource captured when it was created — which is what makes the language switch reach copy
+            // that was written as a literal in a type initialiser long before any screen existed
+            // (`StateCopy`'s defaults, `ErrorCopy`'s table). That is a platform behaviour the "no relaunch"
+            // requirement rests on, so `ShellLocalisationTests` pins it rather than trusting it.
             Text(presentation.message)
                 .font(.hw(.body))
                 .foregroundStyle(theme.palette.surface.inkSecondary)

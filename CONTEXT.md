@@ -37,7 +37,10 @@ because nothing here is checked by a compiler.
 `APIClient`, the `ThemeManager`, and the `LanguageManager`. It is *not* the composition
 root — it owns the wiring on the far side of the root's one decision. It **builds** the client from
 the root's base URL and transport rather than being handed one, so the client's `Accept-Language` and
-the language on screen are necessarily the same choice. **No singletons and no globals**: nothing in
+the language on screen are necessarily the same choice, and it **connects** the language back to that
+client, which is the graph's one cycle (ADR-0024). It is also where the real, *persisting* stores are
+chosen — `KeychainTokenStore` and `UserDefaultsLanguageStore` — so that constructing either object
+elsewhere leaves no footprint on the machine. **No singletons and no globals**: nothing in
 the app reaches for a `.shared`, and a source scan in `LayeringTests` keeps it that way. View models
 are *made* here, not held here.
 
@@ -113,13 +116,24 @@ exception:** Learn grading is client-side for responsiveness (invariant 10), sub
 question and recomputed server-side, and the client's answer is never authoritative. Local input
 validation is not a calculation in this sense.
 
+**localisation scans** — the source scans in `HisaabWiseTests/Architecture/LocalisationTests.swift`, which
+carry ADR-0011 forward past the ticket that decided it. Every layer plus the app root: no `left`/`right`
+edge, no direction-encoding SF Symbol, no Eastern Arabic-Indic digit, no `Locale.current`, no concatenated
+sentence, no truncation or shrink-to-fit modifier, and positional arguments in every multi-argument format
+string. Narrower by nature: an RTL preview on every screen in `Views/`, and the double-length scheme still
+switched on. Plus the two that read the String Catalogue: **every key a view renders has English copy** — a
+key with nothing behind it renders the key — and **no catalogue entry is orphaned**. Keys are found by
+reading the source, not by being listed in a test, so a screen added next month is covered without anybody
+remembering.
+
 **layering scans** — the source scans in `HisaabWiseTests/Architecture` that assert no view
 touches `Networking`, no model touches `Networking` or SwiftUI, no view model imports SwiftUI, and
 no component fetches or holds a view model. `ComponentVocabularyTests` adds the rules specific to a
 component: it takes colour from `theme.palette` rather than from an asset symbol, sizes from
 `HWTextStyle` rather than from `Font.system`, elevation from `HWShadow` rather than a hand-rolled
-`.shadow`, clamps nothing, pins no edge left or right, and carries both a VoiceOver surface and
-previews — including the RTL and AX variants. In one target the compiler enforces no layer boundary, so these are the enforcement —
+`.shadow`, clamps nothing, and carries both a VoiceOver surface and previews — including the RTL and AX
+variants. Pinning no edge left or right is no longer among them: it was never specific to a component and
+now lives, app-wide, in the localisation scans. In one target the compiler enforces no layer boundary, so these are the enforcement —
 weaker than the package graph they replaced, and the only thing that keeps the layering from
 being a convention.
 
@@ -127,8 +141,9 @@ being a convention.
 
 **the seam** — `Transport`. `URLSessionTransport` in production, `FixtureTransport` in tests and
 previews, and **deliberately no other injection point** in the app: a second seam means tests start
-exercising doubles of our own design instead of the app (ADR-0013). `LanguageSource` is not a second
-one — it is a dependency direction, and nothing conforms to it but the real `LanguageManager`.
+exercising doubles of our own design instead of the app (ADR-0013). `LanguageSource` and `LanguageSink` are
+not second ones — they are dependency directions, and the only conformances are the real `LanguageManager`
+and the real `APIClient`, in the app and in the tests alike.
 
 **production transport** — `URLSessionTransport`, which does one thing and holds two decisions: its
 session keeps **no `URLCache` at all**, because the per-request bypass stops a per-user response being
@@ -149,11 +164,54 @@ definition. The cache bypass and `Accept-Language` hold for writes exactly as fo
 (ADR-0003), and the client has no formatter with which to correct a figure that came back in the
 wrong language.
 
-**shipped language** — one of the two `AppLanguage` cases, `en` and `ar`. The design lists 87
-languages and the picker shows the shipped ones only (Product Spec §3.7 **[FIX]**, ADR-0011).
-**`LanguageManager`** owns the choice — `@Observable`, `@MainActor`, composed in `AppEnvironment` —
-and today owns only what the wire needs. The picker, the switch without a relaunch, the `Locale` and
-`LayoutDirection` a view reads, persistence, and the server sync are issue #7.
+**shipped language** — one of the two `AppLanguage` cases, `en` and `ar`, named as a set by
+`AppLanguage.shipped`. The design lists 87 languages and the picker shows the shipped ones only
+(Product Spec §3.7 **[FIX]**, ADR-0011); the other 85 are reference content the backend serves, and
+nothing in the app enumerates them.
+
+**`LanguageManager`** — the one owner of the language choice: `@Observable`, `@MainActor`, composed in
+`AppEnvironment`, holding four views of one decision — `acceptLanguage` (the header), `locale` (how a
+screen formats, `latn` numbering pinned in both languages), `layoutDirection` (which way it reads), and
+`shipped` (what a picker may offer). **Nothing in the app reads `Locale.current`**: once a user chooses,
+the app and the device disagree on purpose, and a source scan in `LocalisationTests` keeps every screen on
+this object. Injected once at the root by `hwLanguage(_:)` — not per screen, because Landing and Auth are
+not `BaseView` conformances (ADR-0021) and mirror too.
+See [ADR-0024](docs/adr/0024-language-plumbing.md).
+
+**the language switch** — `select(_:)`, and it is **optimistic with a revert**: `selected` changes first
+so the UI updates with no relaunch and the request *carries* the new language, then `PUT /v1/me/language`,
+then the store. Any failure — offline, 5xx, or a server that answers with a different language — **undoes
+the change** and rethrows. The alternative is a client and a server that disagree with nothing to notice
+it: Arabic screens and English email. Needs a session, because the route does; the picker is on Account,
+behind sign-in. **Re-selecting the language already on screen is a no-op only when the store confirms it** —
+the store is written after the server agrees, so a device-derived language has never been sent, and the
+picker has to be able to send it.
+
+**`LanguageStore`** — the protocol in `Models` behind which the *chosen* language is kept.
+`UserDefaultsLanguageStore` in the app, `InMemoryLanguageStore` in tests and previews so neither writes a
+preference to the machine it runs on. **Synchronous and `@MainActor`, unlike `TokenStore`**: the manager is
+constructed before the first frame, and an `async` read could only be adopted after it — a launch showing
+English to an Arabic reader and then swapping under them. An explicit choice outranks the device's
+language; a stored tag this build no longer ships reads as no choice at all.
+
+**`LanguageSink`** — the write half of `LanguageSource`, conformed to by `APIClient`. Both are protocols in
+`Models` pointing the dependency downwards, and neither is a second seam (ADR-0013). The graph's one
+genuine cycle — the client reads the language, the language is recorded through the client — is closed by
+`AppEnvironment` with one `connect(to:)` call, and an unconnected manager **throws** rather than switching
+the language locally in silence.
+
+**pseudolanguage harness** — the continuous half of ADR-0011, rather than a Phase 5 exercise: the shared
+`HisaabWise (Double-Length)` scheme carrying `-NSDoubleLocalizedStrings YES`, a right-to-left preview on
+every screen, and the app-wide scans in `LocalisationTests` — no edge pinned left or right, no
+direction-encoding image, no Eastern Arabic-Indic digit, no sentence concatenated, no text truncated, every
+key a view renders backed by English copy, and the catalogue English-only until the Phase 5 translation
+pass.
+
+**a `BaseView` render lands on `.loading`** — worth knowing before writing the snapshot suite (#9). The
+chrome supplies `.task { load() }`, `load()` writes `.loading` first, and `ImageRenderer` yields to the main
+actor before it captures — so the pixels are the spinner however loaded the view model was a moment
+earlier. Assertions about a *loaded* screen's layout therefore go through `StateView`, which has no task; a
+whole-screen render is a smoke test.
 
 ## Money on the client
 
@@ -318,3 +376,6 @@ Recorded here because they are commitments, not suggestions. None has been made 
 | [ADR-0023](docs/adr/0023-session-plumbing.md) | `timeZone` (IANA) on **login and refresh**. Invariant 6 captures the user's stored timezone "at login and refresh", and those two requests are the only places it can happen — without the field it never happens after registration |
 | [ADR-0023](docs/adr/0023-session-plumbing.md) | The access token is a **JWT carrying `exp` and `sec`**. The client reads `exp` from the payload rather than from a sibling `expiresIn`, so there is no second copy of the token's lifetime to fall out of step |
 | [ADR-0023](docs/adr/0023-session-plumbing.md) | **New endpoint** — `GET /v1/me` returning `{email, displayName, emailVerified}`. Identity only: figures reach a screen through that screen's endpoint (ADR-0020), and a second copy here is one a stale revalidation could disagree with |
+| [ADR-0024](docs/adr/0024-language-plumbing.md) | **New endpoint** — `PUT /v1/me/language {language}`, **authenticated**, answering with the updated language (inside the Account screen payload under ADR-0020; the client decodes only the one field). Its reason for existing is **email**: `Accept-Language` tells the server what to format *this* response in and nothing about a reminder composed six hours later, so the preference has to be stored. The client treats a stored language other than the one it asked for as a failed switch |
+| [ADR-0024](docs/adr/0024-language-plumbing.md) | The stored preference is what every server-composed message honours — password reset, streak reminder, the curriculum PDF (ADR-0019) — not the header of whichever request happened to be last |
+| [ADR-0024](docs/adr/0024-language-plumbing.md) | **`language` on login and refresh**, for the reason ADR-0023 put `timeZone` there: those two requests are the only places the device's language can reach the server without a user action. Without it, an Arabic phone whose account was registered in English gets an Arabic app and English email until somebody opens the picker |

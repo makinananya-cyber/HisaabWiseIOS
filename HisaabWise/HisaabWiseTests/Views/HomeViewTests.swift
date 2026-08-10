@@ -102,9 +102,7 @@ struct HomeViewTests {
 
     @Test("interpolates the figure into the accessibility sentence rather than concatenating it")
     func accessibilityLabelIsAFormatString() throws {
-        guard let strings = try CatalogueCopy.sourceStrings() else { return }
-
-        let entry = try #require(strings["home.income.accessibilityLabel"] as? [String: Any])
+        let entry = try CatalogueCopy.entry("home.income.accessibilityLabel")
         // The figure goes *into* the sentence, never onto it — otherwise word order is untranslatable
         // (ADR-0011, ADR-0012).
         #expect(CatalogueCopy.english(in: entry)?.contains("%@") == true)

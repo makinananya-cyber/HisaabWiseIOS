@@ -1,6 +1,7 @@
 # ADR-0011 — Strings externalised from Phase 1; Latin digits and POSIX numeric parsing
 
-**Status:** accepted
+**Status:** accepted — extended by [ADR-0024](0024-language-plumbing.md), which decides how the choice
+is owned, switched at runtime, and synchronised with the server
 **Amends:** `DEVELOPMENT_PLAN.md` §5 (string externalisation moves from Phase 5 to Phase 1;
 translation and the RTL pass stay in Phase 5)
 

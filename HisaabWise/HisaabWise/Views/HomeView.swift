@@ -56,4 +56,27 @@ struct HomeView: BaseView {
 #Preview("Home — offline") {
     HomeView(viewModel: .previewOffline).hwTheme()
 }
+
+/// The RTL preview every screen carries from now on (ADR-0011). Arabic is a **layout** problem before it is
+/// a translation one, so this is the preview that pays for itself while the copy is still English: the
+/// caption and the figure lead from the right, and the server's display string keeps its own direction
+/// inside the mirrored column.
+///
+/// Driven through ``LanguageManager`` rather than by setting `\.layoutDirection` directly, which is what a
+/// component preview does. A screen preview should exercise what the app runs: one language choice, and the
+/// locale and the direction following from it.
+#Preview("Home — Arabic, right to left") {
+    HomeView(viewModel: .previewINRSalary)
+        .hwTheme()
+        .hwLanguage(LanguageManager(selected: .arabic))
+}
+
+/// Doubled copy, standing in for the pseudolanguage run the `HisaabWise (Double-Length)` scheme performs.
+/// Nothing here clamps a line count, so the caption wraps into a taller block rather than being cut off —
+/// which is the property `LocalisationTests` asserts and this preview is where you see it.
+#Preview("Home — AX5, where copy has the least room") {
+    HomeView(viewModel: .previewINRSalary)
+        .hwTheme()
+        .dynamicTypeSize(.accessibility5)
+}
 #endif

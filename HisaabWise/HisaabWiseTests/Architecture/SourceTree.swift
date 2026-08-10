@@ -24,6 +24,22 @@ enum SourceTree {
         .deletingLastPathComponent()
         .appending(path: "Configuration")
 
+    /// `…/HisaabWise/Resources/Localizable.xcstrings` — the String Catalogue, read as the JSON it is.
+    ///
+    /// Read from the source tree rather than from `Bundle.app`, because which of the two exists depends on
+    /// the build system: the Xcode build compiles the catalogue to `en.lproj/Localizable.strings` and the
+    /// `.xcstrings` never reaches the bundle. A scan about the catalogue's *contents* — which languages it
+    /// carries, whether a format string is positional — has to read the source either way.
+    static let catalogue = appSources.appending(path: "Resources/Localizable.xcstrings")
+
+    /// `…/HisaabWise.xcodeproj/xcshareddata/xcschemes` — the shared schemes.
+    ///
+    /// Checked in, and therefore checkable. The pseudolanguage harness lives in one of these, and a
+    /// harness nobody would notice had stopped working is not one.
+    static let schemes = appSources
+        .deletingLastPathComponent()
+        .appending(path: "HisaabWise.xcodeproj/xcshareddata/xcschemes")
+
     /// Every layer folder under the app target. **A new folder must be added here**, or the scans
     /// below silently stop covering it — the failure mode is a green suite, not an error.
     static let layers = [

@@ -27,4 +27,14 @@ enum Endpoint {
     /// The identity revalidation ADR-0008 performs on foreground. Not a screen endpoint (ADR-0020): it
     /// carries who the user is, not what any screen draws.
     static let me = "/v1/me"
+
+    // MARK: - Preferences
+
+    /// The stored language preference. `PUT`, because the request replaces a value rather than adding one
+    /// — which is also why it carries no `Idempotency-Key`.
+    ///
+    /// A route the client invented, recorded in `CONTEXT.md`'s table of changes this repo requires
+    /// elsewhere. Its reason for existing is email: the header tells the server what to format *this*
+    /// response in, and nothing about a message composed six hours later (ADR-0024).
+    static let language = "/v1/me/language"
 }

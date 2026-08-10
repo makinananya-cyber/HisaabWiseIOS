@@ -68,31 +68,10 @@ struct ComponentVocabularyTests {
         )
     }
 
-    /// `.leading` and `.trailing` mirror in Arabic; `.left` and `.right` do not. ADR-0011 puts string
-    /// externalisation in Phase 1 for the same reason — RTL is not a Phase 5 sweep.
-    @Test("no component pins an edge to the left or the right")
-    func componentsAreDirectionAgnostic() throws {
-        try SourceTree.expectAbsent(
-            ["alignment: .left", "alignment: .right", ".topLeft", ".topRight",
-             ".bottomLeft", ".bottomRight", "edge: .left", "edge: .right"],
-            from: ["Components"],
-            because: "layout mirrors in Arabic, which leading/trailing does and left/right does not (ADR-0011)"
-        )
-    }
-
-    /// ADR-0011 chooses **Latin digits everywhere, including under `ar`**, and records Eastern Arabic-Indic
-    /// digits as deliberately not offered. The RTL previews are the reference a screen author copies, so a
-    /// preview showing `٠١٢٣` teaches a digit shape the app will never render.
-    @Test("no component writes Eastern Arabic-Indic digits, in a preview or anywhere else")
-    func latinDigitsOnly() throws {
-        let easternArabicIndic = (0x0660...0x0669).map { String(UnicodeScalar($0)!) }
-
-        try SourceTree.expectAbsent(
-            easternArabicIndic,
-            from: ["Components"],
-            because: "Latin digits everywhere, including under ar — Eastern Arabic-Indic are not offered (ADR-0011)"
-        )
-    }
+    // The two ADR-0011 scans that used to live here — no edge pinned left or right, and no Eastern
+    // Arabic-Indic digit — moved to `LocalisationTests` when issue #7 made them app-wide. Neither rule was
+    // ever specific to a component; keeping a `Components`-only copy of each would have been two owners for
+    // one rule, which is the drift these suites exist to prevent.
 
     /// Elevation is three tokens folded out of the design's `--shadow-s/m/l`, negative spread included.
     /// A hand-rolled `.shadow(color:…)` in a component is a fourth elevation nobody chose.

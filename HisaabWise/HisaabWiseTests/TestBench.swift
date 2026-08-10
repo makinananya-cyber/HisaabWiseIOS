@@ -35,6 +35,45 @@ enum TestBench {
         )
     }
 
+    /// A client over `transport` for a language manager the test already holds, with the graph's cycle
+    /// closed exactly as `AppEnvironment` closes it.
+    ///
+    /// The real `APIClient` rather than a double, because `LanguageSink` is a dependency direction and not
+    /// a seam (ADR-0013): a test that stubbed the sink would assert that `LanguageManager` calls something,
+    /// which is not the interesting claim. What is interesting is that a request reaches the transport
+    /// carrying the new language, and only the real client can show that.
+    @MainActor
+    static func connect(
+        _ language: LanguageManager,
+        to transport: some Transport,
+        refreshTokens: any TokenStore = InMemoryTokenStore()
+    ) -> APIClient {
+        let client = APIClient(
+            baseURL: baseURL,
+            transport: transport,
+            language: language,
+            refreshTokens: refreshTokens
+        )
+        language.connect(to: client)
+        return client
+    }
+
+    /// A transport that answers `PUT /v1/me/language` by agreeing to `language`.
+    ///
+    /// The happy path four suites need, in one place: the body is a wrapper object so that a narrow decode
+    /// reads its one field out of the wider screen payload ADR-0020 will eventually put around it, and
+    /// getting that shape wrong in one of four copies would be a test passing for the wrong reason.
+    static func languageTransport(agreeingTo language: AppLanguage) -> FixtureTransport {
+        FixtureTransport(
+            stubs: [Endpoint.language: .response(status: 200, body: languagePreference(language))]
+        )
+    }
+
+    /// The body `PUT /v1/me/language` answers with, for the suites that need a *disagreeing* one.
+    static func languagePreference(_ language: AppLanguage) -> Data {
+        Data(#"{"language":"\#(language.rawValue)"}"#.utf8)
+    }
+
     // MARK: - Session
 
     /// A syntactically real access token: three base64url segments, the middle one carrying the claims
@@ -90,5 +129,16 @@ enum TestBench {
     @MainActor
     static func render(_ view: some View) -> UIImage? {
         ImageRenderer(content: view.hwTheme().frame(width: 390, height: 300)).uiImage
+    }
+
+    /// The size a view actually wants at a phone's width, with the height left to the content.
+    ///
+    /// The measuring counterpart of ``render(_:)``, which pins the height and so cannot tell a label that
+    /// wrapped from one that was cut off. Width is fixed because that is the constraint a phone imposes;
+    /// height is not, because growing downwards is exactly what copy in a longer language must be free to
+    /// do. Doubled copy that comes back the same height as single copy has been truncated.
+    @MainActor
+    static func measure(_ view: some View) -> CGSize? {
+        ImageRenderer(content: view.hwTheme().frame(width: 390)).uiImage?.size
     }
 }

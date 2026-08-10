@@ -14,7 +14,7 @@ struct AppEnvironmentTests {
     private func makeEnvironment(
         transport: any Transport,
         theme: ThemeManager = ThemeManager(),
-        language: LanguageManager = LanguageManager(),
+        language: LanguageManager = LanguageManager(store: InMemoryLanguageStore()),
         keptTokens: any TokenStore = InMemoryTokenStore(),
         transientTokens: any TokenStore = InMemoryTokenStore()
     ) -> AppEnvironment {
@@ -63,6 +63,32 @@ struct AppEnvironmentTests {
         let request = try #require(await transport.recordedRequests.first)
         #expect(request.headers["Accept-Language"] == "ar")
         #expect(environment.language === language)
+    }
+
+    @Test("closes the loop, so the language can talk back through the client it is read by")
+    func theLanguageCanReachTheServer() async throws {
+        // The graph's one genuine cycle. Without `connect(to:)` the manager would switch the language on
+        // this device and tell nobody — which looks like it worked and leaves the server's emails in the
+        // old language (ADR-0024). Asserted through a real switch rather than by inspecting the wiring.
+        let store = InMemoryLanguageStore()
+        let language = LanguageManager(selected: .english, store: store)
+        let transport = TestBench.languageTransport(agreeingTo: .arabic)
+        let environment = makeEnvironment(transport: transport, language: language)
+
+        try await environment.language.select(.arabic)
+
+        #expect(await transport.requestCount(for: Endpoint.language) == 1)
+        #expect(store.language == .arabic)
+    }
+
+    @Test("the chosen language is kept in UserDefaults by default, so a relaunch honours it")
+    func theLanguageIsPersistedInTheApp() {
+        // The one place the *choice* of store is made. `LanguageManager`'s own default is in-memory so
+        // that tests and previews leave no preference behind, which means without this assertion the
+        // persisting conformance could be correct and never reached by the app.
+        let environment = AppEnvironment(baseURL: TestBench.baseURL, transport: FixtureTransport())
+
+        #expect(environment.language.store is UserDefaultsLanguageStore)
     }
 
     @Test("two environments share nothing")
