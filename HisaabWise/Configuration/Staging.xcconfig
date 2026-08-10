@@ -1,0 +1,14 @@
+// Staging — the `release` branch's deployed Worker (workspace Rule 2, ADR-0010).
+//
+// TODO(decision): api-domain — the domain is an open point (`DEVELOPMENT_PLAN.md` §7, "Domain name
+// for the API") and Rule 7 defers DNS until the owner's Cloudflare credentials arrive. Until then
+// this is a reserved-TLD placeholder: it is a well-formed URL, so `AppConfig` parses it and the app
+// launches, and it can never resolve, so a build that ships by accident reaches nobody else's host.
+// Pointing this at the real domain is a one-line change to this file — which is the whole point of
+// the base URL living in build configuration.
+//
+// `//` opens a comment in an .xcconfig; `$()` expands to nothing and breaks the token up.
+HW_API_BASE_URL = https:/$()/staging.api.hisaabwise.invalid
+
+// No ATS exception: staging is HTTPS. Only `Info-Debug.plist` carries one.
+INFOPLIST_FILE = Configuration/Info.plist

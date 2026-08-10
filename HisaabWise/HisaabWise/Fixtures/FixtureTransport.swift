@@ -35,12 +35,17 @@ actor FixtureTransport: Transport {
         let path: String
         let headers: [String: String]
         let cachePolicy: URLRequest.CachePolicy
+        /// The encoded body, so a write's payload is asserted as bytes on the wire rather than as the
+        /// value that went in. A `POST` whose body the client dropped would otherwise look identical
+        /// to one it sent.
+        let body: Data?
 
         init(_ request: URLRequest) {
             self.method = request.httpMethod ?? "GET"
             self.path = request.url?.path() ?? ""
             self.headers = request.allHTTPHeaderFields ?? [:]
             self.cachePolicy = request.cachePolicy
+            self.body = request.httpBody
         }
     }
 

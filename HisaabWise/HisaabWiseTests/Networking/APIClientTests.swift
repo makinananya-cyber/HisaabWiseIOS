@@ -6,8 +6,12 @@ import Testing
 struct APIClientTests {
     private let baseURL = URL(string: "https://fixtures.invalid")!
 
-    private func makeClient(_ transport: FixtureTransport) -> APIClient {
-        APIClient(baseURL: baseURL, transport: transport)
+    @MainActor
+    private func makeClient(
+        _ transport: FixtureTransport,
+        in language: AppLanguage = .english
+    ) -> APIClient {
+        APIClient(baseURL: baseURL, transport: transport, language: LanguageManager(selected: language))
     }
 
     private struct Payload: Decodable, Sendable, Equatable {
@@ -133,5 +137,191 @@ struct APIClientTests {
         let budget = try await makeClient(transport).get("/v1/budget", as: BudgetSummary.self)
 
         #expect(budget.income.display == "₹65,000")
+    }
+
+    // MARK: - Every request, whatever the verb
+
+    /// The verbs are the client's own `APIClient.Method`, not a copy of the list. A rule that has to
+    /// hold for all of them is written once here and checked once per verb, and a fifth verb added to
+    /// the client fails to compile the `switch` below rather than arriving uncovered.
+    private typealias Verb = APIClient.Method
+
+    /// A write body. Deliberately trivial: what is asserted is that the client encodes and sends it,
+    /// not what an expense looks like — that shape belongs to #18.
+    private struct Draft: Encodable, Sendable {
+        let note: String
+    }
+
+    /// Its own literal, like every other path in this suite, so a path change fails a test rather than
+    /// being silently agreed to.
+    private static let expensesPath = "/v1/expenses"
+
+    /// Issues one request of `verb` through the real client and hands back what reached the transport.
+    @MainActor
+    private func recorded(
+        _ verb: Verb,
+        path: String = APIClientTests.expensesPath,
+        in language: AppLanguage = .english,
+        idempotencyKey: String? = nil
+    ) async throws -> FixtureTransport.RecordedRequest {
+        let transport = FixtureTransport(
+            stubs: [path: .response(status: 200, body: Data(#"{"month":"2026-08"}"#.utf8))]
+        )
+        let client = makeClient(transport, in: language)
+        let draft = Draft(note: "coffee")
+
+        switch verb {
+        case .get:
+            _ = try await client.get(path, as: Payload.self)
+        case .post:
+            if let idempotencyKey {
+                _ = try await client.post(
+                    path,
+                    body: draft,
+                    idempotencyKey: idempotencyKey,
+                    as: Payload.self
+                )
+            } else {
+                _ = try await client.post(path, body: draft, as: Payload.self)
+            }
+        case .put:
+            _ = try await client.put(path, body: draft, as: Payload.self)
+        case .delete:
+            _ = try await client.delete(path, as: Payload.self)
+        }
+
+        return try #require(await transport.recordedRequests.first)
+    }
+
+    @Test("sends the verb it was asked for", arguments: APIClient.Method.allCases)
+    func sendsTheVerbItWasAskedFor(_ verb: APIClient.Method) async throws {
+        let request = try await recorded(verb)
+
+        #expect(request.method == verb.rawValue)
+    }
+
+    @Test("sets Accept-Language on every verb, not only on reads", arguments: APIClient.Method.allCases)
+    func acceptLanguageIsSetOnEveryVerb(_ verb: APIClient.Method) async throws {
+        // ADR-0003 — the server formats money honouring this header, and a write returns the updated
+        // screen payload (ADR-0020). A write without it would answer in the wrong language, and the
+        // client has no formatter to correct the figures with.
+        let request = try await recorded(verb, in: .arabic)
+
+        #expect(request.headers["Accept-Language"] == "ar")
+    }
+
+    @Test("takes Accept-Language from the app's language", arguments: AppLanguage.allCases)
+    func acceptLanguageFollowsTheAppsLanguage(_ language: AppLanguage) async throws {
+        // From the `LanguageManager` the graph composed — not from `Locale.preferredLanguages`, which
+        // would make the header a property of the device rather than of the choice the user made in the
+        // app (ADR-0011, issue #7).
+        let request = try await recorded(.get, in: language)
+
+        #expect(request.headers["Accept-Language"] == language.rawValue)
+    }
+
+    @Test("bypasses the URL cache on every verb", arguments: APIClient.Method.allCases)
+    func cacheIsBypassedOnEveryVerb(_ verb: APIClient.Method) async throws {
+        // Invariant 8, extended to the write verbs this ticket added.
+        let request = try await recorded(verb)
+
+        #expect(request.cachePolicy == .reloadIgnoringLocalCacheData)
+    }
+
+    @Test("asks for JSON on every verb", arguments: APIClient.Method.allCases)
+    func acceptsJSONOnEveryVerb(_ verb: APIClient.Method) async throws {
+        let request = try await recorded(verb)
+
+        #expect(request.headers["Accept"] == "application/json")
+    }
+
+    // MARK: - Writes
+
+    @Test("sends a POST body as JSON, with the content type to match")
+    func postCarriesItsBody() async throws {
+        let request = try await recorded(.post)
+
+        #expect(request.body == Data(#"{"note":"coffee"}"#.utf8))
+        #expect(request.headers["Content-Type"] == "application/json")
+    }
+
+    @Test("sends a PUT body as JSON")
+    func putCarriesItsBody() async throws {
+        let request = try await recorded(.put)
+
+        #expect(request.body == Data(#"{"note":"coffee"}"#.utf8))
+        #expect(request.headers["Content-Type"] == "application/json")
+    }
+
+    @Test("sends no body, and claims no content type, on a GET or a DELETE", arguments: [APIClient.Method.get, .delete])
+    func readsAndDeletesCarryNoBody(_ verb: APIClient.Method) async throws {
+        let request = try await recorded(verb)
+
+        #expect(request.body == nil)
+        #expect(request.headers["Content-Type"] == nil)
+    }
+
+    @Test("carries an Idempotency-Key on expense create")
+    func expenseCreateCarriesAnIdempotencyKey() async throws {
+        let request = try await recorded(.post, path: Self.expensesPath)
+
+        let key = try #require(request.headers["Idempotency-Key"])
+        #expect(UUID(uuidString: key) != nil, "the generated key should be a UUID, not \(key)")
+    }
+
+    @Test("uses the caller's key, so one user intent can be one key")
+    func aCallerSuppliedKeyIsUsedVerbatim() async throws {
+        // The form that will matter when a "try again" button sits in front of a write (#18): the retry
+        // has to present the *same* key as the attempt it is retrying.
+        let request = try await recorded(.post, idempotencyKey: "one-user-intent")
+
+        #expect(request.headers["Idempotency-Key"] == "one-user-intent")
+    }
+
+    @Test("generates a fresh key per call, because one call is one intent by default")
+    func generatedKeysDifferBetweenCalls() async throws {
+        let first = try await recorded(.post).headers["Idempotency-Key"]
+        let second = try await recorded(.post).headers["Idempotency-Key"]
+
+        #expect(first != nil)
+        #expect(first != second)
+    }
+
+    @Test("carries no Idempotency-Key on a verb that does not need one", arguments: [APIClient.Method.get, .put, .delete])
+    func onlyPostIsKeyed(_ verb: APIClient.Method) async throws {
+        // A `PUT` replaces a value and a `DELETE` names one, so sending either twice lands in the same
+        // state. A key there would be ceremony implying otherwise.
+        let request = try await recorded(verb)
+
+        #expect(request.headers["Idempotency-Key"] == nil)
+    }
+
+    @Test("a write attempted offline fails offline, and is not queued")
+    func aWriteOnADeadNetworkIsOffline() async throws {
+        // ADR-0019 — no offline writes: no queue, no pending state, no drain. One attempt reaches the
+        // transport, it fails, and the user retries.
+        let transport = FixtureTransport(stubs: [Self.expensesPath: .notConnected])
+        let client = await makeClient(transport)
+
+        await #expect(throws: APIError.offline) {
+            try await client.post(Self.expensesPath, body: Draft(note: "coffee"), as: Payload.self)
+        }
+
+        #expect(await transport.recordedRequests.count == 1)
+    }
+
+    @Test("a write the server refused keeps the server's code")
+    func aRefusedWriteKeepsTheCode() async throws {
+        // The write path goes through the same mapping the read path does, so `MONTH_CLOSED` reaches the
+        // screen that offers re-filing (Product Spec §4.5) rather than reading as a generic failure.
+        let body = Data(#"{"error":{"code":"MONTH_CLOSED","message":"That month is archived."}}"#.utf8)
+        let transport = FixtureTransport(
+            stubs: [Self.expensesPath: .response(status: 409, body: body)]
+        )
+        let client = await makeClient(transport)
+
+        await #expect(throws: APIError.server(status: 409, code: .monthClosed)) {
+            try await client.post(Self.expensesPath, body: Draft(note: "coffee"), as: Payload.self)
+        }
     }
 }

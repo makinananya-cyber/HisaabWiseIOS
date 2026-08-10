@@ -31,7 +31,10 @@ extension HomeViewModel {
         HomeViewModel(
             client: APIClient(
                 baseURL: URL(string: "https://fixtures.invalid")!,
-                transport: FixtureTransport(stubs: [Endpoint.budget: outcome])
+                transport: FixtureTransport(stubs: [Endpoint.budget: outcome]),
+                // An explicit language rather than the device's: a preview's `Accept-Language` should
+                // not depend on the Mac Xcode is running on.
+                language: LanguageManager(selected: .english)
             )
         )
     }

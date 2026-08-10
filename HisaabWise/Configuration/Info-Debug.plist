@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- Debug only. Identical to Info.plist except for the App Transport Security exception below,
+	     which is why the two files exist rather than one: an exception in a shared plist would ship
+	     in every build, and ATS is not expressible as a build setting. -->
+	<key>HWAPIBaseURL</key>
+	<string>$(HW_API_BASE_URL)</string>
+
+	<!-- `wrangler dev` serves cleartext HTTP on the loopback interface, so a Debug build needs an
+	     exception to reach it (ADR-0010).
+
+	     It names `localhost` and nothing else, and it does NOT set NSAllowsArbitraryLoads — that
+	     switch turns ATS off for every host in the app, which for a finance app is not a
+	     development convenience but a permanent hole. A test in
+	     HisaabWiseTests/Architecture/BuildConfigurationTests.swift asserts both facts about every
+	     plist in this folder. -->
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSExceptionDomains</key>
+		<dict>
+			<key>localhost</key>
+			<dict>
+				<key>NSExceptionAllowsInsecureHTTPLoads</key>
+				<true/>
+			</dict>
+		</dict>
+	</dict>
+</dict>
+</plist>

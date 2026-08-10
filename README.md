@@ -14,23 +14,26 @@ One Xcode project, one app target, grouped by MVVM layer
 ```
 HisaabWise/
 ├── HisaabWise.xcodeproj
+├── Configuration/            Debug/Staging/Release .xcconfig + the two Info.plists (ADR-0010)
 ├── HisaabWise/
 │   ├── HisaabWiseApp.swift   composition root — the only place that picks a Transport
+│   ├── AppConfig.swift       the base URL, parsed out of the build configuration
 │   ├── AppEnvironment.swift  the object graph the root assembles and injects
-│   ├── Models/               Money, CurrencyCode, BudgetSummary, ErrorCode, LoadState
+│   ├── Models/               Money, CurrencyCode, BudgetSummary, ErrorCode, LoadState, AppLanguage
 │   ├── ViewModels/           BaseViewModel + one @Observable @MainActor view model per screen
 │   ├── Views/                BaseView + SwiftUI screens; they read a view model and nothing else
 │   ├── Components/           shared controls — buttons, fields, labels, cards, chips
-│   ├── Networking/           Transport, APIClient, APIError
+│   ├── Networking/           Transport, URLSessionTransport, APIClient, APIError
 │   ├── Fixtures/             canned HTTP payloads + FixtureTransport, #if DEBUG only
-│   ├── DesignSystem/         palette, type scale, motion, radii, elevation, StateView
+│   ├── DesignSystem/         palette, type scale, motion, radii, elevation, StateView, LanguageManager
 │   ├── Persistence/          Keychain token store, content store, downloaded PDF, when they arrive
 │   └── Resources/            Assets.xcassets, Localizable.xcstrings
 └── HisaabWiseTests/          mirrors the layers, plus Architecture/
 ```
 
 The project uses filesystem-synchronized groups, so a new file is compiled by being on disk — there
-is no per-file entry in `project.pbxproj` to keep in step.
+is no per-file entry in `project.pbxproj` to keep in step. `Configuration/` is deliberately outside
+that group: those files are build inputs, not source.
 
 ## Build and test
 
@@ -46,8 +49,20 @@ The scheme is checked in and shared, so CI uses the same one. There is no `swift
 suite needs a booted simulator ([ADR-0018](docs/adr/0018-app-target-and-mvvm.md) explains what that
 cost bought and what it cost).
 
-The app runs today with no backend — the composition root wires the fixture transport in debug
-builds, so `HomeView` renders the INR budget fixture.
+There are **three configurations** — `Debug` · `Staging` · `Release` — each with an `.xcconfig` in
+`Configuration/` supplying `HW_API_BASE_URL` ([ADR-0010](docs/adr/0010-configuration-and-auth-links.md)).
+Debug points at `http://localhost:8787`. Build another with `-configuration Staging`.
+
+The app talks to a real server in every configuration, so a Debug build wants the backend running:
+
+```bash
+cd ../HisaabWiseBackend && npx wrangler dev
+```
+
+Without it, every screen shows the offline state — which is the honest rendering of that situation,
+and the reason the fixture transport is now what tests and previews run on rather than what the app
+runs on ([ADR-0022](docs/adr/0022-production-transport.md)). One suite drives a real request against
+that Worker and **skips, rather than fails**, when it is not answering.
 
 ## Conventions worth knowing before the first edit
 
@@ -57,6 +72,14 @@ builds, so `HomeView` renders the INR budget fixture.
 - **`Transport` is the only seam.** Tests and previews swap the transport and exercise real
   decoding, real state transitions, and real view-model logic
   ([ADR-0013](docs/adr/0013-testing-and-previews.md)).
+- **`Networking/` knows nothing about environments.** There is no default base URL: it is parsed from
+  the build configuration by `AppConfig` and injected at the composition root, which is also the only
+  place in the app target that names `Bundle.main`. A scan in `LayeringTests` keeps a "temporary"
+  localhost default out ([ADR-0010](docs/adr/0010-configuration-and-auth-links.md)).
+- **Every request carries `Accept-Language` and bypasses the cache** — the first because the server
+  formats money honouring it, the second because a HIT on per-user data is a breach. Both hold for the
+  write verbs too, and the API session keeps no `URLCache` at all
+  ([ADR-0003](docs/adr/0003-money-presentation.md), [ADR-0022](docs/adr/0022-production-transport.md)).
 - **`offline` is never rendered as `failed`**, and the server's `message` field is never displayed
   ([ADR-0016](docs/adr/0016-presentation-details.md)).
 - **An in-app screen is a `BaseView` over a `BaseViewModel`.** It declares its view model, the copy

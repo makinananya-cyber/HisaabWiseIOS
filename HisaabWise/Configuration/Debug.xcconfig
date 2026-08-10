@@ -1,0 +1,10 @@
+// Debug — local development against `wrangler dev` (ADR-0010).
+//
+// `//` opens a comment in an .xcconfig, which would swallow the rest of a URL. `$()` expands to
+// nothing and breaks the token up, which is the standard way to write a scheme separator here.
+HW_API_BASE_URL = http:/$()/localhost:8787
+
+// The only configuration whose Info.plist carries the App Transport Security exception, so the
+// cleartext allowance cannot reach a shipped build. It names `localhost` and nothing else, and
+// `NSAllowsArbitraryLoads` appears in no plist in this repo (ADR-0010, ADR-0022).
+INFOPLIST_FILE = Configuration/Info-Debug.plist

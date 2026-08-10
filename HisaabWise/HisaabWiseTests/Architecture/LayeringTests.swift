@@ -42,6 +42,29 @@ struct LayeringTests {
         )
     }
 
+    /// ADR-0010 — the base URL is injected at the composition root and `Networking/` has no notion of an
+    /// environment. That absence is what lets a test point the client at a fixture with no build
+    /// configuration in existence, and what stops the shortcut this layer invites: a localhost default
+    /// added during an afternoon's debugging, which works for everyone who runs `wrangler dev` and for
+    /// nobody else.
+    @Test("the networking layer has no default base URL and no environment awareness")
+    func networkingKnowsNothingAboutEnvironments() throws {
+        try SourceTree.expectAbsent(
+            [
+                // A host, in the forms one gets written in.
+                "http:", "https:", "localhost", "127.0.0.1", "8787",
+                // A defaulted initialiser argument, which is how a default would arrive.
+                "baseURL: URL =",
+                // Where a default would be *read* from rather than injected.
+                "Bundle.main", "infoDictionary", "ProcessInfo", "AppConfig",
+                // And the words for the thing this layer must not know it is part of.
+                "staging", "Staging", "production", "Production",
+            ],
+            from: ["Networking"],
+            because: "the base URL is injected at the composition root (ADR-0010)"
+        )
+    }
+
     /// Components take values and closures. One that can fetch, or that holds a view model, is a
     /// screen wearing a component's name — and it stops being reusable the moment it knows what it is
     /// showing.

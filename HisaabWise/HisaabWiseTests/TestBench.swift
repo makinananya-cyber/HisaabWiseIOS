@@ -13,8 +13,17 @@ enum TestBench {
     /// should fail, not succeed slowly.
     static let baseURL = URL(string: "https://fixtures.invalid")!
 
-    static func client(_ transport: some Transport) -> APIClient {
-        APIClient(baseURL: baseURL, transport: transport)
+    /// A client over `transport`, in a language the test picked.
+    ///
+    /// `@MainActor` because the language manager is, and the real one is what goes in: `LanguageSource`
+    /// is a dependency direction, not a seam, so no suite here has a double for it (ADR-0013).
+    @MainActor
+    static func client(_ transport: some Transport, in language: AppLanguage = .english) -> APIClient {
+        APIClient(
+            baseURL: baseURL,
+            transport: transport,
+            language: LanguageManager(selected: language)
+        )
     }
 
     /// Renders through the real environment rather than touching `body`.

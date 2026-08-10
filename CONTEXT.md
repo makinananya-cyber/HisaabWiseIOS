@@ -20,13 +20,26 @@ topology and its six `HW*` library targets. Where a spec or issue still says `HW
 `HWNetworking`, or `HWDesignSystem`, read the corresponding folder.
 
 **composition root** — `HisaabWiseApp.swift`. The only place that decides which `Transport` the
-app runs on and what base URL it points at. Nothing below it knows what an environment is.
+app runs on and what base URL it points at, and the only place in the app target that names
+`Bundle.main` — the live-Worker suite names it too, deliberately, to read the plist the real build
+produced. Nothing below it knows what an environment is. There is **one transport in every configuration** —
+`URLSessionTransport`, including in Debug, which points at `wrangler dev` — so fixtures are what
+tests and previews run on rather than what the app runs on ([ADR-0022](docs/adr/0022-production-transport.md)).
+
+**build configuration** — the three ADR-0010 configurations, `Debug` · `Staging` · `Release`, each
+an `.xcconfig` in `HisaabWise/Configuration/` setting `HW_API_BASE_URL` and naming the `Info.plist`
+it uses. **`AppConfig`** parses the plist key into a `URL` and is the only type that knows a
+configuration exists; it refuses cleartext for any host but `localhost`, which is also the only host
+the Debug plist's ATS exception names. `BuildConfigurationTests` reads all five files from disk,
+because nothing here is checked by a compiler.
 
 **app environment** — `AppEnvironment`, the object graph the composition root assembles: the
-`APIClient`, the `ThemeManager`, and (issue #7) the `LanguageManager`. It is *not* the composition
-root — it owns the wiring on the far side of the root's one decision. **No singletons and no
-globals**: nothing in the app reaches for a `.shared`, and a source scan in `LayeringTests` keeps it
-that way. View models are *made* here, not held here.
+`APIClient`, the `ThemeManager`, and the `LanguageManager`. It is *not* the composition
+root — it owns the wiring on the far side of the root's one decision. It **builds** the client from
+the root's base URL and transport rather than being handed one, so the client's `Accept-Language` and
+the language on screen are necessarily the same choice. **No singletons and no globals**: nothing in
+the app reaches for a `.shared`, and a source scan in `LayeringTests` keeps it that way. View models
+are *made* here, not held here.
 
 **view model** — an `@Observable` `@MainActor` class owning one screen's presentation state. It
 conforms to **`BaseViewModel`**: it declares `fetch()`, optionally `isEmpty(_:)`, and gets `load()`
@@ -109,6 +122,38 @@ component: it takes colour from `theme.palette` rather than from an asset symbol
 previews — including the RTL and AX variants. In one target the compiler enforces no layer boundary, so these are the enforcement —
 weaker than the package graph they replaced, and the only thing that keeps the layering from
 being a convention.
+
+## Talking to the server
+
+**the seam** — `Transport`. `URLSessionTransport` in production, `FixtureTransport` in tests and
+previews, and **deliberately no other injection point** in the app: a second seam means tests start
+exercising doubles of our own design instead of the app (ADR-0013). `LanguageSource` is not a second
+one — it is a dependency direction, and nothing conforms to it but the real `LanguageManager`.
+
+**production transport** — `URLSessionTransport`, which does one thing and holds two decisions: its
+session keeps **no `URLCache` at all**, because the per-request bypass stops a per-user response being
+*read* from the cache and not being *written* to it (invariant 8), and it does not wait for
+connectivity, because a request held open until the network returns is the write queue ADR-0019
+removed wearing a system API's name. It also translates `URLError.cancelled` into `CancellationError`,
+so a user navigating away is never reported as offline.
+See [ADR-0022](docs/adr/0022-production-transport.md).
+
+**write verbs** — `POST` · `PUT` · `DELETE` on `APIClient`, each returning the **updated screen
+payload** (ADR-0020) rather than nothing. Every `POST` carries an **`Idempotency-Key`**, generated per
+call unless the caller supplies one; a property of the verb rather than of a path list, so expense
+create cannot be the one call that forgets. `PUT` and `DELETE` carry none — both are idempotent by
+definition. The cache bypass and `Accept-Language` hold for writes exactly as for reads.
+
+**`Accept-Language`** — set on **every** request from the app's `LanguageManager` through
+`LanguageSource`. Load-bearing, not cosmetic: the server converts *and formats* money honouring it
+(ADR-0003), and the client has no formatter with which to correct a figure that came back in the
+wrong language.
+
+**shipped language** — one of the two `AppLanguage` cases, `en` and `ar`. The design lists 87
+languages and the picker shows the shipped ones only (Product Spec §3.7 **[FIX]**, ADR-0011).
+**`LanguageManager`** owns the choice — `@Observable`, `@MainActor`, composed in `AppEnvironment` —
+and today owns only what the wire needs. The picker, the switch without a relaunch, the `Locale` and
+`LayoutDirection` a view reads, persistence, and the server sync are issue #7.
 
 ## Money on the client
 
@@ -219,6 +264,7 @@ Recorded here because they are commitments, not suggestions. None has been made 
 |---|---|
 | [ADR-0003](docs/adr/0003-money-presentation.md) | Technical Spec §5 — state the currency of `GET /v1/budget`'s figures; every monetary field gains a server-formatted display string honouring `Accept-Language` |
 | [ADR-0003](docs/adr/0003-money-presentation.md) | Technical Spec §1 — drop FX from the iOS content cache; `GET /v1/expenses` returns per-category totals |
+| [ADR-0011](docs/adr/0011-localisation.md) | The server's `Accept-Language`-driven money formatting must use **Latin digits** (`latn`) under `ar`. The client sends the bare tag `ar` and has no formatter to correct a figure that comes back in Arabic-Indic digits (ADR-0003, [ADR-0022](docs/adr/0022-production-transport.md)) |
 | [ADR-0020](docs/adr/0020-screen-scoped-endpoints.md) | **Six new endpoints** — `GET /v1/screens/{home,expenses,learn,reports,account}` and `/v1/screens/reports/:monthKey`, each returning exactly what the screen renders, fully formatted. Every derived value included: "% of pay", the meter percentage, "Today / Yesterday / N days ago", per-category totals, Learn accuracy and progress fractions, the goal verdict, per-year totals |
 | [ADR-0020](docs/adr/0020-screen-scoped-endpoints.md) | Writes — `POST /v1/expenses`, `DELETE /v1/expenses/:id`, `POST /v1/learn/lessons/:id/complete`, `PUT /v1/me/*` — **return the updated screen payload**, so the client never patches its own copy |
 | [ADR-0019](docs/adr/0019-no-offline-writes-curriculum-pdf.md) | **New endpoint** — the curriculum as a **server-generated PDF**, honouring `Accept-Language`, cacheable (not per-user) with an ETag. The iOS download ticket is blocked on it and is built against a fixture PDF until it lands |

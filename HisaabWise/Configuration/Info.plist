@@ -1,0 +1,16 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- The API base URL, substituted from HW_API_BASE_URL in the configuration's .xcconfig and read
+	     once into AppConfig at launch (ADR-0010). GENERATE_INFOPLIST_FILE stays on, so the scene
+	     manifest, the launch screen, and the orientation keys are still merged in from build
+	     settings; this file holds only what a build setting cannot express.
+
+	     Staging and Release share this plist. It carries NO NSAppTransportSecurity key at all: the
+	     cleartext-localhost exception lives in Info-Debug.plist, which no shipping configuration
+	     uses. -->
+	<key>HWAPIBaseURL</key>
+	<string>$(HW_API_BASE_URL)</string>
+</dict>
+</plist>

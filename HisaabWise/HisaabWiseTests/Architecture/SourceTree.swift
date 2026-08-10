@@ -16,6 +16,14 @@ enum SourceTree {
         .deletingLastPathComponent()
         .appending(path: "HisaabWise")
 
+    /// `…/HisaabWise/Configuration` — the `.xcconfig` files and the two `Info.plist`s (ADR-0010).
+    ///
+    /// Outside the app target on purpose: these are build inputs, not source, and a folder inside the
+    /// synchronized group would put them in the compiler's way and in `layers`' way both.
+    static let configuration = appSources
+        .deletingLastPathComponent()
+        .appending(path: "Configuration")
+
     /// Every layer folder under the app target. **A new folder must be added here**, or the scans
     /// below silently stop covering it — the failure mode is a green suite, not an error.
     static let layers = [

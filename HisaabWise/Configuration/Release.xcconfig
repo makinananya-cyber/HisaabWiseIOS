@@ -1,0 +1,11 @@
+// Release — production (workspace Rule 2, ADR-0010).
+//
+// TODO(decision): api-domain — see `Staging.xcconfig`. Same reserved-TLD placeholder, same reason:
+// the domain is unresolved (`DEVELOPMENT_PLAN.md` §7) and Rule 7 forbids hardcoding a host in the
+// meantime.
+//
+// `//` opens a comment in an .xcconfig; `$()` expands to nothing and breaks the token up.
+HW_API_BASE_URL = https:/$()/api.hisaabwise.invalid
+
+// No ATS exception: production is HTTPS. Only `Info-Debug.plist` carries one.
+INFOPLIST_FILE = Configuration/Info.plist
