@@ -10,7 +10,9 @@ import SwiftUI
 ///   than drawn, so it is folded into the radius instead: `radius = (blur + spread) / 2`.
 ///
 /// So `--shadow-m: 0 12px 28px -12px` gives `(28 - 12) / 2 = 8`, not 14.
-struct HWShadow: Sendable {
+/// `Equatable` so that a component's resolved appearance can be compared as a value — which is what
+/// makes "no two button variants draw identically" a test rather than a screenshot (issue #26).
+struct HWShadow: Sendable, Equatable {
     let color: Color
     let radius: CGFloat
     let x: CGFloat

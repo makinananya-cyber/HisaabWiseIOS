@@ -1,6 +1,30 @@
 {
   "sourceLanguage" : "en",
   "strings" : {
+    "component.button.inFlight" : {
+      "comment" : "Read as a button's accessibility value while its action is in flight. The spinner that replaces the label is invisible to VoiceOver, so without this the control goes silent exactly when it is busy.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "In progress"
+          }
+        }
+      }
+    },
+    "component.sheet.close" : {
+      "comment" : "The close affordance in every sheet's header. Icon-only, so this is the whole of what VoiceOver reads.",
+      "extractionState" : "manual",
+      "localizations" : {
+        "en" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "Close"
+          }
+        }
+      }
+    },
     "home.empty" : {
       "comment" : "Home, when the server has figures for no months yet.",
       "extractionState" : "manual",

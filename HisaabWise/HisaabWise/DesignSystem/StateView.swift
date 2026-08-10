@@ -150,9 +150,11 @@ struct StateView<Value: Sendable, Loaded: View>: View {
                 .multilineTextAlignment(.center)
 
             if let title = presentation.retry, let reload {
-                // TODO(#26): adopt the design's `.btn.quiet` once `Components/` carries it. Until then
-                // this is design-system code styling its own control, which is the one place that is
-                // allowed to — a *screen* never is.
+                // `Components/` carries the design's `.btn.quiet` now (issue #26) and this still does
+                // not use it: `HWButton` reads `DesignSystem`'s tokens, so a `DesignSystem` view
+                // reaching back for it would point the dependency both ways. This stays what it was —
+                // design-system code styling its own control, which is the one place allowed to. A
+                // *screen* never is. Reconsider if `StateView` ever moves out of `DesignSystem/`.
                 Button {
                     Task { await reload() }
                 } label: {

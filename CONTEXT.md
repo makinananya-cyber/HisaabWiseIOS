@@ -53,8 +53,39 @@ two real callers to shape it.
 a field, a label style, a card, a chip, a sheet, a row. **Presentational** — it takes values and
 closures, holds no view model, and cannot fetch. A screen never styles a control itself; a new
 variant is added here rather than inlined there. The inventory follows the design's own CSS
-(`.btn` and its four variants, `.iconbtn`, `.field-box`, `.label`, `.eyebrow`, `.card`, the chip
-and sheet families, `.row` / `.key-row`, `.toast`).
+(`.btn` and its four variants, `.iconbtn`, `.editbtn`, `.field-box`, `.fld-lab`, `.eyebrow`, `.card`,
+the chip and sheet families, `.row` / `.key-row`, the bars, `.toast`), and the table in
+`Components.swift` maps each class to the type that converts it.
+
+Four things about the vocabulary are deliberate and are decisions, not omissions:
+
+- **Every component resolves the `surface` appearance**, which is the five in-app screens. The design
+  spells `.btn-ghost` and `.btn-quiet` on `brand` only; their `surface` values come from the design's own
+  tinted and bordered controls. The `brand` appearance arrives with Landing and Auth (#13–#16), on the
+  same reasoning `ScreenChrome` gives for not being appearance-agnostic yet — two callers shape it better
+  than one guess.
+- **There is no destructive button yet.** `.btn-danger` and Account's `.logout` are a real fifth shape and
+  arrive with Account (#17).
+- **`.tabbar` is not a component and `.mark` has no asset.** The tab bar is the five-tab shell's `TabView` —
+  converting the CSS would mean re-implementing a system container, which Rule 1 rules out — and the
+  wordmark tile in `.topbar` waits on an image, since the asset catalogue carries colour sets only.
+- **Display text is a `Text`, control copy is a `LocalizedStringResource`.** A button title or a field
+  label is always app copy; a card subtitle, a chip label, or a row's name may be a server string
+  (ADR-0003, ADR-0020), so the caller decides which. `HWComponentCopy` holds the only copy a component
+  owns itself.
+
+**the box** — `hwBox(fill:radius:border:borderWidth:elevation:)`, the rounded fill plus optional hairline
+border plus optional elevation that the design draws nearly every control inside. It takes colours rather
+than reading the palette, because its caller has already resolved a role. `HWTouchTarget.minimum` sits
+beside it: the design draws `.iconbtn` at 40 and `.mchip` at ~34, and both are raised to **44** because
+ADR-0012 makes the Accessibility Inspector a per-screen gate — four points of fidelity is the cheaper
+thing to give up.
+
+**press treatment** — `HWPressStyle`, the one `ButtonStyle` behind every tappable component. It exists so
+that the design's `:active` scale is picked once and, more importantly, so **Reduce Motion is handled
+once**: the scale is *replaced* by a dip in opacity rather than dropped (ADR-0012). `accessibilityReduceMotion`
+is a read-only environment value, so nothing can inject it — the replacement is asserted as a value and
+the scans in `ComponentVocabularyTests` assert that every animating component reads it.
 
 **screen endpoint** — one read endpoint per screen — `GET /v1/screens/home`, `/expenses`,
 `/learn`, `/reports`, `/reports/:monthKey`, `/account` — returning exactly what that screen
@@ -71,7 +102,11 @@ validation is not a calculation in this sense.
 
 **layering scans** — the source scans in `HisaabWiseTests/Architecture` that assert no view
 touches `Networking`, no model touches `Networking` or SwiftUI, no view model imports SwiftUI, and
-no component fetches or holds a view model. In one target the compiler enforces no layer boundary, so these are the enforcement —
+no component fetches or holds a view model. `ComponentVocabularyTests` adds the rules specific to a
+component: it takes colour from `theme.palette` rather than from an asset symbol, sizes from
+`HWTextStyle` rather than from `Font.system`, elevation from `HWShadow` rather than a hand-rolled
+`.shadow`, clamps nothing, pins no edge left or right, and carries both a VoiceOver surface and
+previews — including the RTL and AX variants. In one target the compiler enforces no layer boundary, so these are the enforcement —
 weaker than the package graph they replaced, and the only thing that keeps the layering from
 being a convention.
 
