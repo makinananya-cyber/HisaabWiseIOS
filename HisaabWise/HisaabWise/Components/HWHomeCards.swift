@@ -127,12 +127,62 @@ struct HWStreakCard: View {
 ///
 /// The glyph and the tint arrive as a **name and a slot**, not as a path and a hex: the design hardcodes both per
 /// article, and a colour that reaches a use site by name is what keeps the later dark-mode swap a swap (ADR-0001).
-struct HWReadRow: View {
+/// The row's **contents**, without a control around them.
+///
+/// Split out because Home draws these inside a `NavigationLink`, which supplies its own button: a `Button` nested
+/// in a link is two controls for one row, and the first attempt at avoiding that turned the label's hit-testing
+/// off — which made the rows completely untappable, exactly the way `HWDateField`'s placeholder was in #15. The
+/// lesson recorded there is that a label must offer a hit region, so this one carries the `contentShape` and the
+/// *link* is the control.
+struct HWReadRowLabel: View {
     @Environment(ThemeManager.self) private var theme
 
+    let title: String
+    let systemImage: String
+    /// Which of the five accent slots, `1...5`.
+    let accent: Int
+
+    var body: some View {
+        HStack(spacing: 11) {
+            Image(systemName: systemImage)
+                .font(.hw(.body))
+                .foregroundStyle(tint.base)
+                .frame(width: 32, height: 32)
+                .hwBox(fill: tint.soft, radius: .small)
+                .accessibilityHidden(true)
+
+            Text(verbatim: title)
+                .font(.hw(.body).weight(.semibold))
+                .foregroundStyle(theme.palette.surface.ink)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            Image(systemName: "chevron.forward")
+                .font(.hw(.micro).weight(.bold))
+                .foregroundStyle(theme.palette.surface.inkTertiary)
+                .accessibilityHidden(true)
+        }
+        .padding(.horizontal, 12)
+        .padding(.vertical, 11)
+        .frame(minHeight: HWTouchTarget.minimum)
+        // **The hit region.** Without it the row draws and cannot be pressed, whether the control around it is a
+        // button or a link.
+        .contentShape(.rect)
+    }
+
+    /// The five Learn unit accents, reused for the articles. A slot outside the range wraps: the number arrives
+    /// from a payload, and a sixth article is a server change rather than a client crash.
+    private var tint: HWPalette.UnitAccent {
+        let accents = theme.palette.units.all
+        guard !accents.isEmpty else { return theme.palette.units.sky }
+        return accents[(max(accent, 1) - 1) % accents.count]
+    }
+}
+
+/// One "Read more about" row as a **button**, for a caller that is not already a link.
+struct HWReadRow: View {
     private let title: String
     private let systemImage: String
-    /// Which of the five accent slots, `1...5`.
     private let accent: Int
     private let action: () -> Void
 
@@ -145,42 +195,12 @@ struct HWReadRow: View {
 
     var body: some View {
         Button(action: action) {
-            HStack(spacing: 11) {
-                Image(systemName: systemImage)
-                    .font(.hw(.body))
-                    .foregroundStyle(tint.base)
-                    .frame(width: 32, height: 32)
-                    .hwBox(fill: tint.soft, radius: .small)
-                    .accessibilityHidden(true)
-
-                Text(verbatim: title)
-                    .font(.hw(.body).weight(.semibold))
-                    .foregroundStyle(theme.palette.surface.ink)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .frame(maxWidth: .infinity, alignment: .leading)
-
-                Image(systemName: "chevron.forward")
-                    .font(.hw(.micro).weight(.bold))
-                    .foregroundStyle(theme.palette.surface.inkTertiary)
-                    .accessibilityHidden(true)
-            }
-            .padding(.horizontal, 12)
-            .padding(.vertical, 11)
-            .frame(minHeight: HWTouchTarget.minimum)
-            .contentShape(.rect)
+            HWReadRowLabel(title: title, systemImage: systemImage, accent: accent)
         }
         .buttonStyle(HWPressStyle.compact)
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Text(verbatim: title))
         .accessibilityHint(Text("home.reads.hint"))
-    }
-
-    /// The five Learn unit accents, reused for the articles. A slot outside the range wraps: the number arrives
-    /// from a payload, and a sixth article is a server change rather than a client crash.
-    private var tint: HWPalette.UnitAccent {
-        let accents = theme.palette.units.all
-        guard !accents.isEmpty else { return theme.palette.units.sky }
-        return accents[(max(accent, 1) - 1) % accents.count]
     }
 }
 

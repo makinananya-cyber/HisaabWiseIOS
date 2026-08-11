@@ -122,7 +122,7 @@ enum Fixture: String, CaseIterable, Sendable {
         case .budgetINR, .budgetAED, .budgetDrifted: [Endpoint.budget]
         case .homeINR, .homeFirstRun: [Endpoint.screenHome]
         case .tips: [Endpoint.contentTips]
-        case .articleScams: [Endpoint.article(id: "scams")]
+        case .articleScams: [Endpoint.articleBody(id: "scams")]
         // Two paths, one set of bytes: a refresh answers with a login's shape, which is the whole of
         // ADR-0023's rotation decision expressed as a fixture.
         // Three paths, one set of bytes: a refresh answers with a login's shape (ADR-0023), and so does

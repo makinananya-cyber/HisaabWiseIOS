@@ -52,7 +52,14 @@ final class HomeViewModel: BaseViewModel {
 
     /// **The single request.** No second call, no join, no `Date()`.
     func fetch() async throws -> HomeScreen {
-        try await client.get(Endpoint.screenHome, as: HomeScreen.self)
+        let screen = try await client.get(Endpoint.screenHome, as: HomeScreen.self)
+        // **An isolation the new payload does not contain is dropped**, as the design's `render()` resets
+        // `picked`. Keeping it dimmed every *other* slice — `isolated == slice.id` matching nothing — so the ring
+        // came back uniformly faded with nothing isolated and no way out but tapping a slice.
+        if let isolated, !screen.spending.categories.contains(where: { $0.id == isolated }) {
+            self.isolated = nil
+        }
+        return screen
     }
 
     /// Whether a *loaded* Home has nothing to show.

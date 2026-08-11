@@ -156,7 +156,7 @@ struct AccessibilityTests {
         // `.minor` survives in **one** place: `HomeView.footLine` asks whether `saved` is *zero*, to choose
         // between two catalogue sentences. Comparing a figure with nothing is not spelling one out — no digit
         // reaches the screen from it — and the alternative was a second server field meaning "is it zero".
-        let permitted = ["case .low where savings.saved.minor == 0:"]
+        let permitted = ["case _ where savings.saved.minor == 0:"]
 
         for layer in ["Views", "Components"] {
             for file in try SourceTree.swiftFiles(in: layer) {

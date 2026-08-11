@@ -271,7 +271,7 @@ struct ContentLoaderTests {
     /// arrived: an article is asked for by id, so the set is open and the *rule* is what is closed.
     @Test("every content resource is a cacheable route and nothing else is")
     func everyResourceIsCacheable() {
-        let resources = ContentResource.fixed + [.article(id: "scams")]
+        let resources = ContentResource.fixed + [.forArticle(id: "scams")]
         for resource in resources {
             #expect(Endpoint.path(for: resource).hasPrefix("/v1/content"), "\(resource) is not a content route")
         }

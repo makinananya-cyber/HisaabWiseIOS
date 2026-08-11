@@ -448,6 +448,29 @@ usable without a connection — the curriculum PDF is
 ([ADR-0019](docs/adr/0019-no-offline-writes-curriculum-pdf.md)).
 See [ADR-0009](docs/adr/0009-content-cache.md).
 
+**screen payload** — what one `GET /v1/screens/*` returns: everything that screen draws, fully computed
+(ADR-0020). Home is the first one, and its field names are the list of things the client may not work out —
+`shareOfPayLabel`, `percentageLabel`, `dateLabel`, `verdict`. **The budget engine has not moved**: invariant 3
+still keeps 50/30/20, `saved`, and the verdict in one place, and `GET /v1/budget` is still its own endpoint; the
+screen payload is assembled from it server-side, which the corpus asserts by making `home-inr.json`'s `saved`
+byte-identical to `budget-inr.json`'s. Two `Double`s in the payload are **geometry** — a slice's fraction and the
+meter pin's position — and are named as the exemptions to the `Double` ban rather than quietly allowed.
+See [ADR-0032](docs/adr/0032-home.md).
+
+**a mark the framework knows, drawn by the framework; a shape the design invented, drawn by hand** — why the
+donut is Swift Charts and the savings meter is not, from one ADR. `SectorMark` publishes a per-mark accessibility
+descriptor per slice; a gradient track with a sliding pin and a floating pill is not a mark, and expressing it as
+one fights the framework for a shape it does not have. Both are **replaced** above the accessibility threshold by
+the same figures as rows, and the replacement doubles as the chart's `accessibilityRepresentation`.
+See [ADR-0032](docs/adr/0032-home.md), [ADR-0016](docs/adr/0016-presentation-details.md).
+
+**`HWMarkdown`** — server content's emphasis. The design writes `<b>`/`<i>` inline in tips and article bodies;
+the extraction converts it to markdown and this renders it through `AttributedString`. Markdown is free for *app
+copy* (a `LocalizedStringKey` is parsed as markdown) and not for server content, which goes through
+`Text(verbatim:)` — so the parse is explicit. Stripping the emphasis was the alternative and it loses the point of
+the sentence.
+See [ADR-0032](docs/adr/0032-home.md).
+
 **`ContentLoader`** — the content store joined up: read the stored bytes, revalidate with `If-None-Match`,
 download only what changed. Two rules it is easy to get wrong and one that reads as an exception. **The bytes are
 stored, not the decoded values** — a store holding models stores this client's idea of the payload, and the next
@@ -618,3 +641,11 @@ Recorded here because they are commitments, not suggestions. None has been made 
 | [ADR-0031](docs/adr/0031-registration.md) | **The currency reference list needs an `exponent`.** It carries a code, a name, and a symbol, so the client reads minor units as two decimal digits — right for 157 of the 160 currencies and wrong for KWD, BHD, and OMR. A dinar typed `1.234` arrives as `123` minor units instead of `1234` |
 | [ADR-0031](docs/adr/0031-registration.md) | **A verification email is sent on registration**, composed in the submitted `language` (ADR-0024). The client shows a strip above the tabs while `GET /v1/me` reports `emailVerified: false`, and ADR-0008's foreground revalidation is what clears it. A "resend" route belongs to Account (#17) |
 | [ADR-0031](docs/adr/0031-registration.md) | **Two hosted pages, per environment** — Terms of Use and the Privacy Policy, `https` only, read from `HW_TERMS_URL` and `HW_PRIVACY_URL`. The consent checkbox links to them, and a staging build must be able to link to staging's copies so a change to the Terms can be reviewed before it is what a new user agrees to (Rule 7 — the domain is a placeholder until the Cloudflare credentials arrive) |
+| [ADR-0032](docs/adr/0032-home.md) | **`GET /v1/screens/home`'s payload**, written by the client: `{greeting, name, dateLabel, monthLabel, spending{total, shareOfPayLabel, isFirstRun, categories[{id, name, amount, share, shareLabel, slot}]}, savings{saved, goal, zeroLabel, percentageLabel, position, verdict, remaining?}, tip{id, dayKey, text, currencyToken}, learning{streak, summary, nextLesson}, articles[{id, short, icon, accent}]}`. `share` and `position` are fractions `0…1` — geometry the server computes so the angles and the percentages cannot round differently. `verdict` is `low`/`onTrack`/`met` |
+| [ADR-0032](docs/adr/0032-home.md) | **`saved` in the screen payload must be the engine's own figure**, not a re-derivation. The corpus asserts the two agree, and a difference is the assembly having calculated — which is the class of mistake defect D1 was |
+| [ADR-0032](docs/adr/0032-home.md) | **`isFirstRun` is the server's to say.** "No categories" and "a new account" are the same empty array and different screens; only the server knows which, and the client must not infer it from `categories.isEmpty` |
+| [ADR-0032](docs/adr/0032-home.md) | **The greeting and both date labels are server-side**, against the stored timezone (invariant 6). The prototype read `new Date().getHours()`, which a device-clock change moves |
+| [ADR-0032](docs/adr/0032-home.md) | **New endpoint** — `GET /v1/content/tips` → `{tips: [{id, text}]}` ×**49**, cacheable and ETag'd, `{c}` verbatim, emphasis as **markdown** rather than HTML. This is what **Show me another** cycles in memory; the *day's* tip stays inside the screen payload, chosen by `dayKey` |
+| [ADR-0032](docs/adr/0032-home.md) | **New endpoint** — `GET /v1/content/articles/:id` → `{id, title, lede, sections[{heading, paragraphs?, entries?, steps?, callout?}], sources[{title, url}]}`, cacheable and ETag'd, with **3** articles. Every block optional; the order is fixed. Sources are **official only** — this is education, not regulated advice |
+| [ADR-0032](docs/adr/0032-home.md) | **Emphasis in all editorial content is markdown**, not HTML, from the extraction onwards — tips, article paragraphs, steps, and list entries. HTML cannot reach a SwiftUI `Text` |
+| [ADR-0032](docs/adr/0032-home.md) | **`icon` and `accent` are a name and a slot**, not a path and a hex: `shield`/`globe`/`steps`/`lightbulb`/`alert`, and `1…5` for the tint. A colour reaching a use site by name is what keeps the later dark-mode swap a swap (ADR-0001) |

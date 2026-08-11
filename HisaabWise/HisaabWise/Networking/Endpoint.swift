@@ -71,7 +71,10 @@ enum Endpoint {
     ///
     /// A function rather than a constant, so the collection path has one owner. ``articles`` is what the corpus's
     /// coverage scan reads.
-    static func article(id: String) -> String { "\(articles)/\(id)" }
+    ///
+    /// It goes through `ContentResource.forArticle(id:)`, so the path and the cache key are built from the same
+    /// sanitised string — see that method for the collision separate sanitising produced.
+    static func articleBody(id: String) -> String { path(for: .forArticle(id: id)) }
 
     /// The collection the article bodies hang off. Declared so that a parameterised route is still a path the
     /// fixture corpus can be checked against.
@@ -87,7 +90,9 @@ enum Endpoint {
         case .currencies: contentCurrencies
         case .securityQuestions: contentSecurityQuestions
         case .tips: contentTips
-        case .article(let id): article(id: id)
+        // The id here has already been through `ContentResource.forArticle(id:)`, which is the only way to build the
+        // case — so this is the *sanitised* id, and the file name and the path cannot differ.
+        case .article(let id): "\(articles)/\(id)"
         }
     }
 

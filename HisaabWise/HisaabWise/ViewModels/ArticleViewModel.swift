@@ -24,7 +24,7 @@ final class ArticleViewModel: BaseViewModel {
     }
 
     func fetch() async throws -> ArticleBody {
-        try await content.load(.article(id: id), as: ArticleBody.self)
+        try await content.load(.forArticle(id: id), as: ArticleBody.self)
     }
 
     /// An article with no sections is a body that arrived but says nothing — which is `.empty` rather than

@@ -110,6 +110,10 @@ struct HWSavingsMeter: View {
     private var track: some View {
         Capsule()
             .fill(
+                // `.leading`/`.trailing` rather than `.left`/`.right`: a `UnitPoint` of `.leading` **is** mirrored
+                // by the layout direction, so the "nothing saved" end of the gradient stays at the same end as the
+                // pin's origin under Arabic. Fixed points would have left the red end on the physical left while
+                // the pin travelled from the right.
                 LinearGradient(
                     colors: theme.palette.meter.stops,
                     startPoint: .leading,
@@ -122,15 +126,17 @@ struct HWSavingsMeter: View {
     }
 
     /// `.meter-now` — a light pin, centred on its position.
+    ///
+    /// **`padding(.leading:)` rather than `offset(x:)`, and that is the RTL fix.** An offset's `x` is always
+    /// screen-rightward whatever the layout direction, so under Arabic — where `.topLeading` has already moved the
+    /// origin to the right edge — a positive offset pushed the pin a full track-width outside the card. Leading
+    /// padding mirrors with the layout, which is what the design's `left: at%` does inside a `dir="rtl"` document.
     private func pin(in width: CGFloat) -> some View {
         Capsule()
             .fill(theme.palette.surface.background)
             .frame(width: Self.pinSize.width, height: Self.pinSize.height)
             .hwElevation(.small)
-            // Offset rather than padded, so the pin's centre lands on the position rather than its leading edge —
-            // and **RTL is the layout's**, not this calculation's: the offset is applied inside a container whose
-            // direction SwiftUI has already mirrored.
-            .offset(x: clamped * width - Self.pinSize.width / 2)
+            .padding(.leading, max(0, clamped * width - Self.pinSize.width / 2))
             .animation(reduceMotion ? nil : HWMotion.easeOut.animation(.slow), value: clamped)
             .accessibilityHidden(true)
     }

@@ -99,12 +99,11 @@ struct HomeView: BaseView {
                 if screen.spending.isFirstRun {
                     firstRun
                 } else {
+                    // **The donut draws the key itself.** `hwVisualisation` hands the same list to the chart as
+                    // its accessibility representation *and* as what replaces it above the size threshold, so a
+                    // second one here rendered the six rows twice at AX3 and walked VoiceOver through the
+                    // categories twice below it.
                     donut(screen)
-                    HWCategoryList(
-                        slices: Self.slices(screen),
-                        isolated: viewModel.isolated,
-                        onIsolate: { viewModel.isolate($0) }
-                    )
                     HWButton("home.spending.addMore", systemImage: "plus", action: onAddExpense)
                 }
             }
@@ -152,7 +151,9 @@ struct HomeView: BaseView {
         // Read as one sentence, and **as a value** so that isolating a slice re-announces the figure rather than
         // the caption (ADR-0012).
         .accessibilityElement(children: .ignore)
-        .accessibilityLabel(Text("home.spending.total"))
+        // The **isolated category's** name, not "Total spent": VoiceOver was announcing the caption for the
+        // whole ring while the visible caption read "Rent".
+        .accessibilityLabel(category.map { Text(verbatim: $0.name) } ?? Text("home.spending.total"))
         .accessibilityValue(Text("home.spending.readout.accessibilityValue \(figure) \(share)"))
         .animation(reduceMotion ? nil : HWMotion.easeOut.animation(.quick), value: viewModel.isolated)
     }
@@ -341,25 +342,17 @@ struct HomeView: BaseView {
         switch savings.verdict {
         case .met:
             "home.savings.foot.met \(savings.saved.display)"
-        case .low where savings.saved.minor == 0:
+        case _ where savings.saved.minor == 0:
+            // The design keys this on `saved <= 0` alone rather than on the verdict, and so does this: a month
+            // with nothing saved reads the same whatever the server calls it.
             "home.savings.foot.nothing"
-        default:
-            "home.savings.foot.remaining \(savings.saved.display) \(savings.remaining?.display ?? savings.goal.display)"
+        case .low, .onTrack:
+            // **`remaining` or nothing.** Substituting the goal for it — which this did until review — tells a
+            // user who has passed their goal that they still owe the whole of it, and `Verdict` degrades an
+            // unknown value to `onTrack`, so that was reachable from a server change alone.
+            savings.remaining.map { "home.savings.foot.remaining \(savings.saved.display) \($0.display)" }
+                ?? "home.savings.foot.met \(savings.saved.display)"
         }
-    }
-}
-
-/// The label half of ``HWReadRow``, for a `NavigationLink` — which supplies its own button behaviour, so the row
-/// cannot also be one.
-struct HWReadRowLabel: View {
-    let title: String
-    let systemImage: String
-    let accent: Int
-
-    var body: some View {
-        HWReadRow(title: title, systemImage: systemImage, accent: accent) {}
-            // The link is the control; the row's own button must not also take the tap.
-            .allowsHitTesting(false)
     }
 }
 

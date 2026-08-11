@@ -84,7 +84,7 @@ extension ArticleViewModel {
         let language = LanguageManager(selected: .english)
         let client = APIClient(
             baseURL: URL(string: "https://fixtures.invalid")!,
-            transport: FixtureTransport(stubs: [Endpoint.article(id: "scams"): outcome]),
+            transport: FixtureTransport(stubs: [Endpoint.articleBody(id: "scams"): outcome]),
             language: language,
             refreshTokens: InMemoryTokenStore()
         )

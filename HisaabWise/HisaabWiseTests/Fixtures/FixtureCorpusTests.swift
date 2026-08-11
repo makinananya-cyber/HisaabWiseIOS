@@ -115,7 +115,7 @@ struct FixtureCorpusTests {
 
         #expect(offenders.isEmpty, "a fixture names a path as a literal instead of through Endpoint: \(offenders)")
         // And the mapping is not empty, or the coverage test above would be reading an empty set. **Prefix
-        // matching**, because one route is parameterised: `Endpoint.article(id:)` builds
+        // matching**, because one route is parameterised: `Endpoint.articleBody(id:)` builds
         // `/v1/content/articles/scams` from the declared `/v1/content/articles`, and an instance of a route is
         // still that route. Equality would have forced either a literal per article id or a fixture claiming
         // nothing.

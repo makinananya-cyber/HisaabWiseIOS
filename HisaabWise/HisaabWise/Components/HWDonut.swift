@@ -94,7 +94,12 @@ struct HWDonut: View {
         // domain the tap landed, and `slice(at:in:)` turns that into a slice.
         .chartAngleSelection(value: $selectedValue)
         .onChange(of: selectedValue) { _, value in
-            guard let id = Self.slice(at: value, in: slices)?.id else { return }
+            // **Cleared every time**, and the `nil` case passed on rather than swallowed. Leaving the last angle
+            // in `@State` meant a tap on the same arc after un-isolating from a key row changed nothing —
+            // `onChange` never fired — and swallowing a `nil` left the ring isolated while the chart believed
+            // nothing was selected, so un-isolating by tapping outside took two presses.
+            let id = Self.slice(at: value, in: slices)?.id
+            if value != nil { selectedValue = nil }
             onIsolate(id)
         }
         .frame(width: Self.diameter, height: Self.diameter)

@@ -26,7 +26,27 @@ enum ContentResource: Hashable, Sendable {
     /// **The one resource with a parameter**, which is why this enum stopped being `String`-raw-valued: an
     /// article body is per-article and there are three of them today. The id is part of the cache key, so two
     /// articles cannot overwrite each other's file.
+    ///
+    /// Build it with ``forArticle(id:)`` rather than the case directly, so the id is sanitised **once, on the way
+    /// in**. Sanitising it in `key` alone — which is what this did until review — left the *URL* built from the
+    /// raw id, so `zakat_basics` and `zakatbasics` shared one cache key while fetching two different articles,
+    /// and the reader got whichever was cached first with a `304` confirming it.
     case article(id: String)
+
+    /// An article resource with its id reduced to letters, digits, and hyphens.
+    ///
+    /// The id arrives from a server payload and is used two ways — as a **file name** and as a **path segment** —
+    /// so one containing a slash would write outside the store's directory and travel up the route. Filtering at
+    /// the point of entry is what keeps the two consumers reading the same string.
+    static func forArticle(id: String) -> ContentResource {
+        .article(id: sanitised(id))
+    }
+
+    /// The characters an id may contain. Anything else is dropped rather than escaped: an article id is a slug the
+    /// content pipeline chose, and one that needs escaping is a content bug worth noticing.
+    private static func sanitised(_ id: String) -> String {
+        id.filter { $0.isLetter || $0.isNumber || $0 == "-" }
+    }
 
     /// The resources that exist without being asked for by id. `CaseIterable` cannot describe this enum any
     /// more, and a hand-written list of the three fixed ones is honest about that — the articles are enumerated
@@ -41,7 +61,7 @@ enum ContentResource: Hashable, Sendable {
         case .currencies: "currencies"
         case .securityQuestions: "securityQuestions"
         case .tips: "tips"
-        case .article(let id): "article-\(id.filter { $0.isLetter || $0.isNumber || $0 == "-" })"
+        case .article(let id): "article-\(Self.sanitised(id))"
         }
     }
 
