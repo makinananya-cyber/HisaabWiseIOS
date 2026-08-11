@@ -9,3 +9,7 @@ HW_API_BASE_URL = https:/$()/api.hisaabwise.invalid
 
 // No ATS exception: production is HTTPS. Only `Info-Debug.plist` carries one.
 INFOPLIST_FILE = Configuration/Info.plist
+
+// The hosted legal pages (Rule 7 — placeholder domain until the owner's Cloudflare credentials arrive).
+HW_TERMS_URL = https:/$()/hisaabwise.invalid/terms
+HW_PRIVACY_URL = https:/$()/hisaabwise.invalid/privacy

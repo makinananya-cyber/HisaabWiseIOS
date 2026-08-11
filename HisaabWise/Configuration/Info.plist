@@ -12,5 +12,9 @@
 	     uses. -->
 	<key>HWAPIBaseURL</key>
 	<string>$(HW_API_BASE_URL)</string>
+	<key>HWTermsURL</key>
+	<string>$(HW_TERMS_URL)</string>
+	<key>HWPrivacyURL</key>
+	<string>$(HW_PRIVACY_URL)</string>
 </dict>
 </plist>

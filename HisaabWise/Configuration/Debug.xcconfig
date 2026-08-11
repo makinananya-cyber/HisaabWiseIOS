@@ -8,3 +8,9 @@ HW_API_BASE_URL = http:/$()/localhost:8787
 // cleartext allowance cannot reach a shipped build. It names `localhost` and nothing else, and
 // `NSAllowsArbitraryLoads` appears in no plist in this repo (ADR-0010, ADR-0022).
 INFOPLIST_FILE = Configuration/Info-Debug.plist
+
+// The hosted legal pages. Debug points at production's copies rather than a local one: nothing
+// serves them locally, and they are public read-only pages with nothing to stage against (Rule 7 —
+// the domain is a placeholder until the owner's Cloudflare credentials arrive).
+HW_TERMS_URL = https:/$()/hisaabwise.invalid/terms
+HW_PRIVACY_URL = https:/$()/hisaabwise.invalid/privacy

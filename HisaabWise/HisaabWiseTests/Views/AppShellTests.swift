@@ -80,7 +80,32 @@ struct AppShellTests {
     /// hosted render, and that is the snapshot harness's problem (#9).
     @Test("the shell builds with the environment it is handed")
     func theShellBuilds() {
-        #expect(TestBench.render(AppShell().environment(viewModels())) != nil)
+        let session = SessionCoordinator(
+            client: TestBench.client(FixtureTransport()),
+            keptStore: InMemoryTokenStore(),
+            transientStore: InMemoryTokenStore()
+        )
+
+        #expect(TestBench.render(AppShell().environment(viewModels()).environment(session)) != nil)
+    }
+
+    // MARK: - The verification banner
+
+    /// #15 — an unverified account **can use the app** and sees a reminder above the tabs.
+    ///
+    /// Asserted as a value rather than through a render, for the reason the root's world branch is: the shell is
+    /// a `TabView`, and `ImageRenderer` draws one as a single unsupported-view glyph whether the strip is there
+    /// or not. The three inputs are the whole rule.
+    @Test("the verification banner shows only for a signed-in, unverified account")
+    func theVerificationBannerFollowsTheIdentity() throws {
+        let verified = try JSONDecoder().decode(SessionUser.self, from: TestBench.payload(.meVerified))
+        let unverified = try JSONDecoder().decode(SessionUser.self, from: TestBench.payload(.meUnverified))
+
+        #expect(AppShell.showsVerificationBanner(for: unverified))
+        #expect(!AppShell.showsVerificationBanner(for: verified))
+        // **`nil` shows nothing.** The identity arrives one request after the shell does, and a banner that
+        // flashed on every cold launch would be an accusation the app then withdraws.
+        #expect(!AppShell.showsVerificationBanner(for: nil))
     }
 
     @Test("every unwritten tab root renders in the state its view model starts in")

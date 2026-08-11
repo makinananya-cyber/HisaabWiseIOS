@@ -13,6 +13,18 @@
         }
       }
     },
+    "component.combo.hint": {
+      "comment": "VoiceOver hint on a picker trigger — the design's aria-haspopup=\"listbox\", said in words.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opens a list to choose from"
+          }
+        }
+      }
+    },
     "component.field.revealPassword": {
       "comment": "The eye button inside a password field.",
       "extractionState": "manual",
@@ -21,6 +33,66 @@
           "stringUnit": {
             "state": "translated",
             "value": "Show password"
+          }
+        }
+      }
+    },
+    "component.money.accessibilityEmpty %@": {
+      "comment": "VoiceOver value for an empty money field. %@ is the ISO currency code.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No amount yet, in %@"
+          }
+        }
+      }
+    },
+    "component.money.accessibilityValue %@ %@": {
+      "comment": "VoiceOver value for a money field: %1$@ is the number typed, %2$@ the ISO currency code. Numbered so a language can put the code first.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ %2$@"
+          }
+        }
+      }
+    },
+    "component.phone.accessibilityValue %@ %@": {
+      "comment": "VoiceOver value for the dial-code trigger: %1$@ is the dial code, %2$@ the ISO country code.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@, %2$@"
+          }
+        }
+      }
+    },
+    "component.picker.clearSearch": {
+      "comment": "VoiceOver label for the button that empties a picker's search box.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Clear search"
+          }
+        }
+      }
+    },
+    "component.picker.empty": {
+      "comment": "The design's .empty state inside a picker sheet.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nothing matched that search."
           }
         }
       }
@@ -37,6 +109,30 @@
         }
       }
     },
+    "component.strength.label": {
+      "comment": "VoiceOver label for the password strength meter. The level is announced as its value.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Password strength"
+          }
+        }
+      }
+    },
+    "component.strength.none": {
+      "comment": "VoiceOver value for the strength meter before anything has been typed.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not rated yet"
+          }
+        }
+      }
+    },
     "home.empty": {
       "comment": "Home, when the server has figures for no months yet.",
       "extractionState": "manual",
@@ -49,8 +145,8 @@
         }
       }
     },
-    "home.income.accessibilityLabel": {
-      "comment": "VoiceOver label for the income figure. %@ is the server-formatted amount and is never reformatted.",
+    "home.income.accessibilityLabel %@": {
+      "comment": "VoiceOver label for the income figure. %@ is the server-formatted amount and is never reformatted. The key carries the specifier because that is what SwiftUI looks up for `Text(\"key \\(value)\")`.",
       "extractionState": "manual",
       "localizations": {
         "en": {
@@ -193,6 +289,978 @@
         }
       }
     },
+    "registration.back.toDetails": {
+      "comment": "VoiceOver label on the step-back control, from the design's own aria-label.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Back to your details"
+          }
+        }
+      }
+    },
+    "registration.back.toMoney": {
+      "comment": "VoiceOver label on the step-back control from step 3, from the design's own aria-label.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Back to your money details"
+          }
+        }
+      }
+    },
+    "registration.confirmPassword.label": {
+      "comment": "Registration step 1 field label.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Confirm password"
+          }
+        }
+      }
+    },
+    "registration.country.search": {
+      "comment": "Placeholder in the dial-code picker's search box. Matches a name, an ISO code, or a dial code.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Search country or code"
+          }
+        }
+      }
+    },
+    "registration.country.title": {
+      "comment": "Title of the dial-code picker sheet.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Select country code"
+          }
+        }
+      }
+    },
+    "registration.dateOfBirth.label": {
+      "comment": "Registration step 1 field label.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Date of birth"
+          }
+        }
+      }
+    },
+    "registration.dateOfBirth.placeholder": {
+      "comment": "Shown in the date field before a date has been chosen.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose your date of birth"
+          }
+        }
+      }
+    },
+    "registration.email.label": {
+      "comment": "Registration step 1 field label. Email is the identity (invariant 4).",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Email address"
+          }
+        }
+      }
+    },
+    "registration.error.dateOfBirthMissing": {
+      "comment": "Registration validation message.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Please choose your date of birth."
+          }
+        }
+      }
+    },
+    "registration.error.emailInvalid": {
+      "comment": "Registration validation message.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enter a valid email address."
+          }
+        }
+      }
+    },
+    "registration.error.emailTaken": {
+      "comment": "Shown on the email field when the server refuses the registration because the address is taken. The only per-field failure registration can receive, and the only way the client learns an address is registered.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "That address already has an account. Sign in instead, or use another one."
+          }
+        }
+      }
+    },
+    "registration.error.firstAnswerMissing": {
+      "comment": "Registration validation message.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Please answer your first question."
+          }
+        }
+      }
+    },
+    "registration.error.firstQuestionMissing": {
+      "comment": "Registration validation message.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose your first question."
+          }
+        }
+      }
+    },
+    "registration.error.goalMissing": {
+      "comment": "Registration validation message on the goal field, reachable only through Submit.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enter a goal, or tap Skip for now."
+          }
+        }
+      }
+    },
+    "registration.error.nameMissing": {
+      "comment": "Registration validation message.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Please tell us your name."
+          }
+        }
+      }
+    },
+    "registration.error.passwordTooShort": {
+      "comment": "Registration validation message. 8+ everywhere (invariant 4).",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Use at least 8 characters."
+          }
+        }
+      }
+    },
+    "registration.error.passwordsDoNotMatch": {
+      "comment": "Registration validation message.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Passwords don't match yet."
+          }
+        }
+      }
+    },
+    "registration.error.phoneInvalid": {
+      "comment": "Registration validation message. The number is optional at launch, which the message says so the field does not read as required.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enter a valid phone number, or leave it blank."
+          }
+        }
+      }
+    },
+    "registration.error.salaryMissing": {
+      "comment": "Registration validation message.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enter your salary as a number."
+          }
+        }
+      }
+    },
+    "registration.error.secondAnswerMissing": {
+      "comment": "Registration validation message.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Please answer your second question."
+          }
+        }
+      }
+    },
+    "registration.error.secondQuestionMissing": {
+      "comment": "Registration validation message.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose a second question."
+          }
+        }
+      }
+    },
+    "registration.error.secondQuestionRepeated": {
+      "comment": "Registration validation message. The picker already omits the other slot's question; this covers the two slots being filled in either order.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your two questions need to be different."
+          }
+        }
+      }
+    },
+    "registration.error.termsNotAccepted": {
+      "comment": "Registration validation message, drawn under the checkbox rather than in a toast.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Please tick the Terms & Privacy Policy to continue."
+          }
+        }
+      }
+    },
+    "registration.error.tooYoung": {
+      "comment": "Registration validation message. The number matches RegistrationViewModel.minimumAge, which RegistrationCopyTests asserts.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You need to be at least 13 to open an account."
+          }
+        }
+      }
+    },
+    "registration.name.label": {
+      "comment": "Registration step 1 field label.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Full name"
+          }
+        }
+      }
+    },
+    "registration.one.action": {
+      "comment": "The button that validates step 1 and moves to step 2. It creates nothing — the account is created at the end of step 3.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Register"
+          }
+        }
+      }
+    },
+    "registration.one.stepLabel": {
+      "comment": "The design's .steplab. A whole sentence rather than two interpolated numbers, so a translation owns the word order.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Step 1 of 3"
+          }
+        }
+      }
+    },
+    "registration.one.subtitle": {
+      "comment": "Registration step 1 subtitle.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "First the basics — this is all we need to open your account."
+          }
+        }
+      }
+    },
+    "registration.one.title.first": {
+      "comment": "Registration step 1 headline, first line.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Start in a minute."
+          }
+        }
+      }
+    },
+    "registration.one.title.second": {
+      "comment": "Registration step 1 headline, emphasised second line.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Build the habit for life."
+          }
+        }
+      }
+    },
+    "registration.password.label": {
+      "comment": "Registration step 1 field label. 8+ characters everywhere (invariant 4).",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Create password"
+          }
+        }
+      }
+    },
+    "registration.password.strength.fair": {
+      "comment": "Password strength meter level 2 of 4.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fair"
+          }
+        }
+      }
+    },
+    "registration.password.strength.good": {
+      "comment": "Password strength meter level 3 of 4.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Good"
+          }
+        }
+      }
+    },
+    "registration.password.strength.strong": {
+      "comment": "Password strength meter level 4 of 4.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Strong"
+          }
+        }
+      }
+    },
+    "registration.password.strength.weak": {
+      "comment": "Password strength meter level 1 of 4. Feedback only; nothing is refused for being weak.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Weak"
+          }
+        }
+      }
+    },
+    "registration.phone.dial.accessibilityLabel": {
+      "comment": "VoiceOver label on the dial-code trigger, from the design's own aria-label.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Change country code"
+          }
+        }
+      }
+    },
+    "registration.phone.label": {
+      "comment": "Registration step 1 field label. Optional at launch.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Phone number"
+          }
+        }
+      }
+    },
+    "registration.reference.retry": {
+      "comment": "Asks for the currency, country, and question lists again after they would not load.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Try again"
+          }
+        }
+      }
+    },
+    "registration.signIn.action": {
+      "comment": "Goes back to sign-in from registration step 1.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sign in instead"
+          }
+        }
+      }
+    },
+    "registration.signIn.prompt": {
+      "comment": "The prompt above the way back to sign-in, on registration step 1.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Already with us? Welcome back!"
+          }
+        }
+      }
+    },
+    "registration.terms": {
+      "comment": "The consent checkbox on registration step 1. A blocker, not a preference.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "I agree to the Terms & Privacy Policy"
+          }
+        }
+      }
+    },
+    "registration.terms.privacy": {
+      "comment": "Opens the hosted Privacy Policy page beside the consent checkbox.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Read the Privacy Policy"
+          }
+        }
+      }
+    },
+    "registration.terms.terms": {
+      "comment": "Opens the hosted Terms of Use page beside the consent checkbox.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Read the Terms"
+          }
+        }
+      }
+    },
+    "registration.three.action": {
+      "comment": "The button that creates the account — the one atomic POST /v1/auth/register.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Submit"
+          }
+        }
+      }
+    },
+    "registration.three.goal.label": {
+      "comment": "Registration step 3 field label.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Monthly savings goal"
+          }
+        }
+      }
+    },
+    "registration.three.hint.above %@": {
+      "comment": "The hint when the typed goal is above the suggestion. %@ is the whole-number percentage.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "That's %@%% of your salary — ahead of the 20%% rule. Nice."
+          }
+        }
+      }
+    },
+    "registration.three.hint.below %@": {
+      "comment": "The hint when the typed goal is below the suggestion. %@ is the whole-number percentage.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "That's %@%% of your salary — a little under the 20%% rule, but a start is a start."
+          }
+        }
+      }
+    },
+    "registration.three.hint.empty": {
+      "comment": "The hint under the goal field when nothing has been typed.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Leave this blank and tap Skip for now to use the suggested amount."
+          }
+        }
+      }
+    },
+    "registration.three.hint.onTarget %@": {
+      "comment": "The hint when the typed goal is exactly the suggestion. %@ is the whole-number percentage.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "That's %@%% of your salary — right on the rule."
+          }
+        }
+      }
+    },
+    "registration.three.perMonth": {
+      "comment": "Follows the suggested figure on the statement card.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "a month"
+          }
+        }
+      }
+    },
+    "registration.three.rule.body": {
+      "comment": "Body of the 20% statement card.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A well-tested rule of thumb is to put 20% of your salary towards savings each month. Based on the salary you gave us, that comes to:"
+          }
+        }
+      }
+    },
+    "registration.three.rule.eyebrow": {
+      "comment": "Eyebrow on the statement card explaining the suggested savings goal.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The 20% rule"
+          }
+        }
+      }
+    },
+    "registration.three.rule.footer": {
+      "comment": "Footer of the 20% statement card.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "If you're happy with this amount, put it in below. Otherwise enter a value of your own — you can change it any time from your account."
+          }
+        }
+      }
+    },
+    "registration.three.skip": {
+      "comment": "Creates the account with the suggested goal, recorded as not chosen by the user.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Skip for now"
+          }
+        }
+      }
+    },
+    "registration.three.stepLabel": {
+      "comment": "The design's .steplab for step 3.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Step 3 of 3"
+          }
+        }
+      }
+    },
+    "registration.three.subtitle": {
+      "comment": "Registration step 3 subtitle.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "One number to aim at each month. Change it whenever you like."
+          }
+        }
+      }
+    },
+    "registration.three.title.first": {
+      "comment": "Registration step 3 headline, first line.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Set up your goals."
+          }
+        }
+      }
+    },
+    "registration.three.title.second": {
+      "comment": "Registration step 3 headline, emphasised second line.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Small and steady wins."
+          }
+        }
+      }
+    },
+    "registration.three.useSuggested": {
+      "comment": "Puts 20% of the salary in the goal field. Offered only when the field holds something else.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Use the suggested amount"
+          }
+        }
+      }
+    },
+    "registration.two.action": {
+      "comment": "The button that validates step 2 and moves to step 3.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Next"
+          }
+        }
+      }
+    },
+    "registration.two.answer.label": {
+      "comment": "Label on a security answer field. The answer is sent once and hashed server-side (invariant 5).",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your answer"
+          }
+        }
+      }
+    },
+    "registration.two.currency.hint": {
+      "comment": "The hint under the currency picker.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "All your budgets, totals and reports will be shown in this currency."
+          }
+        }
+      }
+    },
+    "registration.two.currency.label": {
+      "comment": "Caption on the display-currency picker.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Currency"
+          }
+        }
+      }
+    },
+    "registration.two.currency.placeholder": {
+      "comment": "Shown on the currency picker before a currency has been chosen.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose a currency"
+          }
+        }
+      }
+    },
+    "registration.two.currency.search": {
+      "comment": "Placeholder in the currency picker's search box.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Search currency or code"
+          }
+        }
+      }
+    },
+    "registration.two.currency.title": {
+      "comment": "Title of the currency picker sheet.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Select currency"
+          }
+        }
+      }
+    },
+    "registration.two.currency.value %@ %@": {
+      "comment": "The chosen currency as the picker shows it: %1$@ is the name and %2$@ the ISO code, both server content. Numbered so a language can order them its own way.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ · %2$@"
+          }
+        }
+      }
+    },
+    "registration.two.money.section": {
+      "comment": "Section heading above the currency and salary fields.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your money"
+          }
+        }
+      }
+    },
+    "registration.two.question.one.label": {
+      "comment": "Caption on the first security-question picker.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Question 1"
+          }
+        }
+      }
+    },
+    "registration.two.question.one.title": {
+      "comment": "Title of the first security-question picker sheet.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Security question 1"
+          }
+        }
+      }
+    },
+    "registration.two.question.placeholder": {
+      "comment": "Shown on a security-question picker before a question has been chosen.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose a question"
+          }
+        }
+      }
+    },
+    "registration.two.question.search": {
+      "comment": "Placeholder in the security-question picker's search box.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Search questions"
+          }
+        }
+      }
+    },
+    "registration.two.question.two.label": {
+      "comment": "Caption on the second security-question picker.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Question 2"
+          }
+        }
+      }
+    },
+    "registration.two.question.two.title": {
+      "comment": "Title of the second security-question picker sheet.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Security question 2"
+          }
+        }
+      }
+    },
+    "registration.two.salary.label": {
+      "comment": "Registration step 2 field label. The last place in the app a salary is typed rather than read from the server (invariant 2).",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Monthly salary"
+          }
+        }
+      }
+    },
+    "registration.two.security.hint": {
+      "comment": "The hint under the security questions heading.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "If you ever lose access to your email and phone, these two answers are how we know it's really you."
+          }
+        }
+      }
+    },
+    "registration.two.security.section": {
+      "comment": "Section heading above the two security questions.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Security questions"
+          }
+        }
+      }
+    },
+    "registration.two.stepLabel": {
+      "comment": "The design's .steplab for step 2.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Step 2 of 3"
+          }
+        }
+      }
+    },
+    "registration.two.subtitle": {
+      "comment": "Registration step 2 subtitle.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your currency, your salary, and two questions that keep the account yours."
+          }
+        }
+      }
+    },
+    "registration.two.title.first": {
+      "comment": "Registration step 2 headline, first line.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nearly there."
+          }
+        }
+      }
+    },
+    "registration.two.title.second": {
+      "comment": "Registration step 2 headline, emphasised second line.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Now the money bit."
+          }
+        }
+      }
+    },
     "shell.logout.action": {
       "comment": "The log out control on Account, and the destructive action in its confirmation dialog.",
       "extractionState": "manual",
@@ -325,6 +1393,18 @@
         }
       }
     },
+    "shell.verifyEmail": {
+      "comment": "The strip above the tabs for an account whose email is not verified yet. Not a gate — the app is fully usable; ADR-0008's foreground revalidation is what makes it disappear.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Check your inbox and verify your email address."
+          }
+        }
+      }
+    },
     "signin.action": {
       "comment": "Sign-in submit button.",
       "extractionState": "manual",
@@ -345,18 +1425,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "Email"
-          }
-        }
-      }
-    },
-    "signin.email.placeholder": {
-      "comment": "Sign-in email field placeholder.",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "you@example.com"
           }
         }
       }

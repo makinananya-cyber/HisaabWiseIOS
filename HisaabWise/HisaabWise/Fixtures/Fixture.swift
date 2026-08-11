@@ -66,6 +66,22 @@ enum Fixture: String, CaseIterable, Sendable {
     /// `PUT /v1/me/language`, agreeing to Arabic.
     case languageArabic = "language-arabic"
 
+    /// `GET /v1/content/reference/countries` — all 251, as the design's own `COUNTRIES` constant carries them.
+    ///
+    /// **The counts are the acceptance test** (the workspace's content rules), so the corpus holds the whole
+    /// list rather than a trimmed sample: a picker built against six countries is a picker whose search box and
+    /// scroll position have never been exercised.
+    case referenceCountries = "reference-countries"
+
+    /// `GET /v1/content/reference/currencies` — all 160.
+    case referenceCurrencies = "reference-currencies"
+
+    /// `GET /v1/content/security-questions` — the 14-question bank, keyed `sq01`…`sq14`.
+    ///
+    /// The ids are the client's own: the design carries the English text and nothing else, and §4.3 **[FIX]**
+    /// makes the id the identity. Recorded in `CONTEXT.md` as a shape the backend has to agree to.
+    case referenceSecurityQuestions = "reference-security-questions"
+
     /// `PUT /v1/me/language`, answering English.
     ///
     /// Both languages are in the corpus because the switch's failure case is a server that answers with a
@@ -83,10 +99,15 @@ enum Fixture: String, CaseIterable, Sendable {
         case .budgetINR, .budgetAED, .budgetDrifted: [Endpoint.budget]
         // Two paths, one set of bytes: a refresh answers with a login's shape, which is the whole of
         // ADR-0023's rotation decision expressed as a fixture.
-        case .sessionTokens: [Endpoint.login, Endpoint.refresh]
+        // Three paths, one set of bytes: a refresh answers with a login's shape (ADR-0023), and so does
+        // registration — a new account is signed in by the same token pair (#15).
+        case .sessionTokens: [Endpoint.login, Endpoint.refresh, Endpoint.register]
         case .meVerified, .meUnverified: [Endpoint.me]
         case .logoutAcknowledged: [Endpoint.logout]
         case .languageArabic, .languageEnglish: [Endpoint.language]
+        case .referenceCountries: [Endpoint.path(for: .countries)]
+        case .referenceCurrencies: [Endpoint.path(for: .currencies)]
+        case .referenceSecurityQuestions: [Endpoint.path(for: .securityQuestions)]
         case .moneyExponents: []
         }
     }

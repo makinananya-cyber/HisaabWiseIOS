@@ -266,7 +266,7 @@ struct SignInTests {
     func screenCopyExists() throws {
         try CatalogueCopy.expectEnglishCopy(forKeys: [
             "signin.title.first", "signin.title.second", "signin.subtitle",
-            "signin.email.label", "signin.email.placeholder", "signin.password.label",
+            "signin.email.label", "signin.password.label",
             "signin.keepSignedIn", "signin.forgot", "signin.action",
             "signin.register.prompt", "signin.register.action",
             "signin.error.support", "signin.pendingDeletion.action",

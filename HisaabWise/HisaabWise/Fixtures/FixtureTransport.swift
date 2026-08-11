@@ -13,13 +13,27 @@ actor FixtureTransport: Transport {
     /// What the transport should do when a request arrives.
     enum Outcome: Sendable {
         /// The server answered. Any status code, including a failure the client must interpret.
-        case response(status: Int, body: Data)
+        ///
+        /// - Parameter headers: response headers beyond `Content-Type`. Empty for almost everything; an `ETag`
+        ///   for the cacheable content routes, which is the one thing a caller cannot assert about without the
+        ///   server having said it (invariant 8, ADR-0009).
+        case response(status: Int, body: Data, headers: [String: String] = [:])
         /// The network did not answer.
         case failure(any Error & Sendable)
 
         /// A `200` carrying a fixture file's bytes.
         static func ok(_ fixture: Fixture) throws -> Outcome {
             .response(status: 200, body: try fixture.data())
+        }
+
+        /// A `200` carrying a fixture's bytes **and an ETag**, as a content route answers.
+        static func ok(_ fixture: Fixture, etag: String) throws -> Outcome {
+            .response(status: 200, body: try fixture.data(), headers: ["ETag": etag])
+        }
+
+        /// `304 Not Modified`, with no body — what a revalidation earns when nothing has changed.
+        static var notModified: Outcome {
+            .response(status: 304, body: Data())
         }
 
         /// The failure a device in a tunnel produces.
@@ -153,13 +167,13 @@ actor FixtureTransport: Transport {
         switch outcome {
         case .failure(let error):
             throw error
-        case .response(let status, let body):
+        case .response(let status, let body, let headers):
             guard let url = request.url,
                   let response = HTTPURLResponse(
                       url: url,
                       statusCode: status,
                       httpVersion: "HTTP/1.1",
-                      headerFields: ["Content-Type": "application/json"]
+                      headerFields: ["Content-Type": "application/json"].merging(headers) { _, header in header }
                   )
             else {
                 throw FixtureTransportError.malformedStub(path: recordedRequest.path)

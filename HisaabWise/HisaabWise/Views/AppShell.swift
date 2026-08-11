@@ -65,11 +65,24 @@ struct AppShell: View {
     /// (issue #5).
     @Environment(TabViewModels.self) private var viewModels
 
+    /// Read for one thing: whether the signed-in account has verified its email (#15).
+    @Environment(SessionCoordinator.self) private var session
+
     /// Which tab is showing. `@State`, so it survives a re-render and nothing else has to own it — the
     /// selection is not app state, it is where the user is.
     @State private var selection: AppTab = .home
 
     var body: some View {
+        VStack(spacing: 0) {
+            if Self.showsVerificationBanner(for: session.user) {
+                verificationBanner
+            }
+
+            tabs
+        }
+    }
+
+    private var tabs: some View {
         TabView(selection: $selection) {
             // Over `AppTab.allCases`, so the tab bar cannot come to disagree with the set about how many tabs
             // there are or what order they are in. The five roots still differ, and `root(_:)` is where.
@@ -79,6 +92,45 @@ struct AppShell: View {
         }
         // The design's `.tab.on{color:var(--galaxy)}`, which on the in-app surface is the ink role.
         .tint(theme.palette.surface.ink)
+    }
+
+    /// **Whether to show the "verify your email" banner** (#15).
+    ///
+    /// `nil` shows nothing: the identity has not come back yet, and a banner that flashed on every cold launch
+    /// before `GET /v1/me` answered would be an accusation the app then withdraws. An unverified account
+    /// **can use the app** — this is a reminder, not a gate, which is why it is a strip above the tabs and not a
+    /// screen in front of them.
+    ///
+    /// A function over the value rather than a computed property, so the rule is assertable without a session:
+    /// there are three inputs and all three matter.
+    static func showsVerificationBanner(for user: SessionUser?) -> Bool {
+        guard let user else { return false }
+        return !user.emailVerified
+    }
+
+    /// The strip itself. It carries no action: verification happens in the email, and ADR-0008's foreground
+    /// revalidation is what makes the banner disappear when the user comes back from Safari having tapped the
+    /// link — a "resend" control belongs to the Account screen (#17), which owns the account's own settings.
+    private var verificationBanner: some View {
+        HStack(spacing: 10) {
+            Image(systemName: "envelope.badge")
+                .font(.hw(.body))
+                .foregroundStyle(theme.palette.accent.base)
+                .accessibilityHidden(true)
+
+            Text("shell.verifyEmail")
+                .font(.hw(.caption))
+                .foregroundStyle(theme.palette.surface.ink)
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .padding(.horizontal, 18)
+        .padding(.vertical, 11)
+        .frame(maxWidth: .infinity)
+        .background(theme.palette.accent.tint)
+        // One element, read as a whole, and **not** a header: it is a notice above the tabs rather than the
+        // title of anything (ADR-0012).
+        .accessibilityElement(children: .combine)
     }
 
     /// One stack per tab, wrapped here rather than inside each screen: a screen that owned its own

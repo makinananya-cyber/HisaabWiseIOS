@@ -26,6 +26,13 @@ final class AppEnvironment {
     let language: LanguageManager
     let session: SessionCoordinator
 
+    /// The cacheable content, and the ETags it was fetched with (ADR-0009). Registration is its first caller —
+    /// three reference lists it cannot ask a user to type instead.
+    let content: ContentLoader
+
+    /// The two hosted pages the registration consent links to, from build configuration (ADR-0010).
+    let legal: LegalLinks
+
     /// - Parameters:
     ///   - language: the app's language choice, over the store that **persists** it — `UserDefaults`, so
     ///     that a chosen language survives a relaunch. `LanguageManager`'s own default store is in-memory,
@@ -35,16 +42,22 @@ final class AppEnvironment {
     ///     substitutes an in-memory store so that running the suite does not write a credential to the
     ///     machine it runs on.
     ///   - transientTokens: where an unkept session lives — memory, ending with the process (ADR-0007).
+    ///   - contentStore: where the cacheable lists are kept between launches. On disk in the app; a test
+    ///     substitutes an in-memory store, for the same reason `keptTokens` is substituted — running the suite
+    ///     must not leave files in the Caches directory of the machine it runs on.
     init(
         baseURL: URL,
+        legal: LegalLinks,
         transport: any Transport,
         theme: ThemeManager = ThemeManager(),
         language: LanguageManager = LanguageManager(store: UserDefaultsLanguageStore()),
         keptTokens: any TokenStore = KeychainTokenStore(),
-        transientTokens: any TokenStore = InMemoryTokenStore()
+        transientTokens: any TokenStore = InMemoryTokenStore(),
+        contentStore: any ContentStore = FileContentStore()
     ) {
         self.theme = theme
         self.language = language
+        self.legal = legal
         let client = APIClient(
             baseURL: baseURL,
             transport: transport,
@@ -65,6 +78,7 @@ final class AppEnvironment {
             keptStore: keptTokens,
             transientStore: transientTokens
         )
+        content = ContentLoader(client: client, store: contentStore)
     }
 
     func makeHomeViewModel() -> HomeViewModel {
@@ -79,6 +93,15 @@ final class AppEnvironment {
     /// client.
     func makeTabViewModels() -> TabViewModels {
         TabViewModels(home: makeHomeViewModel())
+    }
+
+    /// A registration form, made **fresh each time the screen is pushed** (#15).
+    ///
+    /// Not held, and that is a security property rather than a lifetime preference: this object holds a
+    /// password, two security answers, a date of birth, and a salary. Popping the screen is what frees them, so
+    /// a stored instance would keep an abandoned registration in memory for the life of the app.
+    func makeRegistrationViewModel() -> RegistrationViewModel {
+        RegistrationViewModel(session: session, content: content, language: language, legal: legal)
     }
 }
 

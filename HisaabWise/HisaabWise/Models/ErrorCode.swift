@@ -53,4 +53,12 @@ extension ErrorCode {
     /// sentence is handled by the screen that owns the flow — sign-in offers the restore path (#14), and #24
     /// draws the screen behind it.
     static let accountPendingDeletion = ErrorCode(rawValue: "ACCOUNT_PENDING_DELETION")
+
+    /// Registration refused because the email already has an account.
+    ///
+    /// **The only way the client ever learns an address is taken**, and only in response to a submission the user
+    /// made — there is deliberately no email-availability endpoint, because one would answer "does this person
+    /// bank here" to anybody who asked (#15). Not in `ErrorCopy` either: it is a *field* error on step 1, which
+    /// the screen that owns the form draws.
+    static let emailTaken = ErrorCode(rawValue: "EMAIL_TAKEN")
 }

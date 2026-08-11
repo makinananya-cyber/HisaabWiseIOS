@@ -13,6 +13,13 @@ enum TestBench {
     /// should fail, not succeed slowly.
     static let baseURL = URL(string: "https://fixtures.invalid")!
 
+    /// The two hosted legal pages, on the same unreachable host. A suite never opens them — what the tests care
+    /// about is that the graph carries what the build configuration said, not what is at the other end.
+    static let legal = LegalLinks(
+        terms: URL(string: "https://fixtures.invalid/terms")!,
+        privacy: URL(string: "https://fixtures.invalid/privacy")!
+    )
+
     /// A client over `transport`, in a language the test picked.
     ///
     /// `@MainActor` because the language manager is, and the real one is what goes in: `LanguageSource`

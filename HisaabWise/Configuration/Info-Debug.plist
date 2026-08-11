@@ -7,6 +7,10 @@
 	     in every build, and ATS is not expressible as a build setting. -->
 	<key>HWAPIBaseURL</key>
 	<string>$(HW_API_BASE_URL)</string>
+	<key>HWTermsURL</key>
+	<string>$(HW_TERMS_URL)</string>
+	<key>HWPrivacyURL</key>
+	<string>$(HW_PRIVACY_URL)</string>
 
 	<!-- `wrangler dev` serves cleartext HTTP on the loopback interface, so a Debug build needs an
 	     exception to reach it (ADR-0010).

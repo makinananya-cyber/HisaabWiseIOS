@@ -20,6 +20,10 @@ struct HWTextField: View {
     /// The `.fld-lab` above the box. Always app copy — a field's name is never a server string.
     private let label: LocalizedStringResource
     @Binding private var text: String
+    /// The greyed text inside an empty box. **`nil` draws nothing**, which is the design's own behaviour:
+    /// `.input-wrap input::placeholder{color:transparent}` hides it and floats the label into its place instead.
+    /// Here the label always sits *above* the box, so a placeholder repeating it would print the field's name
+    /// twice — which is what this component did until #15.
     private let placeholder: LocalizedStringResource?
     /// The `.field-ico` slot. `nil` draws the box without one, as the design's plain `.ctrl` does.
     private let systemImage: String?
@@ -101,30 +105,32 @@ struct HWTextField: View {
         appearance == .brand ? theme.palette.brand.ink : theme.palette.surface.ink
     }
 
-    /// `.fld-lab`'s colour. `hwLabel()` resolves the **surface** ink, which on the galaxy ground is very nearly
-    /// invisible — the first build of sign-in had two fields whose labels could not be read. On `surface` the
-    /// modifier's own colour is correct and is left alone.
-    private var labelInk: Color {
-        appearance == .brand ? theme.palette.brand.inkAccent.opacity(0.9) : theme.palette.surface.inkSecondary
+    /// What the caret and the placeholder take.
+    private var caretColour: Color {
+        appearance == .brand ? theme.palette.brand.inkAccent : theme.palette.accent.base
     }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 7) {
             Text(label)
-                .hwLabel()
-                // `.fld-lab` is a surface colour, and on the galaxy ground it is very nearly invisible — which
-                // is what the first build of sign-in looked like. The label is the one part of the field that
-                // has to be legible before anything is typed into it.
-                .foregroundStyle(labelInk)
+                // The appearance goes *into* the style. An outer `.foregroundStyle` here — which is what this
+                // line was until #15 — is overridden by the one inside `HWLabelStyle`, so the label took the
+                // surface's ink on the galaxy ground and could not be read.
+                .hwLabel(appearance)
                 // The field below carries this as its own VoiceOver label, so announcing it twice is the
                 // noise ADR-0012 warns about.
                 .accessibilityHidden(true)
 
             box
-                .animation(HWMotion.easeInOut.animation(.standard), value: isFocused)
-                .animation(HWMotion.easeInOut.animation(.standard), value: isInvalid)
+                .animation(reduceMotion ? nil : HWMotion.easeInOut.animation(.standard), value: isFocused)
+                .animation(reduceMotion ? nil : HWMotion.easeInOut.animation(.standard), value: isInvalid)
 
             if let error {
+                // **Left in the accessibility tree, and also delivered as the field's hint.** It was hint-only
+                // until review, which sounded tidier and is not: a hint is spoken last, after a delay, and can be
+                // switched off entirely (VoiceOver ▸ Verbosity ▸ Speak Hints) — with it off, "use at least 8
+                // characters" was unreachable by any means. The small duplication buys a message that cannot be
+                // configured away, on a screen whose copy was moved out of a toast for exactly that reason.
                 Text(error)
                     .font(.hw(.caption))
                     .foregroundStyle(danger)
@@ -132,12 +138,13 @@ struct HWTextField: View {
                     // The design shakes the box to draw the eye. Under Reduce Motion the message
                     // cross-fades in instead of sliding — replaced, not removed (ADR-0012).
                     .transition(reduceMotion ? .opacity : .move(edge: .top).combined(with: .opacity))
-                    // Read as the field's hint, at the moment the field is focused, rather than as a
-                    // separate element a VoiceOver user has to go looking for.
-                    .accessibilityHidden(true)
             }
         }
-        .animation(HWMotion.easeOut.animation(.standard), value: isInvalid)
+        // **`nil` under Reduce Motion, not a shorter curve.** The `.transition` above governs the message
+        // appearing; *this* eases the height change, which pushes every field below it down the screen. Replacing
+        // the slide and keeping the reflow would have been half the fix — the message now arrives in place
+        // (ADR-0012: replaced, not removed).
+        .animation(reduceMotion ? nil : HWMotion.easeOut.animation(.standard), value: isInvalid)
     }
 
     private var box: some View {
@@ -154,7 +161,10 @@ struct HWTextField: View {
             .textFieldStyle(.plain)
             .font(.hw(.bodyLarge).weight(.regular))
             .foregroundStyle(inkColour)
-            .tint(theme.palette.accent.base)
+            // **The tint, not the ink.** A plain `TextField` draws its placeholder *and* its caret in the
+            // accent colour, and on the galaxy ground `--planetary` is barely a shade off the background — a
+            // placeholder nobody can read and a cursor nobody can find.
+            .tint(caretColour)
             .keyboardType(keyboardType)
             .textContentType(textContentType)
             // **Never capitalised and never corrected.** An email is the identity (invariant 4) and a revealed
@@ -191,11 +201,24 @@ struct HWTextField: View {
     @ViewBuilder
     private var entry: some View {
         if isSecure, !isRevealed {
-            SecureField(text: $text) { Text(placeholder ?? label) }
+            SecureField(text: $text) { prompt }
                 .id(false)
         } else {
-            TextField(text: $text) { Text(placeholder ?? label) }
+            TextField(text: $text) { prompt }
                 .id(true)
+        }
+    }
+
+    /// The prompt, or nothing at all.
+    ///
+    /// **`Text(verbatim:)` for the empty case rather than `Text("")`**, because a localised empty string is a
+    /// catalogue lookup for a key that is not there.
+    @ViewBuilder
+    private var prompt: some View {
+        if let placeholder {
+            Text(placeholder)
+        } else {
+            Text(verbatim: "")
         }
     }
 

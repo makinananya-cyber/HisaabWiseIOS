@@ -281,33 +281,46 @@ struct HWIconButton: View {
     private let label: LocalizedStringResource
     private let systemImage: String
     private let state: HWButtonState
+    /// Which surface it sits on (ADR-0021). The design's `.sheet-x` is drawn on both grounds — the auth sheet's
+    /// galaxy panel and the in-app sheets' light one — so the close button that comes with the chrome has to
+    /// follow the chrome.
+    private let appearance: HWAppearance
     private let action: () -> Void
 
     init(
         _ label: LocalizedStringResource,
         systemImage: String,
         state: HWButtonState = .ready,
+        appearance: HWAppearance = .surface,
         action: @escaping () -> Void
     ) {
         self.label = label
         self.systemImage = systemImage
         self.state = state
+        self.appearance = appearance
         self.action = action
+    }
+
+    /// `.sheet-x{color:var(--muted)}` on brand, planetary on surface.
+    private var ink: Color {
+        appearance == .brand ? theme.palette.brand.inkSecondary : theme.palette.accent.base
     }
 
     var body: some View {
         Button(action: action) {
-            HWButtonLabel(state: state, foreground: theme.palette.accent.base) {
+            HWButtonLabel(state: state, foreground: ink) {
                 Image(systemName: systemImage)
                     .font(.hw(.subheading))
-                    .foregroundStyle(theme.palette.accent.base)
+                    .foregroundStyle(ink)
             }
             // The design draws this at 40×40; `HWTouchTarget` explains why it is 44 here.
             .frame(minWidth: HWTouchTarget.minimum, minHeight: HWTouchTarget.minimum)
             .hwBox(
-                fill: theme.palette.surface.raised,
+                fill: appearance == .brand ? theme.palette.brand.raised : theme.palette.surface.raised,
                 radius: .medium,
-                border: theme.palette.surface.separator,
+                border: appearance == .brand
+                    ? theme.palette.brand.separator
+                    : theme.palette.surface.separator,
                 elevation: state.keepsElevation ? .small : nil
             )
             .contentShape(.rect)

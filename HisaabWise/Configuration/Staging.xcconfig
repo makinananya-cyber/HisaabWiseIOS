@@ -12,3 +12,8 @@ HW_API_BASE_URL = https:/$()/staging.api.hisaabwise.invalid
 
 // No ATS exception: staging is HTTPS. Only `Info-Debug.plist` carries one.
 INFOPLIST_FILE = Configuration/Info.plist
+
+// The hosted legal pages, on the staging site — so a change to the Terms can be reviewed before it is
+// what a new user agrees to (Rule 7 — placeholder domain until the credentials arrive).
+HW_TERMS_URL = https:/$()/staging.hisaabwise.invalid/terms
+HW_PRIVACY_URL = https:/$()/staging.hisaabwise.invalid/privacy

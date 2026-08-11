@@ -39,8 +39,10 @@ struct HisaabWiseApp: App {
     @Environment(\.scenePhase) private var scenePhase
 
     init() {
+        let configuration = Self.configuration()
         let environment = AppEnvironment(
-            baseURL: Self.configuration().apiBaseURL,
+            baseURL: configuration.apiBaseURL,
+            legal: configuration.legal,
             transport: URLSessionTransport()
         )
         self.environment = environment
@@ -49,7 +51,7 @@ struct HisaabWiseApp: App {
 
     var body: some Scene {
         WindowGroup {
-            RootView()
+            RootView(makeRegistrationViewModel: environment.makeRegistrationViewModel)
                 .environment(tabViewModels)
                 // Over everything, both worlds included: Landing carries no figures, but a rule with an
                 // exception in it is a rule somebody has to remember (ADR-0014).

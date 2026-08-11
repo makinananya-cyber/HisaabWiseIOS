@@ -171,7 +171,12 @@ struct LocalisationTests {
 
     /// The `%` specifiers in a format string, `%%` excluded — it is a literal percent sign and takes no
     /// argument, which matters in an app whose copy says "% of pay".
-    private static func formatSpecifiers(in value: String) -> [String] {
+    ///
+    /// **`@` is not a `Character.isLetter`**, which is what made this return an empty array for every string in
+    /// the app: `"Income %@"` scanned past the `@` looking for a letter, hit the end, and gave up. The test above
+    /// therefore asserted nothing at all — including about the three two-argument entries #15 added — while
+    /// reading as though it did. The conversion character is a letter **or** `@`.
+    fileprivate static func formatSpecifiers(in value: String) -> [String] {
         var specifiers: [String] = []
         var remainder = Substring(value)
 
@@ -183,7 +188,7 @@ struct LocalisationTests {
                 continue
             }
             // Everything up to and including the conversion character: digits, `$`, and flags on the way.
-            while index < remainder.endIndex, !remainder[index].isLetter {
+            while index < remainder.endIndex, !remainder[index].isLetter, remainder[index] != "@" {
                 index = remainder.index(after: index)
             }
             guard index < remainder.endIndex else { break }
@@ -281,8 +286,12 @@ struct LocalisationTests {
         // And the case the extraction is most likely to lose without anyone noticing: a key followed by an
         // interpolated argument rather than by the closing quote.
         #expect(
-            rendered["home.income.accessibilityLabel"] != nil,
-            "the key extraction no longer finds keys inside format strings — it is reading less than it says"
+            rendered["home.income.accessibilityLabel %@"] != nil,
+            """
+            the key extraction no longer finds keys inside format strings, or has stopped carrying their \
+            specifiers — either way it is reading less than it says, which is how Home's income label came to \
+            read its own key aloud in a green suite
+            """
         )
 
         try CatalogueCopy.expectEnglishCopy(forKeys: rendered.keys.sorted())
@@ -323,7 +332,8 @@ struct LocalisationTests {
         }
     }
 
-    /// Every localisation key named in the presentation layers, with the file that names it.
+    /// Every localisation key named in the presentation layers, with the file that names it — **spelled the way
+    /// the lookup spells it**, format specifiers included.
     ///
     /// Keys are recognised by the shape the app spells them in — dotted, lower-camel segments at the start
     /// of a literal — which is also the shape of an SF Symbol name, so a symbol's argument is **cut out of
@@ -336,12 +346,28 @@ struct LocalisationTests {
     /// tell `"chart.bar"` from `"shell.tab.reports"`. Rather than guess from the text, the scan asks `AppTab`
     /// what its symbols are and takes those out. Exact, and it stays right when a glyph changes.
     ///
-    /// The key may be followed by a space rather than the closing quote, because that is what a format
-    /// string looks like in SwiftUI: `Text("home.income.accessibilityLabel \(figure)")` is one key and one
-    /// argument, and requiring the quote would have missed exactly the interpolated strings this suite most
-    /// wants covered.
+    /// **An interpolated literal contributes the key *with* its specifiers**, which is the correction this
+    /// scan needed. `Text("home.income.accessibilityLabel \(figure)")` looks up
+    /// `home.income.accessibilityLabel %@` — not the bare key — so a catalogue holding only the bare key
+    /// resolves nothing and the label renders as its own name. That is exactly what Home's income figure was
+    /// doing, in a suite that was green: the previous version of this function stopped at the first space, so
+    /// the one key shape it could not check was the one shape that breaks silently.
+    ///
+    /// **Every interpolation becomes `%@`, because every argument this app's copy takes is a `String`.** That
+    /// convention is what makes the key derivable from the source at all: `\(count)` resolves to `%lld`, and
+    /// which of the two an expression produces is not knowable from the text. So a number is converted where it
+    /// is *computed* (see `RegistrationViewModel.goalShareText`) rather than where it is drawn.
+    ///
+    /// **The scan cannot enforce that, and says so rather than implying it can.** A call site that interpolated
+    /// an `Int` would need the catalogue entry `key %lld`; this derives `key %@`, so the mismatch surfaces as a
+    /// missing key *only if* the catalogue was written to the convention. What is enforced is the shape: the six
+    /// interpolated keys in the app today are all `String` arguments, and every specifier in the catalogue is
+    /// `%@` — a `%lld` appearing there is the signal that somebody left the convention.
     private static func renderedKeys() throws -> [String: String] {
-        let keyShaped = try Regex(#"\"([a-z][A-Za-z0-9]*(?:\.[A-Za-z0-9]+)+)(?=[\s\"])"#)
+        // The character after the key: whitespace or the closing quote, and also `\` (an interpolation with no
+        // space before it), `:`, and `,` — `Text("key: \(value)")` matched nothing at all, so its missing copy
+        // was never reported and the screen would have rendered the key.
+        let keyShaped = try Regex(#"\"([a-z][A-Za-z0-9]*(?:\.[A-Za-z0-9]+)+)(?=[\s\"\\:,])"#)
         // A symbol's *argument*, removed from the line before the keys are read. Skipping the whole line —
         // which this did until Landing wrote `HWButton("landing.cta", systemImage: "arrow.forward")` — loses
         // any key that shares a line with a glyph, and loses it silently: the key then reads as an orphaned
@@ -359,12 +385,130 @@ struct LocalisationTests {
                     let withoutSymbols = line.replacing(symbolArgument, with: "")
                     for match in withoutSymbols.matches(of: keyShaped) {
                         guard let key = match[1].substring, !tabGlyphs.contains(String(key)) else { continue }
-                        keys[String(key)] = file.lastPathComponent
+                        let lookedUp = Self.lookupKey(
+                            from: match.range.lowerBound,
+                            in: withoutSymbols,
+                            key: String(key)
+                        )
+                        keys[lookedUp] = file.lastPathComponent
                     }
                 }
             }
         }
 
         return keys
+    }
+
+    /// The key SwiftUI will look up for a literal starting at `start` — the literal's body with every
+    /// interpolation replaced by `%@`.
+    ///
+    /// **Reconstructed rather than counted.** Counting the interpolations and appending a run of `" %@"` was
+    /// right only for a key whose arguments all come last: `Text("key \(a) of \(b)")` looks up
+    /// `key %@ of %@` and would have derived `key %@ %@`, failing twice over — once as a missing key and once as
+    /// an orphaned entry telling the author to delete perfectly good copy. Nothing in the app writes that shape
+    /// yet, which is exactly why it was worth fixing before something does.
+    ///
+    /// Balanced parentheses, because an interpolated expression contains them: `\(viewModel.share(of: total))`.
+    /// An unterminated literal — which is not valid Swift — yields what it has.
+    fileprivate static func lookupKey(from start: String.Index, in line: String, key: String) -> String {
+        var derived = ""
+        var index = line.index(after: start)          // past the opening quote
+        var depth = 0
+
+        while index < line.endIndex {
+            let character = line[index]
+            if depth == 0, character == "\"" { break }
+            if depth == 0, character == "\\", line.index(after: index) < line.endIndex,
+               line[line.index(after: index)] == "(" {
+                derived += "%@"
+                index = line.index(index, offsetBy: 2)
+                depth = 1
+                continue
+            }
+            if depth > 0 {
+                if character == "(" { depth += 1 }
+                if character == ")" { depth -= 1 }
+            } else {
+                derived.append(character)
+            }
+            index = line.index(after: index)
+        }
+
+        // A literal whose key is followed by something the derivation cannot read leaves the bare key, which is
+        // the safe answer: it is what a non-interpolated key derives to anyway.
+        return derived.hasPrefix(key) ? derived : key
+    }
+}
+
+/// The two helpers `LocalisationTests` reads the source with, asserted directly.
+///
+/// **Both were silently vacuous.** `formatSpecifiers` returned an empty array for every string in the app, because
+/// `@` is not a `Character.isLetter` — so "every multi-argument format string numbers its arguments" asserted
+/// nothing while reading as though it did. And the key derivation assumed a run of trailing arguments, so a key
+/// with copy *between* two of them would have been reported as both missing and orphaned.
+///
+/// A scan that reads the source is code, and code that nothing exercises is code that stops working quietly. This
+/// is in the same file because both helpers are `private` to it, which is the right access for them.
+@Suite("The localisation scan itself")
+struct LocalisationScanTests {
+    @Test("a specifier at the end of a value is found", arguments: [
+        (value: "Income %@", count: 1),
+        (value: "%1$@ · %2$@", count: 2),
+        (value: "%@ of %@", count: 2),
+        (value: "That's %@%% of your salary — right on the rule.", count: 1),
+        // `%%` is a literal percent sign and takes no argument, which matters in an app whose copy says "% of pay".
+        (value: "100%% of pay", count: 0),
+        (value: "Sign In", count: 0),
+        (value: "%lld steps", count: 1),
+    ])
+    func specifiersAreFound(_ testCase: (value: String, count: Int)) {
+        #expect(LocalisationTests.formatSpecifiers(in: testCase.value).count == testCase.count, "\(testCase.value)")
+    }
+
+    /// And the rule that reads them bites: two unnumbered arguments is the failure, one is not.
+    @Test("a two-argument value without numbers is distinguishable from one with")
+    func thePositionalRuleBites() {
+        let unnumbered = LocalisationTests.formatSpecifiers(in: "%@ of %@")
+        let numbered = LocalisationTests.formatSpecifiers(in: "%2$@ من %1$@")
+
+        #expect(unnumbered.count == 2)
+        #expect(!unnumbered.allSatisfy { $0.contains("$") }, "an unnumbered pair reads as numbered")
+        #expect(numbered.count == 2)
+        #expect(numbered.allSatisfy { $0.contains("$") })
+    }
+
+    @Test("the derived key is the one SwiftUI looks up", arguments: [
+        (line: #"Text("signin.action")"#, key: "signin.action", derived: "signin.action"),
+        (
+            line: #"Text("home.income.accessibilityLabel \(budget.income.display)")"#,
+            key: "home.income.accessibilityLabel",
+            derived: "home.income.accessibilityLabel %@"
+        ),
+        (
+            line: #"Text("registration.two.currency.value \($0.name) \($0.code)")"#,
+            key: "registration.two.currency.value",
+            derived: "registration.two.currency.value %@ %@"
+        ),
+        // Arguments with copy between them — the shape the counting version got wrong.
+        (
+            line: #"Text("reports.range \(from) of \(to)")"#,
+            key: "reports.range",
+            derived: "reports.range %@ of %@"
+        ),
+        // A balanced expression, and a key with no space before its argument.
+        (
+            line: #"Text("learn.progress \(viewModel.share(of: total))")"#,
+            key: "learn.progress",
+            derived: "learn.progress %@"
+        ),
+        (line: #"Text("learn.count: \(n)")"#, key: "learn.count", derived: "learn.count: %@"),
+    ])
+    func theDerivedKeyMatchesTheLookup(_ testCase: (line: String, key: String, derived: String)) throws {
+        let start = try #require(testCase.line.range(of: "\"" + testCase.key)?.lowerBound)
+
+        #expect(
+            LocalisationTests.lookupKey(from: start, in: testCase.line, key: testCase.key) == testCase.derived,
+            "\(testCase.line)"
+        )
     }
 }

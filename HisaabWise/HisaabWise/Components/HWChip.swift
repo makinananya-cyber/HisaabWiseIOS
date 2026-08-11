@@ -64,27 +64,42 @@ struct HWCodeChip: View {
     @Environment(ThemeManager.self) private var theme
 
     private let code: String
+    /// Which surface it sits on (ADR-0021). The design draws this chip on **both** — `.opt-chip` in the auth
+    /// sheet over galaxy, `.srow-iso` in the in-app sheets over the light ground — and the two are different
+    /// colours rather than one with the opacity changed, which is why it is a parameter and not a tint.
+    private let appearance: HWAppearance
 
-    init(_ code: String) {
+    init(_ code: String, appearance: HWAppearance = .surface) {
         self.code = code
+        self.appearance = appearance
+    }
+
+    /// `.opt-chip{color:var(--sky)}` on brand; `--planetary` on surface.
+    private var ink: Color {
+        appearance == .brand ? theme.palette.brand.inkAccent : theme.palette.accent.base
+    }
+
+    /// `rgba(208,227,255,.13)` on brand — a sky wash on the galaxy — and the meteor ground on surface.
+    private var fill: Color {
+        appearance == .brand ? theme.palette.brand.raised : theme.palette.surface.backgroundSecondary
+    }
+
+    private var border: Color {
+        appearance == .brand ? theme.palette.brand.separatorStrong : theme.palette.surface.separator
     }
 
     var body: some View {
         Text(verbatim: code)
             .font(.hw(.caption).weight(.heavy))
             .tracking(0.5)
-            .foregroundStyle(theme.palette.accent.base)
+            .foregroundStyle(ink)
             .fixedSize(horizontal: false, vertical: true)
             .padding(.horizontal, 8)
             .padding(.vertical, 6)
             // `.opt-chip{min-width:44px;text-align:center}` — the codes are 2–3 characters and the design
             // holds them to one width so a list of them reads as a column.
             .frame(minWidth: 44)
-            .hwBox(
-                fill: theme.palette.surface.backgroundSecondary,
-                radius: .small,
-                border: theme.palette.surface.separator
-            )
+            .hwBox(fill: fill, radius: .small, border: border)
     }
 }
 
@@ -105,6 +120,13 @@ struct HWCodeChip: View {
             HWCodeChip("₹")
             HWCodeChip("AE")
         }
+        HStack(spacing: 8) {
+            HWCodeChip("AED", appearance: .brand)
+            HWCodeChip("IN", appearance: .brand)
+            HWCodeChip("+91", appearance: .brand)
+        }
+        .padding(10)
+        .background(HWPreviewGround(appearance: .brand))
     }
     .padding()
     .background(HWPreviewGround())

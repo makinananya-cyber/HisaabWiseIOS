@@ -91,7 +91,10 @@ struct HomeViewTests {
     private static let renderedKeys = [
         "home.empty",
         "home.income.label",
-        "home.income.accessibilityLabel",
+        // **With its specifier**, because that is the key SwiftUI looks up for `Text("key \(value)")`. The bare
+        // key was here until #15, the catalogue held only the bare key, and the label consequently read
+        // "home.income.accessibilityLabel ₹65,000" aloud — green suite, broken screen.
+        "home.income.accessibilityLabel %@",
     ]
 
     @Test("takes its own copy from the String Catalogue, not from a literal")
@@ -102,7 +105,7 @@ struct HomeViewTests {
 
     @Test("interpolates the figure into the accessibility sentence rather than concatenating it")
     func accessibilityLabelIsAFormatString() throws {
-        let entry = try CatalogueCopy.entry("home.income.accessibilityLabel")
+        let entry = try CatalogueCopy.entry("home.income.accessibilityLabel %@")
         // The figure goes *into* the sentence, never onto it — otherwise word order is untranslatable
         // (ADR-0011, ADR-0012).
         #expect(CatalogueCopy.english(in: entry)?.contains("%@") == true)
@@ -125,6 +128,10 @@ struct HomeViewTests {
         // And it is a sentence rather than the bare figure: a label that was only the number would read
         // identically to the text beside it and say nothing the caption was there to say.
         #expect(spoken != display)
+        // **And it resolved.** An unresolved key formats *itself* with the arguments, so the two assertions
+        // above both passed for a year while VoiceOver read "home.income.accessibilityLabel ₹65,000" — the
+        // failure has no other symptom, which is why it is asserted rather than looked at.
+        #expect(!spoken.contains("home.income"), "the key did not resolve — VoiceOver is reading it aloud")
     }
 
     @Test("supplies the one piece of copy only a screen can write, and inherits the rest")

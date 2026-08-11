@@ -64,10 +64,22 @@ struct RootViewTests {
             keptStore: InMemoryTokenStore(),
             transientStore: InMemoryTokenStore()
         )
-        #expect(TestBench.render(RootView().environment(signedOut).environment(viewModels())) != nil)
+        #expect(
+            TestBench.render(
+                RootView(makeRegistrationViewModel: { .preview })
+                    .environment(signedOut)
+                    .environment(viewModels())
+            ) != nil
+        )
 
         let signedIn = try await TestBench.signedInSession()
-        #expect(TestBench.render(RootView().environment(signedIn).environment(viewModels())) != nil)
+        #expect(
+            TestBench.render(
+                RootView(makeRegistrationViewModel: { .preview })
+                    .environment(signedIn)
+                    .environment(viewModels())
+            ) != nil
+        )
     }
 
     /// Every pre-auth destination, as cases of one path rather than a set of booleans — so a new screen is a

@@ -18,16 +18,34 @@ struct HWSheetChrome<Content: View>: View {
     private let title: LocalizedStringResource
     /// `nil` where the screen offers no explicit close — the drag still dismisses.
     private let onClose: (() -> Void)?
+    /// Which surface the panel is painted for (ADR-0021). The design's auth sheet is a **galaxy** panel —
+    /// `linear-gradient(#0D2A6B,#071A4C,#05143C)` — and its in-app sheets are light; a sheet that opened over
+    /// registration in the surface colours would be the one light rectangle in a dark flow.
+    private let appearance: HWAppearance
     private let content: Content
 
     init(
         title: LocalizedStringResource,
         onClose: (() -> Void)? = nil,
+        appearance: HWAppearance = .surface,
         @ViewBuilder content: () -> Content
     ) {
         self.title = title
         self.onClose = onClose
+        self.appearance = appearance
         self.content = content()
+    }
+
+    private var ink: Color {
+        appearance == .brand ? theme.palette.brand.ink : theme.palette.surface.ink
+    }
+
+    private var ground: Color {
+        appearance == .brand ? theme.palette.brand.backgroundDeep : theme.palette.surface.background
+    }
+
+    private var grabberColour: Color {
+        appearance == .brand ? theme.palette.brand.separatorStrong : theme.palette.surface.separatorStrong
     }
 
     var body: some View {
@@ -37,12 +55,17 @@ struct HWSheetChrome<Content: View>: View {
             HStack(spacing: 10) {
                 Text(title)
                     .font(.hw(.subheading))
-                    .foregroundStyle(theme.palette.surface.ink)
+                    .foregroundStyle(ink)
                     .frame(maxWidth: .infinity, alignment: .leading)
                     .accessibilityAddTraits(.isHeader)
 
                 if let onClose {
-                    HWIconButton(HWComponentCopy.closeSheet, systemImage: "xmark", action: onClose)
+                    HWIconButton(
+                        HWComponentCopy.closeSheet,
+                        systemImage: "xmark",
+                        appearance: appearance,
+                        action: onClose
+                    )
                 }
             }
             .padding(.horizontal, 20)
@@ -52,7 +75,7 @@ struct HWSheetChrome<Content: View>: View {
             content
                 .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         }
-        .background(theme.palette.surface.background.ignoresSafeArea())
+        .background(ground.ignoresSafeArea())
         .accessibilityElement(children: .contain)
     }
 
@@ -60,7 +83,7 @@ struct HWSheetChrome<Content: View>: View {
     /// because the sheet's own dismiss gesture is what it hints at.
     private var grabber: some View {
         RoundedRectangle(cornerRadius: HWRadius.hairline.points)
-            .fill(theme.palette.surface.separatorStrong)
+            .fill(grabberColour)
             .frame(width: 40, height: 4)
             .padding(.top, 10)
             .padding(.bottom, 8)
@@ -85,7 +108,9 @@ struct HWSheetList<Content: View>: View {
 
     var body: some View {
         ScrollView {
-            VStack(spacing: 4) {
+            // **Lazy.** The design's longest list is 251 countries; a `VStack` would build all 251 rows to show
+            // eight of them, on the screen where the app is slowest to open anyway.
+            LazyVStack(spacing: 4) {
                 content
             }
             .padding(.horizontal, 12)
@@ -120,6 +145,8 @@ struct HWSheetRow: View {
     /// `.srow-code` / `.opt-meta` — the dial code, the symbol, the count.
     private let meta: Text?
     private let isSelected: Bool
+    /// Which surface the row is painted for (ADR-0021), matching the chrome it sits in.
+    private let appearance: HWAppearance
     private let action: () -> Void
 
     init(
@@ -127,13 +154,34 @@ struct HWSheetRow: View {
         leading: HWSheetRowLeading? = nil,
         meta: Text? = nil,
         isSelected: Bool = false,
+        appearance: HWAppearance = .surface,
         action: @escaping () -> Void
     ) {
         self.name = name
         self.leading = leading
         self.meta = meta
         self.isSelected = isSelected
+        self.appearance = appearance
         self.action = action
+    }
+
+    private var isBrand: Bool { appearance == .brand }
+
+    private var ink: Color {
+        isBrand ? theme.palette.brand.ink : theme.palette.surface.ink
+    }
+
+    private var metaInk: Color {
+        isBrand ? theme.palette.brand.inkSecondary : theme.palette.surface.inkTertiary
+    }
+
+    /// `.opt.sel{background:rgba(sky,.16)}` on brand; `.srow.sel{background:var(--sky)}` on surface.
+    private var selectedFill: Color {
+        isBrand ? theme.palette.brand.raised : theme.palette.accent.soft
+    }
+
+    private var tick: Color {
+        isBrand ? theme.palette.brand.inkAccent : theme.palette.accent.base
     }
 
     var body: some View {
@@ -142,32 +190,39 @@ struct HWSheetRow: View {
                 if let leading {
                     switch leading {
                     case .code(let code):
-                        HWCodeChip(code)
+                        HWCodeChip(code, appearance: appearance)
                     case .symbol(let systemImage):
                         Image(systemName: systemImage)
                             .font(.hw(.bodyLarge))
-                            .foregroundStyle(theme.palette.accent.base)
+                            .foregroundStyle(tick)
                             .frame(width: 34, height: 34)
-                            .hwBox(fill: theme.palette.surface.raised, radius: .small)
+                            .hwBox(
+                                fill: isBrand ? theme.palette.brand.raised : theme.palette.surface.raised,
+                                radius: .small
+                            )
                             .accessibilityHidden(true)
                     }
                 }
 
                 name
                     .font(.hw(.bodyLarge).weight(.semibold))
-                    .foregroundStyle(theme.palette.surface.ink)
+                    .foregroundStyle(ink)
+                    // `.opt-name.wrap` — a security question is a sentence, and a list of them wraps rather
+                    // than truncating (ADR-0011).
+                    .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: .infinity, alignment: .leading)
 
                 if let meta {
                     meta
                         .font(.hw(.body).weight(.bold))
-                        .foregroundStyle(theme.palette.surface.inkTertiary)
+                        .foregroundStyle(metaInk)
+                        .fixedSize(horizontal: false, vertical: true)
                 }
 
                 // Held in place rather than inserted, so picking a row does not reflow the list.
                 Image(systemName: "checkmark")
                     .font(.hw(.caption).weight(.heavy))
-                    .foregroundStyle(theme.palette.accent.base)
+                    .foregroundStyle(tick)
                     .opacity(isSelected ? 1 : 0)
                     .accessibilityHidden(true)
             }
@@ -175,8 +230,7 @@ struct HWSheetRow: View {
             .padding(.vertical, 12)
             .frame(minHeight: HWTouchTarget.minimum)
             .hwBox(
-                // `.srow.sel{background:var(--sky)}`, and nothing at all when it is not the choice.
-                fill: isSelected ? theme.palette.accent.soft : Color.clear,
+                fill: isSelected ? selectedFill : Color.clear,
                 radius: .medium
             )
             .contentShape(.rect)

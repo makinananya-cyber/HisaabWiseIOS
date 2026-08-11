@@ -11,8 +11,15 @@ import Testing
 @Suite("AppConfig")
 struct AppConfigTests {
     private func config(_ value: String) throws -> AppConfig {
-        try AppConfig(infoDictionary: [AppConfig.apiBaseURLKey: value])
+        try AppConfig(infoDictionary: [AppConfig.apiBaseURLKey: value].merging(Self.legalKeys) { key, _ in key })
     }
+
+    /// The two legal-page keys at values that parse, so a test about the *base URL* fails for base-URL reasons.
+    /// Their own cases are below.
+    private static let legalKeys = [
+        AppConfig.termsURLKey: "https://example.com/terms",
+        AppConfig.privacyURLKey: "https://example.com/privacy",
+    ]
 
     @Test("reads the base URL a configuration supplies")
     func readsTheBaseURL() throws {
@@ -49,6 +56,70 @@ struct AppConfigTests {
         // one. A build that did not say where the API is has to say so.
         #expect(throws: AppConfig.ConfigurationError.missing(key: AppConfig.apiBaseURLKey)) {
             try AppConfig(infoDictionary: [:])
+        }
+    }
+
+    // MARK: - The hosted legal pages
+
+    /// #15's consent checkbox links to Terms and Privacy, and Rule 7 says the domain arrives later — so the two
+    /// URLs are configuration, read by the same parse and subject to the same rules.
+    @Test("reads both legal page URLs a configuration supplies")
+    func readsTheLegalPages() throws {
+        let config = try config("https://api.example.com")
+
+        #expect(config.legal.terms == URL(string: "https://example.com/terms"))
+        #expect(config.legal.privacy == URL(string: "https://example.com/privacy"))
+    }
+
+    @Test("reports a missing legal page rather than shipping a checkbox that links nowhere", arguments: [
+        AppConfig.termsURLKey, AppConfig.privacyURLKey,
+    ])
+    func missingLegalPageIsAnError(_ key: String) {
+        var dictionary: [String: Any] = [AppConfig.apiBaseURLKey: "https://api.example.com"]
+        dictionary.merge(Self.legalKeys) { existing, _ in existing }
+        dictionary.removeValue(forKey: key)
+
+        #expect(throws: AppConfig.ConfigurationError.missing(key: key)) {
+            try AppConfig(infoDictionary: dictionary)
+        }
+    }
+
+    /// **No localhost exception for these two**, unlike the API base URL. A Debug build talks to `wrangler dev`
+    /// over cleartext by design; nothing serves the Terms locally, and an `http` link would be a page App
+    /// Transport Security refuses at the moment the user taps it — which reads as a broken link, not as a
+    /// configuration mistake.
+    @Test("refuses a cleartext legal page, localhost included")
+    func legalPagesAreHTTPSOnly() {
+        var dictionary: [String: Any] = [AppConfig.apiBaseURLKey: "http://localhost:8787"]
+        dictionary.merge(Self.legalKeys) { existing, _ in existing }
+        dictionary[AppConfig.termsURLKey] = "http://localhost:3000/terms"
+
+        #expect(
+            throws: AppConfig.ConfigurationError.insecure(
+                key: AppConfig.termsURLKey,
+                scheme: "http",
+                host: "localhost"
+            )
+        ) {
+            try AppConfig(infoDictionary: dictionary)
+        }
+    }
+
+    /// The shape an unsubstituted build setting takes: the literal `$(HW_TERMS_URL)` reaches the plist, which has
+    /// neither a scheme nor a host.
+    @Test("reports an unsubstituted legal setting as malformed")
+    func unsubstitutedLegalSettingIsMalformed() {
+        var dictionary: [String: Any] = [AppConfig.apiBaseURLKey: "https://api.example.com"]
+        dictionary.merge(Self.legalKeys) { existing, _ in existing }
+        dictionary[AppConfig.privacyURLKey] = "$(HW_PRIVACY_URL)"
+
+        #expect(
+            throws: AppConfig.ConfigurationError.malformed(
+                key: AppConfig.privacyURLKey,
+                value: "$(HW_PRIVACY_URL)"
+            )
+        ) {
+            try AppConfig(infoDictionary: dictionary)
         }
     }
 
@@ -110,7 +181,11 @@ struct AppConfigTests {
         // Transport Security would refuse — which reads to a developer as "the server is down".
         // Refusing it here names the actual problem (ADR-0010).
         #expect(
-            throws: AppConfig.ConfigurationError.insecure(scheme: "http", host: "api.example.com")
+            throws: AppConfig.ConfigurationError.insecure(
+                key: AppConfig.apiBaseURLKey,
+                scheme: "http",
+                host: "api.example.com"
+            )
         ) {
             try config("http://api.example.com")
         }
@@ -125,7 +200,13 @@ struct AppConfigTests {
     func otherSchemesAreRefused() {
         // A custom scheme is what ADR-0010 rejected for email links; it has no business being a base
         // URL either.
-        #expect(throws: AppConfig.ConfigurationError.insecure(scheme: "hisaabwise", host: "api")) {
+        #expect(
+            throws: AppConfig.ConfigurationError.insecure(
+                key: AppConfig.apiBaseURLKey,
+                scheme: "hisaabwise",
+                host: "api"
+            )
+        ) {
             try config("hisaabwise://api")
         }
     }

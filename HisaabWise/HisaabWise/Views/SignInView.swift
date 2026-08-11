@@ -124,7 +124,6 @@ struct SignInView: View {
                     get: { viewModel.email },
                     set: { viewModel.email = $0; viewModel.clearFailure(for: .email) }
                 ),
-                placeholder: "signin.email.placeholder",
                 systemImage: "envelope",
                 keyboardType: .emailAddress,
                 textContentType: .emailAddress,

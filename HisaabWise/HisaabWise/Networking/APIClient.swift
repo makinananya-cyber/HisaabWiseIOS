@@ -106,6 +106,43 @@ actor APIClient {
         try await perform(.get, path, body: nil, idempotencyKey: nil, authorization: authorization, as: type)
     }
 
+    /// What a conditional `GET` on a cacheable content route answered with.
+    ///
+    /// `304` is a **success** here rather than a failure, which is why this cannot go through
+    /// ``get(_:authorization:as:)``: that path treats anything outside `200..<300` as an error and has a
+    /// decodable body to produce. A not-modified answer has no body at all — the bytes the caller wants are
+    /// the ones it already has.
+    enum ContentResponse: Sendable, Equatable {
+        /// The stored copy is current. Nothing was downloaded.
+        case notModified
+        /// New bytes, and the ETag to revalidate them with next time. The ETag may be absent: a server that
+        /// sends none is one whose content cannot be revalidated, which costs a download rather than
+        /// correctness.
+        case fetched(data: Data, etag: String?)
+    }
+
+    /// Fetches a cacheable content resource, revalidating with `If-None-Match` when there is an ETag to send.
+    ///
+    /// **Anonymous, and that is the invariant rather than a convenience** (invariant 8): the only responses
+    /// this app may store are the ones identical for every user, and registration needs the reference lists
+    /// before a session exists. A route that needed the session would be per-user by definition and could not
+    /// come through here.
+    ///
+    /// Raw `Data` out rather than a decoded value, because the caller stores the bytes: decoding here and
+    /// re-encoding to write would put the client's idea of the payload on disk rather than the server's, and
+    /// the next ETag would be revalidating something that never arrived.
+    func content(at path: String, ifNoneMatch etag: String?) async throws -> ContentResponse {
+        let (data, response) = try await respond(
+            .get, path, body: nil, idempotencyKey: nil, bearer: nil, ifNoneMatch: etag
+        )
+
+        if response.statusCode == 304 { return .notModified }
+        guard (200..<300).contains(response.statusCode) else {
+            throw APIError.server(status: response.statusCode, code: errorCode(in: data))
+        }
+        return .fetched(data: data, etag: response.value(forHTTPHeaderField: "ETag"))
+    }
+
     // MARK: - Writes
 
     /// Performs a `POST` and decodes the body.
@@ -430,8 +467,9 @@ actor APIClient {
 
     /// Builds the request, sends it, and turns the outcome into a value or an ``APIError``.
     ///
-    /// Every verb above funnels through here, which is what makes "each of the four properties is
-    /// set once" true rather than aspirational.
+    /// Every verb above funnels through ``respond`` — which is what makes "each of the four properties is set
+    /// once" true rather than aspirational — and this adds the two rules that apply only to a *decodable*
+    /// answer: a non-2xx status is an error, and a body that will not decode is `malformedResponse`.
     private func send<Response: Decodable & Sendable>(
         _ method: Method,
         _ path: String,
@@ -440,6 +478,34 @@ actor APIClient {
         bearer: String?,
         as type: Response.Type
     ) async throws -> Response {
+        let (data, response) = try await respond(
+            method, path, body: body, idempotencyKey: idempotencyKey, bearer: bearer
+        )
+
+        guard (200..<300).contains(response.statusCode) else {
+            throw APIError.server(status: response.statusCode, code: errorCode(in: data))
+        }
+
+        do {
+            return try decoder.decode(Response.self, from: data)
+        } catch {
+            throw APIError.malformedResponse
+        }
+    }
+
+    /// The one place a request is built and sent. **It judges nothing** — the status comes back untouched,
+    /// because ``content(at:ifNoneMatch:)`` and ``send`` disagree about what `304` means and only one of them
+    /// can be right for both.
+    ///
+    /// - Parameter etag: sent as `If-None-Match`. Only the cacheable content routes have one (invariant 8).
+    private func respond(
+        _ method: Method,
+        _ path: String,
+        body: Data?,
+        idempotencyKey: String?,
+        bearer: String?,
+        ifNoneMatch etag: String? = nil
+    ) async throws -> (Data, HTTPURLResponse) {
         let acceptLanguage = await language.acceptLanguage
 
         var request = URLRequest(url: baseURL.appending(path: path))
@@ -460,11 +526,12 @@ actor APIClient {
             // would drop it along with the signature.
             request.setValue("Bearer \(bearer)", forHTTPHeaderField: "Authorization")
         }
+        if let etag {
+            request.setValue(etag, forHTTPHeaderField: "If-None-Match")
+        }
 
-        let data: Data
-        let response: HTTPURLResponse
         do {
-            (data, response) = try await transport.send(request)
+            return try await transport.send(request)
         } catch is CancellationError {
             // A cancelled task is not a network condition. Swallowing it here would tell a user who
             // navigated away that they are offline, and would break structured concurrency.
@@ -473,16 +540,6 @@ actor APIClient {
             // ADR-0007 — a transport failure preserves the session. It is offline, not failed, and
             // never a reason to sign anyone out.
             throw APIError.offline
-        }
-
-        guard (200..<300).contains(response.statusCode) else {
-            throw APIError.server(status: response.statusCode, code: errorCode(in: data))
-        }
-
-        do {
-            return try decoder.decode(Response.self, from: data)
-        } catch {
-            throw APIError.malformedResponse
         }
     }
 

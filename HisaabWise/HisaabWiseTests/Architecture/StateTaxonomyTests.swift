@@ -67,17 +67,20 @@ struct StateTaxonomyTests {
     /// The mapping acceptance criterion, as a scan: `BaseViewModel.load()` is the **only** place an
     /// `APIError` becomes a `LoadState`. A second `catch APIError.offline` anywhere is a second chance to
     /// render a supported mode as a fault.
-    /// **One owner per kind of presentation, and there are two kinds.** A *read* becomes a ``LoadState`` in
-    /// `BaseViewModel.load()`. A *form* becomes field errors in `SignInViewModel`, which is not a `LoadState`
-    /// and never could be — "offline" under the password box is not the same thing as an offline screen (#14).
-    ///
-    /// The second owner is named here rather than smuggled in: adding a third means changing this list, which is
-    /// the point. `Networking` is skipped because that is where `APIError` is declared and thrown.
-    @Test("APIError becomes presentation in exactly two places, one per kind")
+    /// **A read has exactly one owner; a form owns its own.** `BaseViewModel.load()` is the only place an error
+    /// becomes a ``LoadState`` — that is the rule with teeth, because twelve screens share those four states. A
+    /// *form* maps to field errors instead, which is not a `LoadState` and never could be: "offline" under a
+    /// password box is not the same thing as an offline screen. Each form is one screen's own rules, so each names
+    /// itself here, and another entry is a change somebody makes on purpose. `Networking` is skipped because that is where `APIError` is declared and thrown.
+    @Test("a read maps errors in one place; each form maps its own")
     func errorMappingHasOneOwnerPerKind() throws {
         try expectAbsent(
             "APIError",
-            outside: ["ViewModels/BaseViewModel.swift", "ViewModels/SignInViewModel.swift"],
+            outside: [
+                "ViewModels/BaseViewModel.swift",
+                "ViewModels/SignInViewModel.swift",
+                "ViewModels/RegistrationViewModel.swift",
+            ],
             skippingLayers: ["Networking"],
             because: "a read becomes a LoadState in BaseViewModel.load(); a form becomes field errors in SignInViewModel"
         )

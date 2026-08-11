@@ -24,6 +24,15 @@ struct RootView: View {
     /// (issue #5's reasoning, one screen smaller).
     @State private var landing = LandingViewModel(straplineCount: LandingView.straplines.count)
 
+    /// How a registration form is built (#15).
+    ///
+    /// A closure rather than the form itself, because the form is **per visit**: it holds a password, two
+    /// security answers, a date of birth, and a salary, and popping the screen is what frees them. And a closure
+    /// rather than the objects it needs, because those are an `APIClient` and a `ContentLoader` — which
+    /// `LayeringTests` keeps out of `Views/`, and rightly: a screen that could reach either is a screen that
+    /// could fetch.
+    let makeRegistrationViewModel: () -> RegistrationViewModel
+
     var body: some View {
         switch Self.world(isSignedIn: session.isSignedIn) {
         case .shell:
@@ -40,9 +49,15 @@ struct RootView: View {
                                 onRegister: { preAuth.append(.register) },
                                 onRestoreAccount: { preAuth.append(.restoreAccount) }
                             )
-                        // The three screens sign-in leads to, each one ticket away. A placeholder rather than a
-                        // dead link, for the reason Get Started got a destination in #13.
-                        case .register, .forgotPassword, .restoreAccount:
+                        case .register:
+                            RegistrationView(viewModel: makeRegistrationViewModel()) {
+                                // "Sign in instead" — back to the screen already underneath rather than a second
+                                // copy of it pushed on top, which is what appending `.signIn` would do.
+                                preAuth.removeAll { $0 == .register }
+                            }
+                        // The two screens sign-in leads to that are still one ticket away each. A placeholder
+                        // rather than a dead link, for the reason Get Started got a destination in #13.
+                        case .forgotPassword, .restoreAccount:
                             UnwrittenBrandScreen()
                         }
                     }
@@ -108,7 +123,7 @@ private struct UnwrittenBrandScreen: View {
 
 #if DEBUG
 #Preview("Signed out — Landing") {
-    RootView()
+    RootView(makeRegistrationViewModel: { .preview })
         .environment(SessionCoordinator.preview)
         .environment(TabViewModels(home: .previewINRSalary))
         .hwTheme()
@@ -117,14 +132,14 @@ private struct UnwrittenBrandScreen: View {
 /// Signed in, which in a preview means a coordinator that has actually been through `signIn` — there is no way
 /// to set `isSignedIn` from outside, deliberately (ADR-0007).
 #Preview("Signed in — the shell") {
-    RootView()
+    RootView(makeRegistrationViewModel: { .preview })
         .environment(SessionCoordinator.previewSignedIn)
         .environment(TabViewModels(home: .previewINRSalary))
         .hwTheme()
 }
 
 #Preview("RTL") {
-    RootView()
+    RootView(makeRegistrationViewModel: { .preview })
         .environment(SessionCoordinator.preview)
         .environment(TabViewModels(home: .previewINRSalary))
         .hwTheme()
@@ -132,7 +147,7 @@ private struct UnwrittenBrandScreen: View {
 }
 
 #Preview("AX5") {
-    RootView()
+    RootView(makeRegistrationViewModel: { .preview })
         .environment(SessionCoordinator.preview)
         .environment(TabViewModels(home: .previewINRSalary))
         .hwTheme()

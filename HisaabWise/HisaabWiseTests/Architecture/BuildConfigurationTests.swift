@@ -52,17 +52,28 @@ struct BuildConfigurationTests {
         #expect(try Self.baseURL(in: configuration).hasPrefix("https://"))
     }
 
-    @Test("every configuration's base URL is one the app will accept", arguments: Self.names)
-    func everyBaseURLParses(_ configuration: String) throws {
+    @Test("every configuration parses, end to end through the real parser", arguments: Self.names)
+    func everyConfigurationParses(_ configuration: String) throws {
         // End to end against the real parser, so a value that would trap at launch fails here instead:
         // ``AppConfig`` refuses cleartext for anything but localhost, and refuses a URL with no scheme —
         // which is the shape a forgotten `$()` escape leaves behind, since `//` opens a comment in an
         // .xcconfig and would truncate the value to `http:`.
         let raw = try Self.baseURL(in: configuration)
 
-        let config = try AppConfig(infoDictionary: [AppConfig.apiBaseURLKey: raw])
+        // Every key the parse needs, read out of the same `.xcconfig` the build reads — so this is the whole
+        // configuration going through `AppConfig`, not the base URL with the rest stubbed. A configuration whose
+        // Terms URL would trap at launch fails here.
+        let settings = try Self.settings(in: configuration)
+        var dictionary: [String: Any] = [:]
+        for (key, setting) in Self.plistKeys {
+            dictionary[key] = try #require(settings[String(setting.dropFirst(2).dropLast())])
+        }
+
+        let config = try AppConfig(infoDictionary: dictionary)
 
         #expect(config.apiBaseURL.absoluteString == raw)
+        #expect(config.legal.terms.scheme == "https")
+        #expect(config.legal.privacy.scheme == "https")
     }
 
     @Test("each configuration names its own Info.plist")
@@ -76,11 +87,47 @@ struct BuildConfigurationTests {
 
     // MARK: - The Info.plist files
 
-    @Test("every plist carries the key AppConfig reads", arguments: Self.plists)
-    func everyPlistCarriesTheBaseURLKey(_ plist: String) throws {
+    /// Every key `AppConfig` reads, and the build setting each is substituted from. A key added to the parse
+    /// without being added here is a key the plists can be missing silently — which is a launch-time trap in a
+    /// configuration nobody built locally.
+    private static let plistKeys = [
+        AppConfig.apiBaseURLKey: "$(HW_API_BASE_URL)",
+        AppConfig.termsURLKey: "$(HW_TERMS_URL)",
+        AppConfig.privacyURLKey: "$(HW_PRIVACY_URL)",
+    ]
+
+    @Test("every plist carries every key AppConfig reads", arguments: Self.plists)
+    func everyPlistCarriesTheConfigurationKeys(_ plist: String) throws {
         let contents = try Self.plist(plist)
 
-        #expect(contents[AppConfig.apiBaseURLKey] as? String == "$(HW_API_BASE_URL)")
+        for (key, setting) in Self.plistKeys {
+            #expect(contents[key] as? String == setting, "\(plist) does not carry \(key)")
+        }
+    }
+
+    /// And every setting the plists substitute is defined in every `.xcconfig`. A plist referring to a setting
+    /// no configuration sets leaves the literal `$(…)` in the built app, which `AppConfig` then reports as
+    /// malformed — at launch, in whichever configuration forgot.
+    @Test("every configuration defines every setting the plists substitute", arguments: Self.names)
+    func everyConfigurationDefinesEverySetting(_ configuration: String) throws {
+        let settings = try Self.settings(in: configuration)
+
+        for setting in Self.plistKeys.values {
+            let name = String(setting.dropFirst(2).dropLast())
+            #expect(settings[name] != nil, "\(configuration).xcconfig does not define \(name)")
+        }
+    }
+
+    /// The two legal pages are **https in every configuration**, localhost included. `AppConfigTests` asserts the
+    /// parse refuses cleartext; this asserts no checked-in configuration hands it any.
+    @Test("every configuration's legal pages are https", arguments: Self.names)
+    func everyConfigurationsLegalPagesAreSecure(_ configuration: String) throws {
+        let settings = try Self.settings(in: configuration)
+
+        for name in ["HW_TERMS_URL", "HW_PRIVACY_URL"] {
+            let value = try #require(settings[name])
+            #expect(value.hasPrefix("https://"), "\(configuration).xcconfig sets \(name) to \(value)")
+        }
     }
 
     @Test("no plist turns App Transport Security off", arguments: Self.plists)

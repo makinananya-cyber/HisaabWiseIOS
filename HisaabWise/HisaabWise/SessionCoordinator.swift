@@ -101,6 +101,31 @@ final class SessionCoordinator {
         await revalidate()
     }
 
+    /// Registers, and signs the new account in.
+    ///
+    /// **One request** (#15's [FIX]): the client holds all three steps in memory and sends them together, so no
+    /// half-built account exists to resume. It answers with the same token pair a login does, which is why
+    /// registration lands the user on Home rather than back at sign-in.
+    ///
+    /// The refresh token goes to the **Keychain**: somebody who has just created an account has not been offered
+    /// a "keep me signed in" choice, and sending them to a sign-in screen they have never used would be the
+    /// worst possible first minute. ADR-0007's choice belongs to sign-in, where it is asked.
+    ///
+    /// - Throws: whatever the request threw, unchanged — the screen turns an email collision into a field error,
+    ///   and this is not a second place that maps errors.
+    func register(_ request: RegistrationRequest) async throws {
+        let tokens = try await client.post(
+            Endpoint.register,
+            body: request,
+            authorization: .anonymous,
+            as: SessionTokens.self
+        )
+
+        await client.beginSession(tokens, storingRefreshTokenIn: keptStore)
+        isSignedIn = true
+        await revalidate()
+    }
+
     /// Ends the session because the user asked. Revokes it server-side where it can, and locally always.
     func signOut() async {
         await client.endSession()

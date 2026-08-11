@@ -105,6 +105,25 @@ owner of the `APIError` → presentation mapping, and `StateTaxonomyTests` names
 `LoadState`, a form becomes field errors. A third means changing that list.
 See [ADR-0030](docs/adr/0030-sign-in.md).
 
+**atomic registration** — three steps in the UI, **one `POST /v1/auth/register` at the end**. The client holds
+steps 1–2 in memory, so nothing exists server-side until the last button and there is no half-built account to
+resume or clean up. Two consequences are the point rather than the cost: there is **no email-availability
+endpoint anywhere** (it would answer "does this person have an account" to anybody who asks), so a collision is
+discovered at submit and sends the user back to step 1 with the field marked; and submit validates **every**
+step's rules, because a field left invalid two screens ago would otherwise reach the server. The step is `@State`
+on one screen rather than three pushed ones — a swipe-back that discarded a step's typing is the failure the
+atomic call is built around.
+
+**`goalWasSkipped`** — the one field that distinguishes **Skip for now** from a typed 20%. Both buttons send the
+same request and the same figure; skip means "you choose for me", not "leave it empty". Without the flag the two
+are indistinguishable, and the app could never say "you chose this" rather than "we suggested this".
+
+**`RegistrationFailure`** — the third owner of an error-to-presentation mapping and the second *form*, alongside
+`SignInFailure`. Same shape and the same reasons; the interesting case is `emailTaken`, which is the only
+per-field failure registration can receive from the server and the only way the client ever learns an address is
+registered.
+See [ADR-0031](docs/adr/0031-registration.md).
+
 **appearance** — `HWAppearance`, which of the design's two surfaces a control is drawn on, as a *parameter*
 rather than a mode: both ship at once, one before sign-in and one after (ADR-0021). It arrives on `HWButton` with
 Landing, and the design settles it rather than a guess — the landing `.cta` and auth's `.btn-primary` carry the
@@ -429,6 +448,16 @@ usable without a connection — the curriculum PDF is
 ([ADR-0019](docs/adr/0019-no-offline-writes-curriculum-pdf.md)).
 See [ADR-0009](docs/adr/0009-content-cache.md).
 
+**`ContentLoader`** — the content store joined up: read the stored bytes, revalidate with `If-None-Match`,
+download only what changed. Two rules it is easy to get wrong and one that reads as an exception. **The bytes are
+stored, not the decoded values** — a store holding models stores this client's idea of the payload, and the next
+revalidation asks the server about a document that never existed. **An ETag is only ever sent alongside the bytes
+it describes** — `Caches` is evictable and nothing promises a resource's two files are removed as a pair, so an
+orphaned ETag earns a truthful `304` for bytes the client no longer has. And **a read may be served offline
+while a write may not**, which is the other side of ADR-0019 rather than an exception to it: content is the same
+for everybody and was already downloaded.
+See [ADR-0031](docs/adr/0031-registration.md), [ADR-0009](docs/adr/0009-content-cache.md).
+
 **`{c}`** — the currency token left verbatim in tip text. Substituted client-side from
 server-supplied currency metadata. Amounts printed next to it are **illustrative and never
 converted**.
@@ -537,6 +566,23 @@ products at all. Three of the four cases also need a **hosted** capture to be ph
 
 ---
 
+**every argument copy takes is a `String`** — so a localisation key's lookup form is derivable from the source
+that writes it. `Text("key \(value)")` looks up `key %@`, not `key`, and a catalogue holding only the bare key
+resolves nothing and renders the key itself — which is what Home's income figure was announcing to VoiceOver, in
+a green suite, from #12 until #15. `LocalisationTests` derives the key **with** its specifiers, by
+reconstructing the literal rather than counting arguments — so `key %@ of %@` derives correctly too. A `\(count)`
+would resolve to `%lld`, which the scan **cannot** know from the text: the `String` rule is therefore a
+convention the scan relies on and does not enforce, and a number is converted where it is *computed* rather than
+where it is drawn.
+See [ADR-0031](docs/adr/0031-registration.md).
+
+**a style that paints inside itself cannot be overridden from outside** — `HWLabelStyle` and `HWEyebrowStyle`
+apply `.foregroundStyle` in `body(content:)`, and an outer `.foregroundStyle` at the call site loses to an inner
+one. Four field components on the galaxy ground each wrote that override and each drew the light surface's ink
+anyway. Both roles take an `HWAppearance` instead. The general rule: a design-system modifier that resolves a
+colour has to be *parameterised*, because a caller cannot correct it.
+See [ADR-0031](docs/adr/0031-registration.md).
+
 ## Changes these decisions require outside this repo
 
 Recorded here because they are commitments, not suggestions. None has been made yet.
@@ -565,3 +611,10 @@ Recorded here because they are commitments, not suggestions. None has been made 
 | [ADR-0024](docs/adr/0024-language-plumbing.md) | **New endpoint** — `PUT /v1/me/language {language}`, **authenticated**, answering with the updated language (inside the Account screen payload under ADR-0020; the client decodes only the one field). Its reason for existing is **email**: `Accept-Language` tells the server what to format *this* response in and nothing about a reminder composed six hours later, so the preference has to be stored. The client treats a stored language other than the one it asked for as a failed switch |
 | [ADR-0024](docs/adr/0024-language-plumbing.md) | The stored preference is what every server-composed message honours — password reset, streak reminder, the curriculum PDF (ADR-0019) — not the header of whichever request happened to be last |
 | [ADR-0024](docs/adr/0024-language-plumbing.md) | **`language` on login and refresh**, for the reason ADR-0023 put `timeZone` there: those two requests are the only places the device's language can reach the server without a user action. Without it, an Arabic phone whose account was registered in English gets an Arabic app and English email until somebody opens the picker |
+| [ADR-0031](docs/adr/0031-registration.md) | **The registration wire contract**, written by the client because the backend has no `/v1/auth/*` routes yet: `POST /v1/auth/register` takes `{name, email, dateOfBirth, phone?, password, displayCurrency, salary, savingsGoal, goalWasSkipped, securityAnswers, acceptedTerms, timeZone, language}` and answers with the **same token pair a login does** — a new account is signed in. `salary` and `savingsGoal` are `{minor, currency}`; `phone` is `{country, dialCode, national, e164}` and is **absent** rather than empty when not given |
+| [ADR-0031](docs/adr/0031-registration.md) | **A distinct error code for the email collision** — `EMAIL_TAKEN`. It is the one per-field failure registration can receive, and the only way the client learns an address is registered. There must be **no** email-availability route: it would be an account-enumeration oracle |
+| [ADR-0031](docs/adr/0031-registration.md) | **Three new content endpoints**, cacheable with an ETag and **anonymous** (registration needs them before a session exists): `GET /v1/content/reference/countries` → `{countries: [{code, dialCode, name}]}` ×251, `GET /v1/content/reference/currencies` → `{currencies: [{code, name, symbol}]}` ×160, `GET /v1/content/security-questions` → `{questions: [{id, text}]}` ×14. Envelopes rather than bare arrays, so a list that later needs a version or a count is not a breaking change on the day it needs one |
+| [ADR-0031](docs/adr/0031-registration.md) | **Question ids** — `sq01`…`sq14`, invented by the client because the design carries only the English text. §4.3 **[FIX]** makes the id the identity, and the answer hash is keyed to it, so the ids have to be agreed before any account exists |
+| [ADR-0031](docs/adr/0031-registration.md) | **The currency reference list needs an `exponent`.** It carries a code, a name, and a symbol, so the client reads minor units as two decimal digits — right for 157 of the 160 currencies and wrong for KWD, BHD, and OMR. A dinar typed `1.234` arrives as `123` minor units instead of `1234` |
+| [ADR-0031](docs/adr/0031-registration.md) | **A verification email is sent on registration**, composed in the submitted `language` (ADR-0024). The client shows a strip above the tabs while `GET /v1/me` reports `emailVerified: false`, and ADR-0008's foreground revalidation is what clears it. A "resend" route belongs to Account (#17) |
+| [ADR-0031](docs/adr/0031-registration.md) | **Two hosted pages, per environment** — Terms of Use and the Privacy Policy, `https` only, read from `HW_TERMS_URL` and `HW_PRIVACY_URL`. The consent checkbox links to them, and a staging build must be able to link to staging's copies so a change to the Terms can be reviewed before it is what a new user agrees to (Rule 7 — the domain is a placeholder until the Cloudflare credentials arrive) |

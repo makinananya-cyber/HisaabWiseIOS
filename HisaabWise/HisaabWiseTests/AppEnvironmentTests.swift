@@ -20,6 +20,7 @@ struct AppEnvironmentTests {
     ) -> AppEnvironment {
         AppEnvironment(
             baseURL: TestBench.baseURL,
+            legal: TestBench.legal,
             transport: transport,
             theme: theme,
             language: language,
@@ -108,7 +109,7 @@ struct AppEnvironmentTests {
         // The one place the *choice* of store is made. `LanguageManager`'s own default is in-memory so
         // that tests and previews leave no preference behind, which means without this assertion the
         // persisting conformance could be correct and never reached by the app.
-        let environment = AppEnvironment(baseURL: TestBench.baseURL, transport: FixtureTransport())
+        let environment = AppEnvironment(baseURL: TestBench.baseURL, legal: TestBench.legal, transport: FixtureTransport())
 
         #expect(environment.language.store is UserDefaultsLanguageStore)
     }
@@ -132,7 +133,7 @@ struct AppEnvironmentTests {
     func keptSessionsGoToTheKeychainInTheApp() {
         // The one place the *choice* of store is made. Every other suite substitutes in-memory stores, so
         // without this assertion the Keychain conformance could be correct and unreachable.
-        let environment = AppEnvironment(baseURL: TestBench.baseURL, transport: FixtureTransport())
+        let environment = AppEnvironment(baseURL: TestBench.baseURL, legal: TestBench.legal, transport: FixtureTransport())
 
         #expect(environment.session.keptStore is KeychainTokenStore)
         #expect(environment.session.transientStore is InMemoryTokenStore)
