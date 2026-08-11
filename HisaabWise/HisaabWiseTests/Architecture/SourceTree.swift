@@ -32,6 +32,20 @@ enum SourceTree {
     /// carries, whether a format string is positional — has to read the source either way.
     static let catalogue = appSources.appending(path: "Resources/Localizable.xcstrings")
 
+    /// The repository root — one level above the directory holding the `.xcodeproj`.
+    ///
+    /// Where the things that are not Swift live: `.github/`, the ADRs, `CONTEXT.md`. A test that reads a
+    /// workflow file needs it, and deriving it from `#filePath` keeps that working from a fresh clone.
+    static let repositoryRoot = appSources
+        .deletingLastPathComponent()
+        .deletingLastPathComponent()
+
+    /// `…/.github/workflows` — the CI definitions, which are checked in and therefore checkable.
+    static let workflows = repositoryRoot.appending(path: ".github/workflows")
+
+    /// `…/.github/scripts` — the two Python steps the workflow runs (ADR-0028).
+    static let ciScripts = repositoryRoot.appending(path: ".github/scripts")
+
     /// `…/HisaabWise.xcodeproj/project.pbxproj` — the build settings that are *not* in an `.xcconfig`.
     ///
     /// Read as text, deliberately: the two settings that interest a test — the device family and the

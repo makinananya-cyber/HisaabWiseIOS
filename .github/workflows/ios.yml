@@ -1,0 +1,110 @@
+name: iOS
+
+# Rule 2 — `release` and `main` only. `feature/mvp` is deliberately pipeline-free: day-to-day work is
+# verified locally, and a trigger here would make every local commit wait on a macOS runner.
+on:
+  pull_request:
+    branches: [release, main]
+  push:
+    branches: [release, main]
+
+# One run per ref. A second push supersedes the first rather than queueing behind it — macOS runners are
+# the scarcest thing in this project's CI budget.
+concurrency:
+  group: ios-${{ github.ref }}
+  # Superseding applies to pull requests only. A push to `release` or `main` is a deployment gate, and
+  # cancelling one leaves the branch with no green run against its head commit.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+# Least privilege: this job reads the repository and writes a step summary. It never needs a token that
+# could push, comment, or publish.
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: xcodebuild test
+    # **Pinned, not `macos-latest`.** The image decides the Xcode versions and simulator runtimes that
+    # exist, and `latest` moves under you — which for a suite with pinned snapshot baselines is a red
+    # build nobody caused (ADR-0027).
+    runs-on: macos-26
+    timeout-minutes: 30
+
+    env:
+      # The three pins, in one place so they can be read together and so `CIWorkflowTests` can assert
+      # they still agree with `SnapshotPin`.
+      XCODE_VERSION: "26.6"
+      SIMULATOR_NAME: "iPhone 17"
+      SIMULATOR_OS: "26.5"
+      SCHEME: HisaabWise
+
+    steps:
+      - uses: actions/checkout@v4
+
+      # `macos-26` ships several Xcode versions and selects one by default. Selecting it explicitly is
+      # what makes it pinned: the default changes when the image is rebuilt.
+      - name: Select Xcode ${{ env.XCODE_VERSION }}
+        run: sudo xcode-select -s "/Applications/Xcode_${XCODE_VERSION}.app"
+
+      - name: Record the toolchain
+        run: |
+          xcodebuild -version
+          swift --version
+          xcrun simctl list runtimes
+
+      # Asserted, not assumed (issue #10). These four have all regressed from an Xcode template before:
+      # the deployment target, the language mode, the device family, and the orientations. The suite
+      # checks what the *project file* says; this checks what the build actually resolves, which an
+      # `.xcconfig` or a command-line override could differ on.
+      - name: Assert the build settings
+        run: |
+          python3 ../.github/scripts/assert-build-settings.py \
+            --scheme "$SCHEME" \
+            --destination "platform=iOS Simulator,name=$SIMULATOR_NAME,OS=$SIMULATOR_OS"
+        working-directory: HisaabWise
+
+      # A no-op today — the project has no package dependencies. It is here so that the day the snapshot
+      # library arrives (ADR-0027), a resolution failure is its own red step with its own message rather
+      # than a hundred lines into a test log.
+      - name: Resolve package dependencies
+        run: xcodebuild -resolvePackageDependencies -scheme "$SCHEME"
+        working-directory: HisaabWise
+
+      # `CODE_SIGNING_ALLOWED=NO` states the intent rather than relying on it: a simulator build needs no
+      # identity, and a runner has no keychain to find one in. **No signing material lives in this repo or
+      # this workflow** (Rule 3) — the certificates and profiles a TestFlight build needs belong to a
+      # different, later job with its own secrets.
+      - name: Run the suite
+        run: |
+          xcodebuild test \
+            -scheme "$SCHEME" \
+            -destination "platform=iOS Simulator,name=$SIMULATOR_NAME,OS=$SIMULATOR_OS" \
+            -resultBundlePath TestResults.xcresult \
+            CODE_SIGNING_ALLOWED=NO
+        working-directory: HisaabWise
+
+      # `always()`, so a failing suite still gets its summary — the names of the failing tests are the
+      # whole point of reading a red build. This step also fails the job when the snapshot cases did not
+      # run: `SnapshotPin` makes that suite skip on the wrong device or runtime, and a silent skip would
+      # let the pins drift apart without anybody noticing.
+      - name: Summarise the results
+        # `!cancelled()` rather than `always()`: a superseded run is cancelled routinely by the concurrency
+        # rule above, and its result bundle is truncated — reading one produces a traceback rather than a
+        # summary.
+        if: ${{ !cancelled() }}
+        run: python3 .github/scripts/test-summary.py HisaabWise/TestResults.xcresult
+
+      # Zipped first, deliberately. `upload-artifact` roots its archive at the search path and skips hidden
+      # files, so uploading the bundle directly yields a folder of its *children* that `xcresulttool` cannot
+      # open. `ditto --keepParent` produces the one thing worth downloading: the bundle itself.
+      - name: Keep the result bundle
+        if: failure()
+        run: ditto -c -k --sequesterRsrc --keepParent HisaabWise/TestResults.xcresult TestResults.zip
+
+      - name: Upload the result bundle
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: TestResults
+          path: TestResults.zip
+          retention-days: 7

@@ -458,6 +458,26 @@ live clock.
 See [ADR-0013](docs/adr/0013-testing-and-previews.md),
 [ADR-0027](docs/adr/0027-corpus-coverage-and-the-pinned-harness.md).
 
+**the pipeline** — `.github/workflows/ios.yml`, one job: `xcodebuild test` on the `release` and `main`
+branches only (Rule 2 — `feature/mvp` stays pipeline-free, asserted). **Three pins**: the runner image
+(`macos-26`), the Xcode version (26.6, selected explicitly because the image ships seven and its default moves
+when rebuilt), and the destination — which `CIWorkflowTests` asserts equals `SnapshotPin`'s device and runtime.
+
+**A pass has to mean the snapshot cases ran.** `.github/scripts/test-summary.py` reads the `.xcresult`, writes
+totals, failing test names, and skipped suites to the step summary, and **fails the job if the snapshot suite
+was skipped or absent** — `SnapshotPin` skips it off its pinned pair, and a skip is silent. Two suites may
+skip and are listed as context: the live-Worker one (needs `wrangler dev`) and the Keychain one (needs a
+writable Keychain).
+
+**Build settings are asserted twice.** `BuildConfigurationTests` reads what `project.pbxproj` *says*;
+`.github/scripts/assert-build-settings.py` checks what the build *resolves* — iOS 18.0, Swift 6, iPhone-only,
+portrait-only. An `.xcconfig` or an override sits between the two, and a disagreement is the bug.
+
+**No signing material** anywhere: tests run unsigned on a simulator with `CODE_SIGNING_ALLOWED=NO`, and scans
+cover both the workflow's words and the repository's file extensions (Rule 3). **The workflow is tested rather
+than run** — its first execution is on a real PR into `release`, so its decisions are read out of the YAML.
+See [ADR-0028](docs/adr/0028-ci-pins-and-the-skip-gate.md).
+
 **the pinned snapshot harness** — `SnapshotCase` (exactly four: populated · empty · RTL · AX3) and
 `SnapshotPin` (iPhone 17 on iOS 26.5, major and minor only). The suite **skips** rather than fails on any
 other host, because baselines are a function of device and runtime and a flaky gate gets deleted rather than

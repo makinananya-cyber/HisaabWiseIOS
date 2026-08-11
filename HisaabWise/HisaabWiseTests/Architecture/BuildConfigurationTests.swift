@@ -128,38 +128,74 @@ struct BuildConfigurationTests {
 
     // MARK: - What the app runs on
 
-    /// ADR-0001 — **iPhone only, portrait only.** Both are set in the project rather than in an `.xcconfig`,
-    /// and both are the kind of setting Xcode will happily widen for you: adding an iPad destination sets
-    /// the device family, and a target created from a fresh template arrives with four orientations.
+    /// ADR-0001 — **iPhone only, portrait only, iOS 18.0, Swift 6.** All four are set in the project rather
+    /// than in an `.xcconfig`, and all four are the kind of setting Xcode will happily widen for you: adding
+    /// an iPad destination sets the device family, and a target created from a fresh template arrives with
+    /// four orientations and whatever language mode is current.
     ///
-    /// The criterion issue #5 states is "already set in the project; assert it stays", so this asserts the
-    /// absence of any *other* value rather than the presence of one — a fourth configuration that quietly
-    /// allowed landscape would satisfy a presence check and fail this.
-    @Test("the app is iPhone-only and portrait-only in every configuration")
-    func theAppIsPortraitOnlyOnIPhone() throws {
-        let project = try String(contentsOf: SourceTree.projectFile, encoding: .utf8)
-        let lines = project.split(separator: "\n").map { $0.trimmingCharacters(in: .whitespaces) }
+    /// The criterion issue #5 stated is "already set in the project; assert it stays", and issue #10 asks for
+    /// the same of the other two. So each is asserted as the absence of any *other* value rather than the
+    /// presence of one: a fourth configuration that quietly allowed landscape would satisfy a presence check
+    /// and fail this.
+    ///
+    /// This reads what the project file **says**. The workflow's `assert-build-settings.py` reads what
+    /// `xcodebuild` **resolves**, in all three configurations — an `.xcconfig` or a command-line override sits
+    /// between the two, and a disagreement is the bug worth catching (ADR-0028).
+    @Test("the platform baseline is ADR-0001's, everywhere it is written")
+    func thePlatformBaselineIsWhatWasDecided() throws {
+        // Per-target settings appear once per target per configuration; the project-level ones once per
+        // configuration. The minimum is stated rather than the exact count, because a new target is a
+        // legitimate reason for there to be more and never a reason for there to be fewer.
+        try expectEverySetting("TARGETED_DEVICE_FAMILY", equals: "1", atLeast: Self.names.count)
+        try expectEverySetting(
+            "INFOPLIST_KEY_UISupportedInterfaceOrientations_iPhone",
+            equals: "UIInterfaceOrientationPortrait",
+            atLeast: Self.names.count
+        )
+        try expectEverySetting("IPHONEOS_DEPLOYMENT_TARGET", equals: "18.0", atLeast: Self.names.count)
+        // Both targets, all three configurations — six. The app being on the Swift 6 language mode and the
+        // test target not would be two languages in one repository.
+        try expectEverySetting("SWIFT_VERSION", equals: "6.0", atLeast: 2 * Self.names.count)
 
-        let family = lines.filter { $0.hasPrefix("TARGETED_DEVICE_FAMILY") }
-        // Three configurations for the app target and three for the tests, all of them iPhone.
-        #expect(family.count >= Self.names.count, "the device family is set in \(family.count) places")
-        #expect(
-            family.allSatisfy { $0 == "TARGETED_DEVICE_FAMILY = 1;" },
-            "a configuration targets something other than iPhone: \(family)"
-        )
-
-        let orientations = lines.filter { $0.hasPrefix("INFOPLIST_KEY_UISupportedInterfaceOrientations") }
-        #expect(
-            orientations.count >= Self.names.count,
-            "the supported orientations are set in \(orientations.count) places, for \(Self.names.count) configurations"
-        )
-        #expect(
-            orientations.allSatisfy { $0.hasSuffix("= UIInterfaceOrientationPortrait;") },
-            "a configuration allows an orientation other than portrait: \(orientations)"
-        )
         // And the value nobody sets on purpose: upside-down, which iOS offers on iPhone and which the
         // designs — fixed-height, bottom-anchored tab bar — were never drawn for.
+        let project = try String(contentsOf: SourceTree.projectFile, encoding: .utf8)
         #expect(!project.contains("UIInterfaceOrientationPortraitUpsideDown"))
+    }
+
+    /// **The hole `INFOPLIST_KEY_*` leaves.** Those settings only reach the built app if the `Info.plist`
+    /// does not already carry the key — an explicit entry wins. So a `UISupportedInterfaceOrientations` added
+    /// to either plist would ship landscape with every check above still green.
+    @Test("no Info.plist overrides the orientations the build settings decide", arguments: Self.plists)
+    func noPlistOverridesTheOrientations(_ plist: String) throws {
+        let keys = try Self.plist(plist).keys.filter { $0.hasPrefix("UISupportedInterfaceOrientations") }
+
+        #expect(keys.isEmpty, "\(plist) sets \(keys), which wins over INFOPLIST_KEY_* and can widen it")
+    }
+
+    /// Every line in the project file that sets `key`, asserted to set it to `value` — with a floor on how
+    /// many there are, since a scan that found none would pass while reading nothing.
+    private func expectEverySetting(
+        _ key: String,
+        equals value: String,
+        atLeast minimum: Int,
+        sourceLocation: SourceLocation = #_sourceLocation
+    ) throws {
+        let lines = try String(contentsOf: SourceTree.projectFile, encoding: .utf8)
+            .split(separator: "\n")
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { $0.hasPrefix(key) }
+
+        #expect(
+            lines.count >= minimum,
+            "\(key) is set in \(lines.count) places, fewer than the \(minimum) expected",
+            sourceLocation: sourceLocation
+        )
+        #expect(
+            lines.allSatisfy { $0 == "\(key) = \(value);" },
+            "a configuration disagrees with ADR-0001 about \(key): \(lines)",
+            sourceLocation: sourceLocation
+        )
     }
 
     // MARK: - Reading the files

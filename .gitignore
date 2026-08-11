@@ -13,6 +13,9 @@ xcuserdata/
 
 # Xcode — build products
 build/
+# The result bundle the CI command writes (ADR-0028). Running that command locally
+# leaves one in the same place.
+*.xcresult
 DerivedData/
 *.moved-aside
 *.hmap
