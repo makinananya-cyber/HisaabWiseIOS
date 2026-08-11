@@ -147,11 +147,59 @@ root replaces the whole set when `isSignedIn` goes false, because a view model h
 and a signed-out `HomeViewModel` is still holding a salary. Invariant 8's reasoning about caches applies to
 objects too — per-user data that outlives the user is a leak, not a warm start.
 
-**unwritten tab root** — `UnwrittenTabRoot` plus `UnwrittenScreenViewModel`, the stand-in for the four screens
-that are other tickets (#18, #19, #21, #23). A full `BaseView` conformance, so it renders through `StateView`,
+**unwritten tab root** — `UnwrittenTabRoot` plus `UnwrittenScreenViewModel`, the stand-in for the screens that are
+other tickets. **Three of them now**: Learn (#19), Reports (#21), and Account (#23) — Expenses retired its
+placeholder with #18, which is what "retired the moment each screen lands" means in practice. A full `BaseView` conformance, so it renders through `StateView`,
 and it **makes no request**: calling the ADR-0020 screen endpoint would put a fictional contract in the client
 and render "Something went wrong" on four of five tabs. A screen that is not built is not a screen that is
 broken. Its `footer` slot carries `LogoutControl` on Account. **Retired the moment each screen lands.**
+
+**Expenses** — `ExpensesView` plus `ExpenseCategoryView` and `ExpensesViewModel`, the core loop and **the first
+screen in the app that writes** (#18). Two levels over one read: the monthly summary with its wants bar and the seven
+category rows, and behind each row a detail page drawing whichever of the three structural kinds that category is.
+
+**Seven categories in three kinds**, and the kinds decide which write the page offers: `log` (Groceries · Transport ·
+Entertainment · Other · Additional Income) appends individually deletable entries, `lines` (Utilities) holds a set of
+named monthly bills edited and saved *together*, `fixed` (Rent) holds one editable amount. `kind` is therefore the
+one enum in the payload that **refuses to guess** — `Icon` and `Flow` degrade to a default because they are
+presentation, and a `log` form over Rent would file the wrong shape of thing.
+
+**Additional Income is money in**, said structurally rather than by the client recognising an id: it is out of the
+spend total, into the budget's income, and its display string arrives **already signed** (`+₹900`) because a
+client-side `+` lands on the wrong side of an Arabic figure.
+
+**`ExpenseCategoryPage` is the content and `ExpenseCategoryView` is the chrome** — the scroll, the title, the
+toolbar, the sheet. The split was found by looking: `ImageRenderer` does not lay out the content of a `ScrollView`,
+so a render of the whole page came back as an empty ground and the test asserting it rendered was passing on it.
+See [ADR-0033](docs/adr/0033-expenses.md).
+
+**`EntryDraft`** — the entry being typed, and it **outlives the screen deliberately**. A write that fails offline
+replaces `state` with `LoadState.offline` (ADR-0019), so a draft living in the payload would go with it; this one
+snapshots the field shape it needs, which is why a retry works with no payload in hand. Its **`Idempotency-Key` is
+one per user *intent***, minted on the first attempt and reused across retries — the caller-supplied form
+`APIClient.post` was written for and named #18 as the caller of. A second entry mints a new key; so does a re-file,
+because the first attempt was *refused* and there is nothing to deduplicate against.
+
+**`RefileOffer`** — what a `MONTH_CLOSED` write becomes: an offer, not a sentence. It names the **live** month, which
+the client learns by *reloading* after the refusal — the label it was holding names the month that has just closed,
+and offering to file into that one is the app lying about the date (§4.5). The re-file is then a plain re-send: the
+server derives `monthKey` at write time and the live month only moves forward.
+
+**A write's error mapping is `ExpensesViewModel`'s own**, the fourth owner `StateTaxonomyTests` names and a different
+*kind* from the other three: a read becomes a `LoadState`, a form becomes field errors, and a write becomes either an
+offline screen or a re-filing offer. That suite had already predicted this entry.
+
+**`WriteKind`** — whether a write is *the entry form's own create* or one of the other three, which decides two
+things: only a create is offered for re-filing on `MONTH_CLOSED` (only a create has a body to re-file — a deletion in
+a closed month is a deletion of something an archive holds), and only a create empties the form on success. Both were
+wrong when the funnel took a bare category id, and review caught both.
+
+**`TypedAmount`** — reading a figure the user typed into minor units, and writing one back into a field they will
+edit. Not client money arithmetic (ADR-0003): it converts nothing and rounds no rate. It was private to
+`RegistrationViewModel` and moved out because Expenses is a second caller and the rule's failure mode is a **100×
+error** — `.decimalPad` offers the *device region's* separator, so a comma may be the decimal point, and the **last**
+separator decides by what follows it. It takes an **exponent**, which registration has none to pass: the screen
+payload carries one and the currency reference list still does not.
 
 **`LogoutControl`** — the only exit, and the only caller of `SessionCoordinator.signOut()` in the presentation
 layers (asserted). A system `confirmationDialog` rather than the design's own modal: the platform's red, an
@@ -207,8 +255,11 @@ in the app that clamps Dynamic Type. Below `HWScaling.visualisationCeiling` (`xx
 drawn and capped; at and above it — every `isAccessibilitySize` — the chart is **gone** and the alternative
 layout is what the screen shows. Not shrunk: a donut at 310% type is a circle with three overlapping labels
 in it. The alternative is *also* installed as the chart's `accessibilityRepresentation`, so one argument
-serves the AX3 reader and the VoiceOver user both. The four consumers are the donut, the savings meter, the
-split bar, and the week strip (#17, #21, #22). Everything else — tips, articles, lesson steps, every label —
+serves the AX3 reader and the VoiceOver user both. The consumers are the donut, the savings meter, the wants budget bar,
+the split bar, and the week strip (#17, #18, #21, #22) — the wants bar being the one whose replacement is
+`EmptyView()`, because the figures it draws are already text above it. **Reading the size to choose a *layout* is
+not clamping**: `HWSpendSummary`'s three chips become a column above the threshold, because a row of three broke
+`₹3,529` across three lines. Everything else — tips, articles, lesson steps, every label —
 **scales unclamped to AX5**, and `AccessibilityTests` asserts the range form of `dynamicTypeSize` appears in
 one file. See [ADR-0012](docs/adr/0012-accessibility.md), [ADR-0025](docs/adr/0025-accessibility-plumbing.md).
 
@@ -302,7 +353,9 @@ See [ADR-0022](docs/adr/0022-production-transport.md).
 **write verbs** — `POST` · `PUT` · `DELETE` on `APIClient`, each returning the **updated screen
 payload** (ADR-0020) rather than nothing. Every `POST` carries an **`Idempotency-Key`**, generated per
 call unless the caller supplies one; a property of the verb rather than of a path list, so expense
-create cannot be the one call that forgets. `PUT` and `DELETE` carry none — both are idempotent by
+create cannot be the one call that forgets. **The caller-supplied form has its caller now** (#18): the Add button
+mints one key per user intent and reuses it across retries, so a write that reached the server and lost its response
+is not filed twice. `PUT` and `DELETE` carry none — both are idempotent by
 definition. The cache bypass and `Accept-Language` hold for writes exactly as for reads.
 
 **`Accept-Language`** — set on **every** request from the app's `LanguageManager` through
@@ -369,6 +422,9 @@ See [ADR-0003](docs/adr/0003-money-presentation.md).
 rounds, never applies symbol spacing, and never sums monetary values. The one carve-out
 ADR-0003 allowed was for the pending badge, whose only caller went away with offline writes
 ([ADR-0019](docs/adr/0019-no-offline-writes-curriculum-pdf.md)).
+
+**Reading a figure the user typed is not that**, and `TypedAmount` is where it lives: it parses one number on its way
+*to* the server, before any currency exists to convert it into. Everything that comes *back* is `Money.display`.
 
 ## Working without a connection
 
@@ -449,7 +505,12 @@ usable without a connection — the curriculum PDF is
 See [ADR-0009](docs/adr/0009-content-cache.md).
 
 **screen payload** — what one `GET /v1/screens/*` returns: everything that screen draws, fully computed
-(ADR-0020). Home is the first one, and its field names are the list of things the client may not work out —
+(ADR-0020). **Two exist**: Home and Expenses. Expenses is where the design's own JavaScript did the arithmetic, so
+its field names are a list of calculations that *moved* — `Category.total` for `catTotal(id)`, `wants.allowance` for a
+50/30/20 engine re-implemented in the browser (invariant 3 violated in the source material), `Entry.dateLabel` for a
+`whenLabel()` that read the device clock (invariant 6), and `entryCountLabel` for a pluralised count. Its payload
+carries **no timestamp at all**, which is the stronger form of the date fix: the client could not derive a label if
+it wanted to. Home is the first one, and its field names are the list of things the client may not work out —
 `shareOfPayLabel`, `percentageLabel`, `dateLabel`, `verdict`. **The budget engine has not moved**: invariant 3
 still keeps 50/30/20, `saved`, and the verdict in one place, and `GET /v1/budget` is still its own endpoint; the
 screen payload is assembled from it server-side, which the corpus asserts by making `home-inr.json`'s `saved`
@@ -540,6 +601,12 @@ from a list**, so the first commit that adds one of ADR-0020's screen endpoints 
 The converse holds too: a fixture may not answer a path nothing calls, which is what keeps a guessed contract
 out of the corpus. `FixtureTransport.serving([.budgetINR, .meVerified])` is how a test or a preview asks for
 payloads by name.
+
+**The Expenses payloads are load-bearing in the same way.** `expenses-inr.json` is the *same month* as
+`home-inr.json`, down to the display string, and the corpus asserts they agree per category — Home's donut and
+Expenses' summary read one budget engine (invariant 3), so a difference is one of the two assemblies having summed
+something. One payload also claims **four paths**, which is ADR-0020's write rule as a fixture: the read and all
+three writes answer with the same screen.
 
 **Two entries are load-bearing beyond their shape.** `budget-aed.json` carries `AED 8,000` — defect D1's own
 figure — while the rupee one stays the default preview, so a screen that has gone back to hardcoding looks
@@ -649,3 +716,16 @@ Recorded here because they are commitments, not suggestions. None has been made 
 | [ADR-0032](docs/adr/0032-home.md) | **New endpoint** — `GET /v1/content/articles/:id` → `{id, title, lede, sections[{heading, paragraphs?, entries?, steps?, callout?}], sources[{title, url}]}`, cacheable and ETag'd, with **3** articles. Every block optional; the order is fixed. Sources are **official only** — this is education, not regulated advice |
 | [ADR-0032](docs/adr/0032-home.md) | **Emphasis in all editorial content is markdown**, not HTML, from the extraction onwards — tips, article paragraphs, steps, and list entries. HTML cannot reach a SwiftUI `Text` |
 | [ADR-0032](docs/adr/0032-home.md) | **`icon` and `accent` are a name and a slot**, not a path and a hex: `shield`/`globe`/`steps`/`lightbulb`/`alert`, and `1…5` for the tint. A colour reaching a use site by name is what keeps the later dark-mode swap a swap (ADR-0001) |
+| [ADR-0033](docs/adr/0033-expenses.md) | **`GET /v1/screens/expenses`'s payload**, written by the client: `{monthLabel, summary{total, fixed, variable, income}, wants{used, allowance, percentageLabel, fill, isOver}, entry{code, symbol, displayCode, exponent}, categories[{id, name, hint, total, entryCountLabel?, kind, flow, icon, field?, entries[{id, label, amount, dateLabel}], lines[{id, name, amount, icon}]}]}`. `kind` is `log`/`lines`/`fixed`; `flow` is `out`/`in`; `field` is `place`/`source`/`transportMode`/`otherType`. `fill` is a fraction `0…1`, already clamped — geometry, so the bar's width and the percentage cannot round differently |
+| [ADR-0033](docs/adr/0033-expenses.md) | **Everything the design computed in the browser moves server-side**: each category's running total, the Fixed/Variable/Income split, the wants allowance (the adaptive 50/30/20 engine — it exists **twice** in the prototype, which is invariant 3 violated in the source material), the `isOver` verdict, and the pluralised `entryCountLabel` |
+| [ADR-0033](docs/adr/0033-expenses.md) | **`Entry.dateLabel` is a string and there is no timestamp in the payload** — "Today" / "Yesterday" / "N days ago" / "3 Aug", computed against the server's day boundary in the user's stored timezone (invariant 6). The prototype's `whenLabel()` read `new Date()`, so a device-clock change re-labelled history. Omitting the timestamp is deliberate: the client cannot derive the label because it has nothing to derive it from |
+| [ADR-0033](docs/adr/0033-expenses.md) | **An incoming category's display string is signed by the server** — `+₹900`. A sign is formatting (ADR-0003), and the prototype's client-side `(c.income ? '+' : '')` puts it on the wrong side of an Arabic figure |
+| [ADR-0033](docs/adr/0033-expenses.md) | **`kind` must never carry a value the client has not agreed to.** It decides which write the detail page offers, so the client fails the screen rather than guessing — unlike `icon` and `field`, which degrade. A new kind is a coordinated release |
+| [ADR-0033](docs/adr/0033-expenses.md) | **`entry` says what the user is authoring in** — code, symbol, ISO code, and **exponent**. Money is stored exactly as authored with no storage base (§4.1 **[FIX]**), so this is the currency the client sends alongside the minor units; the exponent is what stops a dinar typed `1.234` arriving as 123 |
+| [ADR-0033](docs/adr/0033-expenses.md) | **Four write routes**, each answering with the updated screen payload: `POST /v1/expenses {categoryId, amount{minor,currency}, optionId?, label?}`, `DELETE /v1/expenses/:id`, `PUT /v1/expenses/fixed/{categoryId} {amount}`, and `PUT /v1/expenses/lines/{categoryId} {lines:[{id?, name, amount}]}` |
+| [ADR-0033](docs/adr/0033-expenses.md) | **The bills write replaces the whole set**, because that is the gesture the design has: a line with an `id` existed, one without is new, and anything not sent is gone. Four requests for one "Update bills" press would be four chances to fail halfway and four payloads of which only the last is true |
+| [ADR-0033](docs/adr/0033-expenses.md) | **`POST /v1/expenses` must honour a caller-supplied `Idempotency-Key` across retries.** The client mints one key per user intent and re-sends it, so a write that reached the server and lost its response must be recognised rather than filed twice |
+| [ADR-0033](docs/adr/0033-expenses.md) | **`optionId`, not the option's name.** The server resolves a pick-list id into a name in whichever language the reader asks for, so the entry an Arabic user files reads in Arabic and the same entry reads in English for an English one. Sending the displayed string would freeze one language into stored data |
+| [ADR-0033](docs/adr/0033-expenses.md) | **`MONTH_CLOSED` must be answerable by a plain re-send.** The client reloads (to learn the live month's name), offers, and sends the *same* body again with a new key; the server derives `monthKey` at write time and the live month only moves forward (§4.5). No client-supplied month, and archives stay immutable |
+| [ADR-0033](docs/adr/0033-expenses.md) | **New endpoint** — `GET /v1/content/picklists` → `{transport:[{id, name}] ×22, other:[{id, name, opensFreeText?}] ×20}`, cacheable and ETag'd. **The option that asks the user what it actually was is flagged, not matched by name**: the prototype tests `/something else/i` against English text, which stops working the moment the list is translated |
+| [ADR-0033](docs/adr/0033-expenses.md) | **The currency reference list's missing `exponent`** (already recorded for ADR-0031) is now load-bearing in a second place: the screen payload carries one for the *display* currency, and registration still has none |

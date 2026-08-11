@@ -181,6 +181,714 @@
         }
       }
     },
+    "expenses.add.action": {
+      "comment": "Button that logs the typed expense.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add expense"
+          }
+        }
+      }
+    },
+    "expenses.add.caption": {
+      "comment": "Caption on the card that logs an expense.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add an expense"
+          }
+        }
+      }
+    },
+    "expenses.add.income.action": {
+      "comment": "Button that logs the typed income.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add income"
+          }
+        }
+      }
+    },
+    "expenses.add.income.caption": {
+      "comment": "Caption on the card that logs additional income.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add income"
+          }
+        }
+      }
+    },
+    "expenses.amount.label": {
+      "comment": "VoiceOver label for the amount field. Not drawn: the card's caption says what the form is for.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Amount"
+          }
+        }
+      }
+    },
+    "expenses.bill.amount": {
+      "comment": "VoiceOver label for a bill's amount field.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Amount"
+          }
+        }
+      }
+    },
+    "expenses.bill.name": {
+      "comment": "VoiceOver label for a bill's name field.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bill name"
+          }
+        }
+      }
+    },
+    "expenses.bill.remove": {
+      "comment": "VoiceOver label for the cross that removes one bill.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remove bill"
+          }
+        }
+      }
+    },
+    "expenses.bills.action": {
+      "comment": "Button that saves the whole set of bills.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Update bills"
+          }
+        }
+      }
+    },
+    "expenses.bills.add": {
+      "comment": "Dashed button that adds another bill row in edit mode.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add another bill"
+          }
+        }
+      }
+    },
+    "expenses.bills.caption": {
+      "comment": "Caption on the Utilities card.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This month’s bills"
+          }
+        }
+      }
+    },
+    "expenses.bills.explain": {
+      "comment": "Explains that the bills are counted automatically and how to change them.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "These are counted automatically every month. Tap Edit above to change an amount or add another bill."
+          }
+        }
+      }
+    },
+    "expenses.categories.caption": {
+      "comment": "Caption above the seven category rows.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Categories"
+          }
+        }
+      }
+    },
+    "expenses.categories.hint": {
+      "comment": "Hint beside the categories caption.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tap to add or edit"
+          }
+        }
+      }
+    },
+    "expenses.done": {
+      "comment": "The same toggle while edit mode is on; pressing it saves.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Done"
+          }
+        }
+      }
+    },
+    "expenses.edit": {
+      "comment": "Toolbar toggle that turns edit mode on.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Edit"
+          }
+        }
+      }
+    },
+    "expenses.empty": {
+      "comment": "Empty state for Expenses — the server answered with no screen at all.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "There is nothing to show for this month yet."
+          }
+        }
+      }
+    },
+    "expenses.entries.empty": {
+      "comment": "Inside a category with nothing logged this month. Not the whole screen's empty state — the form above it still works.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nothing logged yet this month. Add your first entry above."
+          }
+        }
+      }
+    },
+    "expenses.entry.remove": {
+      "comment": "VoiceOver label for the cross that removes one logged entry.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remove entry"
+          }
+        }
+      }
+    },
+    "expenses.error.amount": {
+      "comment": "The amount box is empty or holds no figure.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enter an amount greater than zero."
+          }
+        }
+      }
+    },
+    "expenses.error.custom": {
+      "comment": "The free-text box after choosing the option that asks what it actually was.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tell us what it was."
+          }
+        }
+      }
+    },
+    "expenses.error.label": {
+      "comment": "A required free-text field was left blank.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Please fill this in."
+          }
+        }
+      }
+    },
+    "expenses.error.option": {
+      "comment": "Nothing was chosen from the pick list.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Please choose one."
+          }
+        }
+      }
+    },
+    "expenses.eyebrow": {
+      "comment": "The product name above the screen title, as the design's `.eyebrow` has it.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HisaabWise"
+          }
+        }
+      }
+    },
+    "expenses.field.custom.label": {
+      "comment": "Label for the free-text box the one flagged pick-list option opens.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "What was it?"
+          }
+        }
+      }
+    },
+    "expenses.field.custom.placeholder": {
+      "comment": "Placeholder for that free-text box.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Type what it was"
+          }
+        }
+      }
+    },
+    "expenses.field.otherType.label": {
+      "comment": "Label for the Other type picker.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "What was it for?"
+          }
+        }
+      }
+    },
+    "expenses.field.otherType.placeholder": {
+      "comment": "Placeholder for the Other type picker.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose a type"
+          }
+        }
+      }
+    },
+    "expenses.field.otherType.search": {
+      "comment": "Search placeholder in the Other type sheet.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Search types"
+          }
+        }
+      }
+    },
+    "expenses.field.otherType.title": {
+      "comment": "Title of the Other type sheet.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "What was it for?"
+          }
+        }
+      }
+    },
+    "expenses.field.place.label": {
+      "comment": "Label for Entertainment's free-text field.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Where was it?"
+          }
+        }
+      }
+    },
+    "expenses.field.place.placeholder": {
+      "comment": "Placeholder for Entertainment's free-text field.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Cinema, concert, restaurant…"
+          }
+        }
+      }
+    },
+    "expenses.field.source.label": {
+      "comment": "Label for Additional Income's free-text field. Optional, because money arriving without a story is still money arriving.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Where did it come from? (optional)"
+          }
+        }
+      }
+    },
+    "expenses.field.source.placeholder": {
+      "comment": "Placeholder for Additional Income's free-text field.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Freelance, gift, refund…"
+          }
+        }
+      }
+    },
+    "expenses.field.transportMode.label": {
+      "comment": "Label for the transport mode picker.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mode of transport"
+          }
+        }
+      }
+    },
+    "expenses.field.transportMode.placeholder": {
+      "comment": "Placeholder for the transport mode picker.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose a mode"
+          }
+        }
+      }
+    },
+    "expenses.field.transportMode.search": {
+      "comment": "Search placeholder in the transport mode sheet.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Search modes of transport"
+          }
+        }
+      }
+    },
+    "expenses.field.transportMode.title": {
+      "comment": "Title of the transport mode sheet.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Mode of transport"
+          }
+        }
+      }
+    },
+    "expenses.fixed.action": {
+      "comment": "Button that saves the fixed monthly amount.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Update amount"
+          }
+        }
+      }
+    },
+    "expenses.fixed.caption": {
+      "comment": "Caption on the Rent card.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Monthly amount"
+          }
+        }
+      }
+    },
+    "expenses.fixed.explain": {
+      "comment": "Explains that the fixed cost is counted automatically and how to change it.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This is how much you pay each month. It is counted automatically — tap Edit above if it changes."
+          }
+        }
+      }
+    },
+    "expenses.fixed.label": {
+      "comment": "VoiceOver label for the fixed amount field while it is being edited.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Monthly amount"
+          }
+        }
+      }
+    },
+    "expenses.notice.billsUpdated": {
+      "comment": "Toast after the set of bills is saved.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Bills updated."
+          }
+        }
+      }
+    },
+    "expenses.notice.entryAdded": {
+      "comment": "Toast after an entry is logged.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Logged. Your totals are up to date."
+          }
+        }
+      }
+    },
+    "expenses.notice.entryRemoved": {
+      "comment": "Toast after an entry is removed.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Removed. Your totals are up to date."
+          }
+        }
+      }
+    },
+    "expenses.notice.fixedUpdated": {
+      "comment": "Toast after the fixed monthly amount is saved.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Amount updated."
+          }
+        }
+      }
+    },
+    "expenses.refile.cancel": {
+      "comment": "Declines re-filing.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not now"
+          }
+        }
+      }
+    },
+    "expenses.refile.confirm %@": {
+      "comment": "Confirms re-filing. %@ is the live month's name.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add to %@"
+          }
+        }
+      }
+    },
+    "expenses.refile.message %@": {
+      "comment": "Body of that dialog. %@ is the live month's name, from the server — never the month the write was refused from.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The month you were adding to has been filed away. Add this to %@ instead?"
+          }
+        }
+      }
+    },
+    "expenses.refile.title": {
+      "comment": "Title of the dialog offering to re-file a write that crossed a month boundary.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "That month has closed"
+          }
+        }
+      }
+    },
+    "expenses.summary.caption": {
+      "comment": "Caption on the summary card.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spent this month"
+          }
+        }
+      }
+    },
+    "expenses.summary.fixed": {
+      "comment": "Summary chip: rent plus the utility bills.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fixed"
+          }
+        }
+      }
+    },
+    "expenses.summary.income": {
+      "comment": "Summary chip: additional income logged this month — money in.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Income"
+          }
+        }
+      }
+    },
+    "expenses.summary.variable": {
+      "comment": "Summary chip: groceries, transport, entertainment and other.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Variable"
+          }
+        }
+      }
+    },
+    "expenses.title": {
+      "comment": "Title of the Expenses screen.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Expenses"
+          }
+        }
+      }
+    },
+    "expenses.wants.accessibilityValue %@ %@ %@": {
+      "comment": "What VoiceOver reads instead of the wants bar: %1$@ spent, %2$@ allowed, %3$@ of it used.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ of %2$@ used, %3$@ of the budget."
+          }
+        }
+      }
+    },
+    "expenses.wants.accessibilityValue.over %@ %@ %@": {
+      "comment": "The same sentence when the budget has been passed. A whole sentence rather than a clause appended, so a translation can reorder it.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ of %2$@ used, %3$@ of the budget — over budget."
+          }
+        }
+      }
+    },
+    "expenses.wants.amount %@ %@": {
+      "comment": "Beside the wants bar: %1$@ is what has been spent on wants and %2$@ the allowance. Both server-formatted.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ of %2$@"
+          }
+        }
+      }
+    },
+    "expenses.wants.caption": {
+      "comment": "Caption on the wants budget bar.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wants budget"
+          }
+        }
+      }
+    },
     "home.empty": {
       "comment": "Home, when the server has figures for no months yet.",
       "extractionState": "manual",

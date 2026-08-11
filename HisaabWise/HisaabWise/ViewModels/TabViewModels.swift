@@ -13,7 +13,8 @@ import Observation
 /// the app's, which is the lifetime a tab has.
 ///
 /// **Five named properties rather than a dictionary**, so every tab has one by construction and nothing
-/// unwraps an optional in a `body`. Each of #18, #19, #21, and #23 changes exactly one property's type.
+/// unwraps an optional in a `body`. Each of #18, #19, #21, and #23 changes exactly one property's type — #18
+/// has, and the pattern held: `expenses` became an `ExpensesViewModel` and nothing else in this file moved.
 ///
 /// `Observable` is conformed to by hand rather than through the `@Observable` macro, and that is the honest
 /// spelling: every property here is a `let`, so there is nothing for the macro to broadcast. What changes is
@@ -21,16 +22,18 @@ import Observation
 @MainActor
 final class TabViewModels: Observable {
     let home: HomeViewModel
-    let expenses: UnwrittenScreenViewModel
+    let expenses: ExpensesViewModel
     let learn: UnwrittenScreenViewModel
     let reports: UnwrittenScreenViewModel
     let account: UnwrittenScreenViewModel
 
-    /// - Parameter home: the one screen that exists, so the one that needs a client. The other four are
-    ///   built here because there is nothing to configure about them yet.
-    init(home: HomeViewModel) {
+    /// - Parameters:
+    ///   - home: Home's view model, made by the graph because it needs a client.
+    ///   - expenses: Expenses', for the same reason (#18). The remaining three are built here because there is
+    ///     nothing to configure about them yet.
+    init(home: HomeViewModel, expenses: ExpensesViewModel) {
         self.home = home
-        expenses = UnwrittenScreenViewModel()
+        self.expenses = expenses
         learn = UnwrittenScreenViewModel()
         reports = UnwrittenScreenViewModel()
         account = UnwrittenScreenViewModel()

@@ -14,8 +14,10 @@ import Testing
 struct RootViewTests {
     private func viewModels() -> TabViewModels {
         let client = TestBench.client(FixtureTransport())
+        let content = ContentLoader(client: client, store: InMemoryContentStore())
         return TabViewModels(
-            home: HomeViewModel(client: client, content: ContentLoader(client: client, store: InMemoryContentStore()))
+            home: HomeViewModel(client: client, content: content),
+            expenses: ExpensesViewModel(client: client, content: content)
         )
     }
 

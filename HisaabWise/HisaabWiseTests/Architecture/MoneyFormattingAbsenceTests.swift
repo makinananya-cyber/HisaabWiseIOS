@@ -5,11 +5,17 @@ import Testing
 /// formatting API, and these assertions are what stop one being added quietly.
 @Suite("Absence of a money formatter")
 struct MoneyFormattingAbsenceTests {
-    /// **`Double` is banned for *money*, and one non-monetary use now exists.** `HomeScreen.Category.share` and
-    /// `Savings.position` are fractions a chart turns into an angle and a pin into a position — geometry the
-    /// server computed (ADR-0020), not amounts. The ban is worth keeping for everything else, so the scan names
-    /// the two fields rather than dropping `Double`: a *third* one has to be argued for here.
-    private static let geometryFields = ["let share: Double", "let position: Double"]
+    /// **`Double` is banned for *money*, and three non-monetary uses now exist.** `HomeScreen.Category.share`,
+    /// `Savings.position`, and `ExpensesScreen.Wants.fill` are fractions a chart turns into an angle, a pin into a
+    /// position, and a bar into a width — geometry the server computed (ADR-0020), not amounts. In each case the
+    /// figure the user *reads* arrives separately as a formatted string, which is the test the exemption has to
+    /// pass: the fraction and the percentage must not be able to round differently.
+    ///
+    /// The ban is worth keeping for everything else, so the scan names the three fields rather than dropping
+    /// `Double`: a fourth has to be argued for here.
+    private static let geometryFields = [
+        "let share: Double", "let position: Double", "let fill: Double",
+    ]
 
     @Test("the model layer holds no number formatting and no floating-point money")
     func modelsHoldNoFormattingMachinery() throws {

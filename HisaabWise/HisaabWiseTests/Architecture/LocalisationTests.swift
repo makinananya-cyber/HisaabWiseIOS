@@ -341,8 +341,9 @@ struct LocalisationTests {
     /// blind spot: a control that takes both a title and a glyph writes them on one line, and skipping it
     /// lost the title.
     ///
-    /// **Two places write a symbol name with no label at all**: `AppTab.systemImage` and
-    /// `HomeView.symbol(_:)`, where the glyphs are returned from a `switch` exactly as the tab *titles* are —
+    /// **Four places write a symbol name with no label at all**: `AppTab.systemImage`, `HomeView.symbol(_:)`,
+    /// `ExpensesView.symbol(_:)`, and `ExpenseCategoryView.glyph(for:)`, where the glyphs are returned from a
+    /// `switch` exactly as the tab *titles* are —
     /// so no token on the line can tell `"chart.bar"` from `"shell.tab.reports"`. Rather than guess from the
     /// text, the scan asks each type what its symbols are and takes those out. Exact, and it stays right when a
     /// glyph changes.
@@ -380,6 +381,12 @@ struct LocalisationTests {
         let tabGlyphs = Set(AppTab.allCases.map(\.systemImage))
             // The five article glyphs, from the one place that maps them (#17).
             .union(HomeScreen.Icon.allCases.map(HomeView.symbol))
+            // The eleven category and bill glyphs, and the four field glyphs (#18). Two of them are dotted names
+            // — `questionmark.circle` and `arrow.down.to.line` — and would otherwise read as catalogue keys with
+            // nothing behind them. Asked of the types rather than guessed from the text, so a changed glyph does
+            // not silently stop being subtracted.
+            .union(ExpensesScreen.Icon.allCases.map(ExpensesView.symbol))
+            .union(ExpensesScreen.Field.allCases.map(ExpenseCategoryView.glyph))
         var keys: [String: String] = [:]
 
         for layer in presentationLayers {

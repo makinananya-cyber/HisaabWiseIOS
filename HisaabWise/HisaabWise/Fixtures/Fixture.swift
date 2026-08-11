@@ -79,6 +79,40 @@ enum Fixture: String, CaseIterable, Sendable {
     /// screens, so the payload says which (`spending.isFirstRun`).
     case homeFirstRun = "home-first-run"
 
+    /// `GET /v1/screens/expenses` — the whole screen in one response (ADR-0020, ADR-0033, #18), **and what
+    /// every Expenses write answers with**.
+    ///
+    /// One payload claiming four paths, which is ADR-0020's write rule expressed as a fixture: a create, a
+    /// delete, a rent update, and a bills update all return the updated screen, so a corpus with a separate
+    /// body per write would be four chances to describe a contract that has one shape.
+    ///
+    /// **It is the same month as ``homeINR``**, down to the display string: `₹5,539` spent, over the design's
+    /// own figures. `FixtureCorpusTests` asserts the two agree, because Home's donut and Expenses' summary read
+    /// one budget engine (invariant 3) and a difference between them is a screen that has summed something.
+    case expensesINR = "expenses-inr"
+
+    /// `GET /v1/screens/expenses` for an account with nothing logged — every total zero, no entries, no bills,
+    /// and no rent carried forward.
+    ///
+    /// A *response*, not an absence: the seven categories are structural and are all present. What is empty is
+    /// each of their lists, which is what the design's `.empty` box is for.
+    case expensesFirstRun = "expenses-first-run"
+
+    /// `GET /v1/screens/expenses` with the **wants bar past its allowance** — `isOver`, and a percentage over
+    /// 100 beside a fill that has clamped at 1.
+    ///
+    /// The over state is one of this screen's acceptance criteria and it is a *verdict* the server sends, so it
+    /// needs a payload that carries one. Kept as a third file rather than assembled in a test, for the reason
+    /// the corpus exists at all: a screen drawing the over state has to be previewable.
+    case expensesOverBudget = "expenses-over-budget"
+
+    /// `GET /v1/content/picklists` — **22** transport modes and **20** "Other" types.
+    ///
+    /// The counts are the acceptance test the workspace's content rules set, so the corpus holds both lists
+    /// whole: the transport list clears `HWPickerSheet`'s twelve-row search threshold by ten, and a trimmed
+    /// sample would be a sheet whose search box had never been exercised.
+    case picklists
+
     /// `GET /v1/content/tips` — all **49** tips, `{c}` tokens verbatim, emphasis as markdown.
     ///
     /// The count is the acceptance test the workspace's content rules set, so the corpus carries the whole pool:
@@ -112,8 +146,11 @@ enum Fixture: String, CaseIterable, Sendable {
     /// generating it at the call site would put a second copy of the shape in the test target.
     case languageEnglish = "language-english"
 
-    /// The `/v1` paths this fixture is a response for — usually one, and **empty** for the entries that are
-    /// not a response to anything: ``moneyExponents`` is a corpus of values, not a payload.
+    /// The `/v1` paths this fixture is a response for — usually one, and **empty** in two cases.
+    /// ``moneyExponents`` is a corpus of values rather than a payload; and where several fixtures are
+    /// alternative payloads for *one* path, only one may claim it, because ``FixtureTransport/serving(_:)``
+    /// refuses two fixtures for one path and the second would otherwise answer every request with the wrong
+    /// month.
     ///
     /// This is what makes coverage checkable rather than asserted: `FixtureCorpusTests` reads every path out
     /// of `Endpoint.swift` and requires each to be claimed here.
@@ -121,7 +158,15 @@ enum Fixture: String, CaseIterable, Sendable {
         switch self {
         case .budgetINR, .budgetAED, .budgetDrifted: [Endpoint.budget]
         case .homeINR, .homeFirstRun: [Endpoint.screenHome]
+        // **Four paths, one set of bytes**, which is ADR-0020's write rule as a fixture: the read and all three
+        // writes answer with the same screen payload. `serving(_:)` refuses two fixtures for one path, so only
+        // one of the three Expenses payloads may claim them — the standing default does, and the other two are
+        // stubbed explicitly by whichever test or preview wants that month.
+        case .expensesINR:
+            [Endpoint.screenExpenses, Endpoint.expenses, Endpoint.fixedCosts, Endpoint.billLines]
+        case .expensesFirstRun, .expensesOverBudget: []
         case .tips: [Endpoint.contentTips]
+        case .picklists: [Endpoint.contentPicklists]
         case .articleScams: [Endpoint.articleBody(id: "scams")]
         // Two paths, one set of bytes: a refresh answers with a login's shape, which is the whole of
         // ADR-0023's rotation decision expressed as a fixture.

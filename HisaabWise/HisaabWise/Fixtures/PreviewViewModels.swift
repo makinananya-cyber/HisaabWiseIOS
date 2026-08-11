@@ -65,6 +65,63 @@ extension HomeViewModel {
     }
 }
 
+extension ExpensesViewModel {
+    /// The standing default preview: the design's own month, in rupees — the same month ``HomeViewModel/previewINRSalary``
+    /// draws, so the two screens tell one story about one month.
+    @MainActor
+    static var previewINR: ExpensesViewModel {
+        preview(stubbing: .response(status: 200, body: TestPayload.bytes(.expensesINR)))
+    }
+
+    /// The wants budget passed: the bar in its danger colours, the percentage over 100, and `isOver` saying so in
+    /// words as well.
+    @MainActor
+    static var previewOverBudget: ExpensesViewModel {
+        preview(stubbing: .response(status: 200, body: TestPayload.bytes(.expensesOverBudget)))
+    }
+
+    /// A brand-new month: every total zero, seven categories, and nothing logged in any of them.
+    @MainActor
+    static var previewFirstRun: ExpensesViewModel {
+        preview(stubbing: .response(status: 200, body: TestPayload.bytes(.expensesFirstRun)))
+    }
+
+    /// Offline, which must not render as a failure.
+    @MainActor
+    static var previewOffline: ExpensesViewModel {
+        preview(stubbing: .notConnected)
+    }
+
+    /// A `501` — the state every unwritten screen endpoint answers with until the backend has one.
+    @MainActor
+    static var previewNotImplemented: ExpensesViewModel {
+        preview(stubbing: .response(status: 501, body: Data()))
+    }
+
+    @MainActor
+    private static func preview(stubbing outcome: FixtureTransport.Outcome) -> ExpensesViewModel {
+        let language = LanguageManager(selected: .english)
+        let client = APIClient(
+            baseURL: URL(string: "https://fixtures.invalid")!,
+            transport: FixtureTransport(stubs: [
+                Endpoint.screenExpenses: outcome,
+                // The pick lists, so a preview of the Transport form can actually open one. Served from the
+                // corpus, because a preview of a picker with no options is a preview of a dead control.
+                Endpoint.contentPicklists: .response(status: 200, body: TestPayload.bytes(.picklists)),
+                // **Every write answers with the screen again** (ADR-0020), so pressing Add in a preview shows
+                // what pressing Add does rather than a failure state.
+                Endpoint.expenses: .response(status: 200, body: TestPayload.bytes(.expensesINR)),
+            ]),
+            language: language,
+            refreshTokens: InMemoryTokenStore()
+        )
+        return ExpensesViewModel(
+            client: client,
+            content: ContentLoader(client: client, store: InMemoryContentStore())
+        )
+    }
+}
+
 extension ArticleViewModel {
     /// The scams article, which carries every block the structure has.
     @MainActor

@@ -13,10 +13,12 @@ import Testing
 @MainActor
 struct AppShellTests {
     private func viewModels() -> TabViewModels {
-        TabViewModels(home: HomeViewModel(
-            client: TestBench.client(FixtureTransport()),
-            content: ContentLoader(client: TestBench.client(FixtureTransport()), store: InMemoryContentStore())
-        ))
+        let client = TestBench.client(FixtureTransport())
+        let content = ContentLoader(client: client, store: InMemoryContentStore())
+        return TabViewModels(
+            home: HomeViewModel(client: client, content: content),
+            expenses: ExpensesViewModel(client: client, content: content)
+        )
     }
 
     // MARK: - Five tabs, in order
@@ -111,9 +113,11 @@ struct AppShellTests {
         #expect(!AppShell.showsVerificationBanner(for: nil))
     }
 
+    /// Three tabs are still placeholders — Learn (#19), Reports (#21), and Account (#23). Expenses stopped being
+    /// one with #18, so it is asserted through its own screen below rather than here.
     @Test("every unwritten tab root renders in the state its view model starts in")
     func everyUnwrittenRootRenders() async throws {
-        for tab in AppTab.allCases where tab != .home {
+        for tab in AppTab.allCases where tab != .home && tab != .expenses {
             let viewModel = UnwrittenScreenViewModel()
             try await viewModel.load()
             #expect(TestBench.render(UnwrittenTabRoot(tab: tab, viewModel: viewModel)) != nil, "\(tab)")
@@ -125,7 +129,7 @@ struct AppShellTests {
     /// criterion, and a screen that dropped it would still compile.
     @Test("every tab root is a BaseView conformance")
     func everyRootIsABaseView() throws {
-        let roots = ["HomeView.swift", "UnwrittenTabRoot.swift"]
+        let roots = ["HomeView.swift", "ExpensesView.swift", "UnwrittenTabRoot.swift"]
 
         for name in roots {
             let source = try String(

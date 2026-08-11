@@ -147,7 +147,7 @@ struct AppShell: View {
                     onAddExpense: { selection = .expenses },
                     onContinueLearning: { selection = .learn }
                 )
-            case .expenses: UnwrittenTabRoot(tab: tab, viewModel: viewModels.expenses)
+            case .expenses: ExpensesView(viewModel: viewModels.expenses)
             case .learn: UnwrittenTabRoot(tab: tab, viewModel: viewModels.learn)
             case .reports: UnwrittenTabRoot(tab: tab, viewModel: viewModels.reports)
             // Account carries the way out, because the design puts it there. It is the only thing on any of
@@ -172,7 +172,7 @@ struct AppShell: View {
 /// launches signed out, and `RootView` draws Landing.
 @MainActor
 private func previewViewModels() -> TabViewModels {
-    TabViewModels(home: .previewINRSalary)
+    TabViewModels(home: .previewINRSalary, expenses: .previewINR)
 }
 
 #Preview("The shell — five tabs") {

@@ -13,12 +13,30 @@ import Testing
 struct HWButtonTests {
     // MARK: The variants
 
-    @Test("the design's four variants are all present")
-    func fourVariants() {
-        // `.btn` in the design carries exactly these: primary · soft · ghost · quiet. A fifth invented
-        // here would be a variant with no design behind it; a missing one is a screen about to inline it.
-        #expect(HWButtonVariant.allCases.count == 4)
-        #expect(HWButtonVariant.allCases == [.primary, .soft, .ghost, .quiet])
+    @Test("the design's variants are all present, and only those")
+    func everyVariant() {
+        // `.btn` in the design carries primary · soft · ghost · quiet, and Expenses' `.addline` is the dashed
+        // fifth (#18). One invented here would be a variant with no design behind it; a missing one is a screen
+        // about to inline it.
+        #expect(HWButtonVariant.allCases.count == 5)
+        #expect(HWButtonVariant.allCases == [.primary, .soft, .ghost, .quiet, .dashed])
+    }
+
+    /// **Exactly one variant is dashed**, which is the whole of what distinguishes `.addline` from `.btn-quiet`
+    /// besides its ink — and a dash is invisible to `Equatable` unless the appearance carries it, which is why
+    /// `borderDash` is a field rather than something the view decides.
+    @Test("only the dashed variant has a dash, on both surfaces")
+    func onlyDashedIsDashed() {
+        for appearance in HWAppearance.allCases {
+            for variant in HWButtonVariant.allCases {
+                let dashed = HWButtonAppearance(
+                    variant: variant,
+                    appearance: appearance,
+                    palette: .standard
+                ).borderDash != nil
+                #expect(dashed == (variant == .dashed), "\(appearance)/\(variant) dash")
+            }
+        }
     }
 
     @Test("no two variants resolve to the same appearance on surface")
@@ -80,7 +98,7 @@ struct HWButtonTests {
         if case .gradient = appearance(.primary).fill {} else {
             Issue.record("primary is not a gradient")
         }
-        for variant in [HWButtonVariant.soft, .ghost, .quiet] {
+        for variant in [HWButtonVariant.soft, .ghost, .quiet, .dashed] {
             if case .gradient = appearance(variant).fill {
                 Issue.record("\(variant) is a gradient — only primary is")
             }
@@ -91,6 +109,7 @@ struct HWButtonTests {
         #expect(appearance(.soft).elevation != nil)
         #expect(appearance(.ghost).elevation == nil)
         #expect(appearance(.quiet).elevation == nil)
+        #expect(appearance(.dashed).elevation == nil)
 
         // **On `brand` nothing is raised**, including primary: the design puts a blurred glow *behind* the
         // landing CTA rather than a shadow under it, and the glow is the screen's to draw because it sits
@@ -103,11 +122,14 @@ struct HWButtonTests {
         }
     }
 
-    @Test("the quiet variant has no fill, and every other one does")
-    func quietIsTheOnlyUnfilledVariant() {
+    /// **Two variants have no fill and they are the two the design draws unfilled** — `.btn-quiet` and
+    /// `.addline`. They are still distinct, because one is bordered with a hairline and the other with a dash in
+    /// a different ink; `variantsAreDistinct` above is what states that.
+    @Test("only the quiet and dashed variants have no fill")
+    func theUnfilledVariants() {
         for variant in HWButtonVariant.allCases {
             let unfilled = HWButtonAppearance(variant: variant, palette: .standard).fill == .unfilled
-            #expect(unfilled == (variant == .quiet), "\(variant) fill")
+            #expect(unfilled == (variant == .quiet || variant == .dashed), "\(variant) fill")
         }
     }
 

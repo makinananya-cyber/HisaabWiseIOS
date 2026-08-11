@@ -119,7 +119,8 @@ struct RegistrationGoalStep: View {
             ),
             symbol: viewModel.currency?.symbol ?? "",
             code: viewModel.currency?.code ?? "",
-            error: RegistrationView.copy(for: viewModel.failure(for: .goal))
+            error: RegistrationView.copy(for: viewModel.failure(for: .goal)),
+            appearance: .brand
         )
     }
 

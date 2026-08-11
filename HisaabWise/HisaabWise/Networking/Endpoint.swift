@@ -19,6 +19,57 @@ enum Endpoint {
     /// and the article teasers.
     static let screenHome = "/v1/screens/home"
 
+    /// `GET /v1/screens/expenses` — **the single read Expenses makes** (ADR-0020, #18). The monthly summary and
+    /// its three-way split, the wants-bar state, every per-category running total, and each entry's
+    /// "Today / Yesterday / N days ago" label all arrive computed — the client sums nothing and owns no
+    /// calendar.
+    static let screenExpenses = "/v1/screens/expenses"
+
+    // MARK: - Expenses
+
+    /// `POST /v1/expenses` — one new entry in a `log` category.
+    ///
+    /// **The `Idempotency-Key` route the header was written for.** `APIClient.post` keys every `POST`, and this
+    /// is the one whose caller supplies its own: the Add button mints a key per *user intent* and reuses it
+    /// across retries, so a write that reached the server and lost its response is not filed twice (ADR-0022).
+    ///
+    /// Answers with the **updated screen payload** (ADR-0020), so the totals re-render from server truth
+    /// instead of the client patching its own copy — which is how a per-category total and a monthly summary
+    /// come to disagree.
+    static let expenses = "/v1/expenses"
+
+    /// `DELETE /v1/expenses/{id}` — one entry, removed. Answers with the updated screen payload.
+    ///
+    /// The id comes from a payload, so it goes through ``pathSegment(_:)`` for the reason
+    /// `ContentResource.forArticle(id:)` sanitises an article's: `appending(path:)` does not escape a slash,
+    /// and an id containing one would send this request somewhere else entirely.
+    static func expense(id: String) -> String { "\(expenses)/\(pathSegment(id))" }
+
+    /// `PUT /v1/expenses/fixed/{categoryId}` — a `fixed` category's monthly amount. Rent, today.
+    ///
+    /// Keyed by **category** rather than named `rent`, so a second fixed cost is a payload change rather than a
+    /// route. Declared as its collection so the fixture corpus can be checked against a parameterised route.
+    static let fixedCosts = "/v1/expenses/fixed"
+
+    static func fixedCost(categoryID: String) -> String { "\(fixedCosts)/\(pathSegment(categoryID))" }
+
+    /// `PUT /v1/expenses/lines/{categoryId}` — a `lines` category's whole set of bills, replaced.
+    ///
+    /// One request for the whole set, because that is the gesture the design has — see ``BillLinesUpdate``.
+    static let billLines = "/v1/expenses/lines"
+
+    static func billLines(categoryID: String) -> String { "\(billLines)/\(pathSegment(categoryID))" }
+
+    /// One path segment built from a server-supplied id, reduced to what a segment may contain.
+    ///
+    /// The lesson `ContentResource.forArticle(id:)` records, applied to a route: `URL.appending(path:)` leaves
+    /// a `/` alone, so an id carrying one would travel up the path and address a different resource. Characters
+    /// outside the set are dropped rather than escaped — an id needing escaping is a server bug worth noticing
+    /// rather than papering over.
+    private static func pathSegment(_ id: String) -> String {
+        id.filter { $0.isLetter || $0.isNumber || $0 == "-" || $0 == "_" }
+    }
+
     // MARK: - Session
 
     /// Email and password in, a token pair out. Unauthenticated, and a `401` here means "wrong
@@ -63,6 +114,13 @@ enum Endpoint {
     /// The tip pool — `GET /v1/content/tips`. Cacheable, and the same 49 tips for everybody (invariant 8).
     static let contentTips = "/v1/content/tips"
 
+    /// The two Expenses pick lists — `GET /v1/content/picklists`. 22 transport modes and 20 "Other" types,
+    /// cacheable because they are the same 42 options for everybody (invariant 8, ADR-0009).
+    ///
+    /// Under `/v1/content` rather than beside the expense routes for exactly that reason: an expense is
+    /// per-user and must bypass every cache, while the list it was picked from is not.
+    static let contentPicklists = "/v1/content/picklists"
+
     /// One article's body — `GET /v1/content/articles/scams`.
     ///
     /// **Separate from the screen payload, and cacheable** (invariant 8, ADR-0020): the teasers are per-user
@@ -90,6 +148,7 @@ enum Endpoint {
         case .currencies: contentCurrencies
         case .securityQuestions: contentSecurityQuestions
         case .tips: contentTips
+        case .picklists: contentPicklists
         // The id here has already been through `ContentResource.forArticle(id:)`, which is the only way to build the
         // case — so this is the *sanitised* id, and the file name and the path cannot differ.
         case .article(let id): "\(articles)/\(id)"

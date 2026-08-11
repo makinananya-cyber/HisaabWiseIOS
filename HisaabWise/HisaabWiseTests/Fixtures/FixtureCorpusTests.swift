@@ -266,6 +266,69 @@ struct FixtureCorpusTests {
         #expect(viewModel.state.value?.savings.saved.display == "₹23,000")
     }
 
+    // MARK: - The Expenses payloads
+
+    @Test("the expenses payloads decode into the type the app decodes them into")
+    func expensesDecode() throws {
+        let populated = try Fixture.expensesINR.decode(ExpensesScreen.self)
+        #expect(populated.categories.count == 7)
+        #expect(populated.summary.total.display == "₹5,539")
+        #expect(!populated.wants.isOver)
+
+        let firstRun = try Fixture.expensesFirstRun.decode(ExpensesScreen.self)
+        #expect(firstRun.categories.count == 7)
+        #expect(firstRun.categories.allSatisfy { $0.entries.isEmpty && $0.lines.isEmpty })
+
+        // The one payload that carries the over-budget verdict, which is one of the screen's criteria.
+        #expect(try Fixture.expensesOverBudget.decode(ExpensesScreen.self).wants.isOver)
+    }
+
+    /// **The counts are the acceptance test** the workspace's content rules set: 22 transport modes and 20 "Other"
+    /// types. Asserted exactly rather than as a range, and the ids are asserted unique because the id is what
+    /// crosses the wire — two options sharing one would file the wrong label.
+    @Test("the pick lists carry the counts the content rules require")
+    func picklistCountsAreExact() throws {
+        let picklists = try Fixture.picklists.decode(Picklists.self)
+
+        #expect(picklists.transport.count == 22)
+        #expect(picklists.other.count == 20)
+        #expect(Set(picklists.transport.map(\.id)).count == 22)
+        #expect(Set(picklists.other.map(\.id)).count == 20)
+        // Exactly one option asks the user what it actually was, and it is the last of the "Other" list — the
+        // design's "Something else…". A **flag**, not a name match (ADR-0033).
+        #expect(picklists.other.filter(\.opensFreeText).count == 1)
+        #expect(picklists.other.last?.opensFreeText == true)
+    }
+
+    /// **The two screens tell one story about one month**, and this is what keeps them doing it.
+    ///
+    /// Home's donut and Expenses' summary both read the one budget engine (invariant 3), so the total spent has to
+    /// be the *same* figure in both payloads. A difference is one of the two assemblies having summed something —
+    /// exactly the class of mistake defect D1 was, and the same anchor the `saved` assertion below is.
+    @Test("the home payload and the expenses payload agree about the month's spending")
+    func theCorpusAgreesAboutSpending() throws {
+        let home = try Fixture.homeINR.decode(HomeScreen.self)
+        let expenses = try Fixture.expensesINR.decode(ExpensesScreen.self)
+
+        #expect(home.spending.total.display == expenses.summary.total.display)
+        #expect(home.spending.total.minor == expenses.summary.total.minor)
+        #expect(home.monthLabel == expenses.monthLabel)
+
+        // And each category Home draws a slice for is the same figure Expenses draws a row for. Home's donut
+        // excludes Additional Income, so it has six of the seven — asserted as a subset rather than an equality,
+        // which is what "money in is not spending" means for the corpus.
+        for category in home.spending.categories {
+            let row = try #require(
+                expenses.category(id: category.id),
+                "Home draws \(category.id) and Expenses has no such category"
+            )
+            #expect(row.total.minor == category.amount.minor, "\(category.id) differs between the two screens")
+            #expect(row.total.display == category.amount.display, "\(category.id) reads differently")
+        }
+        #expect(expenses.categories.count == home.spending.categories.count + 1)
+        #expect(expenses.categories.filter { $0.flow == .incoming }.count == 1)
+    }
+
     /// **Defect D1's anchor, in the corpus itself.** The screen payload is assembled from the budget engine, so
     /// `saved` has to be the *same* figure in both — a difference between them is the assembly having derived
     /// rather than read, which is exactly the class of mistake D1 was.

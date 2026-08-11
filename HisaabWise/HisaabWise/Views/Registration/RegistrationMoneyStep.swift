@@ -77,7 +77,10 @@ struct RegistrationMoneyStep: View {
             value: viewModel.currency.map { Text("registration.two.currency.value \($0.name) \($0.code)") },
             placeholder: "registration.two.currency.placeholder",
             systemImage: "globe",
-            badge: viewModel.currency?.symbol
+            badge: viewModel.currency?.symbol,
+            // Spelled at the call site now that the combo draws both surfaces, and both layouts (#18). On
+            // `brand` the caption stays inside the box, which is the rendering this screen already had.
+            appearance: .brand
         ) {
             picker = .currency
         }
@@ -92,7 +95,10 @@ struct RegistrationMoneyStep: View {
             ),
             symbol: viewModel.currency?.symbol ?? "",
             code: viewModel.currency?.code ?? "",
-            error: RegistrationView.copy(for: viewModel.failure(for: .salary))
+            error: RegistrationView.copy(for: viewModel.failure(for: .salary)),
+            // Spelled at the call site now that the field draws both surfaces (#18). It was brand-only, so this
+            // is the same rendering said out loud rather than inferred.
+            appearance: .brand
         )
     }
 
@@ -104,7 +110,8 @@ struct RegistrationMoneyStep: View {
             value: viewModel.firstQuestion.map { Text(verbatim: $0.text) },
             placeholder: "registration.two.question.placeholder",
             systemImage: "questionmark.circle",
-            error: RegistrationView.copy(for: viewModel.failure(for: .firstQuestion))
+            error: RegistrationView.copy(for: viewModel.failure(for: .firstQuestion)),
+            appearance: .brand
         ) {
             picker = .firstQuestion
         }
@@ -132,7 +139,8 @@ struct RegistrationMoneyStep: View {
             value: viewModel.secondQuestion.map { Text(verbatim: $0.text) },
             placeholder: "registration.two.question.placeholder",
             systemImage: "questionmark.circle",
-            error: RegistrationView.copy(for: viewModel.failure(for: .secondQuestion))
+            error: RegistrationView.copy(for: viewModel.failure(for: .secondQuestion)),
+            appearance: .brand
         ) {
             picker = .secondQuestion
         }

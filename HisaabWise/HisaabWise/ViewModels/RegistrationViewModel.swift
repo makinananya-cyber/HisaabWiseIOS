@@ -355,7 +355,7 @@ final class RegistrationViewModel {
     /// type `8,000` or `8000`, and a locale-aware parse would disagree with itself between languages. **This is
     /// not client-side money arithmetic** — it is reading one number the user typed, before any currency exists
     /// to convert it into (ADR-0003).
-    var salaryMinor: Int? { Self.minor(from: salaryText, currency: currency) }
+    var salaryMinor: Int? { Self.minor(from: salaryText) }
 
     /// 20% of the salary, in minor units — what step 3 pre-fills and what **Skip for now** accepts.
     var suggestedGoalMinor: Int? {
@@ -363,7 +363,7 @@ final class RegistrationViewModel {
         return Int((Double(salaryMinor) * Self.suggestedGoalShare).rounded())
     }
 
-    var goalMinor: Int? { Self.minor(from: goalText, currency: currency) }
+    var goalMinor: Int? { Self.minor(from: goalText) }
 
     /// How what the user typed compares with the suggestion, or `nil` while there is nothing to compare.
     ///
@@ -432,50 +432,19 @@ final class RegistrationViewModel {
 
     /// Reads a typed figure into minor units, or `nil` if what was typed is not a figure.
     ///
-    /// **The separator may be a decimal comma, and getting that wrong is a 100× error.** `.decimalPad` offers the
-    /// *device region's* separator and no other, so on a German or Brazilian phone there is no `.` key at all and
-    /// a comma is the only way to express fils. Treating it as grouping would read `8000,50` as `800050` and send
-    /// a salary a hundred times too large — which every "% of pay" in the app is then computed against
-    /// (invariant 2).
+    /// The rule itself — which separator is the decimal point, and what happens to a figure typed in Eastern
+    /// Arabic-Indic digits — lives in ``TypedAmount`` now that Expenses (#18) is a second caller. It was
+    /// private to this file, and a second copy of a rule whose failure mode is a 100× error is not a copy
+    /// worth having.
     ///
-    /// So the **last** separator decides, by what follows it: one or two digits means it separates the fraction,
-    /// anything else means it groups. `8,000` is eight thousand; `8000,50` and `8000.50` are both eight thousand
-    /// and fifty. `1,5` is one and a half, which is what a decimal-comma reader means by it.
+    /// **Two minor digits**, and this screen has no exponent to pass: the reference list carries a code, a name,
+    /// and a symbol. A three-digit currency (KWD, BHD, OMR) is recorded in `CONTEXT.md` as a field the list has
+    /// to grow. Expenses reads its exponent from the screen payload, which is why that caller passes a real one.
     ///
-    /// **Any digit script.** `Character.isNumber` accepts Eastern Arabic-Indic digits and `Double` does not, so
-    /// `٨٠٠٠` used to be refused as "not a figure" — a salary the user did type. Each digit is read through
-    /// `wholeNumberValue`, which knows every script.
-    ///
-    /// This is **not** client-side money arithmetic (ADR-0003): it is reading one number the user typed, before
-    /// any currency exists to convert it into.
-    private static func minor(from text: String, currency: Currency?) -> Int? {
-        var digits = ""
-        var fractionDigits: Int?
-
-        for character in text {
-            if let value = character.wholeNumberValue, character.isNumber {
-                digits.append("\(value)")
-                // Count on: a separator followed by three digits was grouping after all.
-                if let count = fractionDigits { fractionDigits = count + 1 }
-            } else if character == "." || character == "," {
-                // A new separator restarts the count, so only the last one can be the decimal point.
-                fractionDigits = 0
-            }
-        }
-
-        // Two decimal digits at most, and a separator followed by three or more was grouping.
-        let fraction = (fractionDigits ?? 0) <= 2 ? (fractionDigits ?? 0) : 0
-        guard !digits.isEmpty, let whole = Int(digits) else { return nil }
-
-        // Two minor digits until the currency's exponent is known from the server; the reference list carries a
-        // code and a symbol only. A three-digit currency (KWD, BHD, OMR) is recorded in `CONTEXT.md` as a field
-        // the list has to grow.
-        let scaled = switch fraction {
-        case 0: whole * 100
-        case 1: whole * 10
-        default: whole
-        }
-        return scaled > 0 ? scaled : nil
+    /// It took a `Currency?` and never read it. Kept as a wrapper rather than inlined so the two call sites above
+    /// state the exponent decision once.
+    private static func minor(from text: String) -> Int? {
+        TypedAmount.minor(from: text, exponent: 2)
     }
 
     // MARK: - Moving between steps
@@ -501,14 +470,9 @@ final class RegistrationViewModel {
 
     /// Minor units back into what the field shows — `800000` → `"8000"`, `800050` → `"8000.50"`.
     ///
-    /// Interpolated rather than formatted, and that is not a style choice: a formatter would group and decimal-
-    /// separate against a locale, and this string goes **into a text field the user then edits**. `8.000,50` is
-    /// unparseable by the reader on the other side of this file (ADR-0011 keeps every formatter out of the app).
+    /// Two minor digits for the reason ``minor(from:currency:)`` reads two: this screen has no exponent.
     static func majorString(_ minor: Int) -> String {
-        let units = minor / 100
-        let fraction = minor % 100
-        guard fraction != 0 else { return "\(units)" }
-        return fraction < 10 ? "\(units).0\(fraction)" : "\(units).\(fraction)"
+        TypedAmount.major(minor, exponent: 2)
     }
 
     // MARK: - The one request

@@ -67,12 +67,16 @@ struct StateTaxonomyTests {
     /// The mapping acceptance criterion, as a scan: `BaseViewModel.load()` is the **only** place an
     /// `APIError` becomes a `LoadState`. A second `catch APIError.offline` anywhere is a second chance to
     /// render a supported mode as a fault.
-    /// **A read has exactly one owner; a form owns its own.** `BaseViewModel.load()` is the only place an error
-    /// becomes a ``LoadState`` — that is the rule with teeth, because twelve screens share those four states. A
-    /// *form* maps to field errors instead, which is not a `LoadState` and never could be: "offline" under a
-    /// password box is not the same thing as an offline screen. Each form is one screen's own rules, so each names
-    /// itself here, and another entry is a change somebody makes on purpose. `Networking` is skipped because that is where `APIError` is declared and thrown.
-    @Test("a read maps errors in one place; each form maps its own")
+    /// **A read has exactly one owner; a form owns its own; a write owns its own.** `BaseViewModel.load()` is the
+    /// only place a *read*'s error becomes a ``LoadState`` — that is the rule with teeth, because twelve screens
+    /// share those four states. A *form* maps to field errors instead, which is not a `LoadState` and never could
+    /// be: "offline" under a password box is not the same thing as an offline screen. And a *write* maps to a
+    /// third thing again (ADR-0019, ADR-0033): offline becomes `LoadState.offline` because there is nothing to
+    /// correct and no queue to hold it, and `MONTH_CLOSED` becomes an *offer* rather than a sentence.
+    ///
+    /// Each of those is one screen's own rules, so each names itself here, and another entry is a change somebody
+    /// makes on purpose. `Networking` is skipped because that is where `APIError` is declared and thrown.
+    @Test("a read maps errors in one place; each form and each write maps its own")
     func errorMappingHasOneOwnerPerKind() throws {
         try expectAbsent(
             "APIError",
@@ -80,9 +84,13 @@ struct StateTaxonomyTests {
                 "ViewModels/BaseViewModel.swift",
                 "ViewModels/SignInViewModel.swift",
                 "ViewModels/RegistrationViewModel.swift",
+                "ViewModels/ExpensesViewModel.swift",
             ],
             skippingLayers: ["Networking"],
-            because: "a read becomes a LoadState in BaseViewModel.load(); a form becomes field errors in SignInViewModel"
+            because: """
+                a read becomes a LoadState in BaseViewModel.load(); a form becomes field errors in \
+                SignInViewModel; a write becomes an offline state or a re-filing offer in ExpensesViewModel
+                """
         )
     }
 
@@ -90,8 +98,8 @@ struct StateTaxonomyTests {
     /// code at all — if one reaches a view, the next commit renders it.
     @Test("an error code becomes copy in exactly one place")
     func errorCopyHasOneOwner() throws {
-        // `Models` declares `ErrorCode` and `ViewModels` may legitimately branch on one — Expenses will,
-        // to offer re-filing on `MONTH_CLOSED`. Turning a code into a *sentence* is the single-owner part.
+        // `Models` declares `ErrorCode` and `ViewModels` may legitimately branch on one — Expenses does, to
+        // offer re-filing on `MONTH_CLOSED` (#18). Turning a code into a *sentence* is the single-owner part.
         try expectAbsent(
             "ErrorCode",
             outside: ["DesignSystem/ErrorCopy.swift"],

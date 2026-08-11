@@ -85,6 +85,12 @@ final class AppEnvironment {
         HomeViewModel(client: client, content: content)
     }
 
+    /// Expenses' view model (#18). It needs the content loader as well as the client, for the two server-served
+    /// pick lists its entry form picks from (ADR-0009).
+    func makeExpensesViewModel() -> ExpensesViewModel {
+        ExpensesViewModel(client: client, content: content)
+    }
+
     /// One view model per tab, made once for the shell to be handed (issue #5).
     ///
     /// **Made here and held by the composition root**, not held here: the graph is the app's lifetime and a
@@ -92,7 +98,7 @@ final class AppEnvironment {
     /// come and go. What this method owns is the one thing a view model needs and a view may not have — the
     /// client.
     func makeTabViewModels() -> TabViewModels {
-        TabViewModels(home: makeHomeViewModel())
+        TabViewModels(home: makeHomeViewModel(), expenses: makeExpensesViewModel())
     }
 
     /// A registration form, made **fresh each time the screen is pushed** (#15).
