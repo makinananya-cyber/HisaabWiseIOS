@@ -21,7 +21,7 @@ import Observation
 @MainActor
 @Observable
 final class SessionCoordinator {
-    /// What the shell branches on (#5): tabs, or Landing.
+    /// What ``RootView`` branches on: the tabs, or Landing.
     private(set) var isSignedIn = false
 
     /// Who is signed in, as far as the last revalidation knows. `nil` while signed out, and also while

@@ -37,7 +37,7 @@
 ///   in-app screens. Landing and Auth are `brand` (ADR-0021) and arrive with #13–#16 — the reason
 ///   `ScreenChrome` gives for not being appearance-agnostic yet: two callers shape it better than one guess.
 /// - The destructive button — the design's `.btn-danger` and Account's `.logout` — which arrives with
-///   Account (#17), for the same reason.
+///   Account (#23), for the same reason.
 /// - `.tabbar`. It is the five-tab shell's, and in SwiftUI it is a `TabView` rather than a control:
 ///   converting the CSS would mean re-implementing a system container, which Rule 1 rules out.
 /// - `.mark`, the wordmark tile in `.topbar`. The asset catalogue carries colour sets only, so there is

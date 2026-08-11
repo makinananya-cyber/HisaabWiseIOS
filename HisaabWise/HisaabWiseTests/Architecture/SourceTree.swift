@@ -32,6 +32,16 @@ enum SourceTree {
     /// carries, whether a format string is positional — has to read the source either way.
     static let catalogue = appSources.appending(path: "Resources/Localizable.xcstrings")
 
+    /// `…/HisaabWise.xcodeproj/project.pbxproj` — the build settings that are *not* in an `.xcconfig`.
+    ///
+    /// Read as text, deliberately: the two settings that interest a test — the device family and the
+    /// supported orientations — are per-configuration entries in a format with no parser here, and what is
+    /// being asserted is that no configuration carries a different value. A substring scan answers that
+    /// question exactly, and a plist parse of a pbxproj would answer a harder one.
+    static let projectFile = appSources
+        .deletingLastPathComponent()
+        .appending(path: "HisaabWise.xcodeproj/project.pbxproj")
+
     /// `…/HisaabWise.xcodeproj/xcshareddata/xcschemes` — the shared schemes.
     ///
     /// Checked in, and therefore checkable. The pseudolanguage harness lives in one of these, and a

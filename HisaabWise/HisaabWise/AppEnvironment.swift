@@ -70,16 +70,33 @@ final class AppEnvironment {
     func makeHomeViewModel() -> HomeViewModel {
         HomeViewModel(client: client)
     }
+
+    /// One view model per tab, made once for the shell to be handed (issue #5).
+    ///
+    /// **Made here and held by the composition root**, not held here: the graph is the app's lifetime and a
+    /// tab's view model is the shell's, which today are the same span and will not be once Landing and Auth can
+    /// come and go. What this method owns is the one thing a view model needs and a view may not have — the
+    /// client.
+    func makeTabViewModels() -> TabViewModels {
+        TabViewModels(home: makeHomeViewModel())
+    }
 }
 
 extension View {
     /// Injects everything screens read from `@Environment`.
     ///
     /// One call site, so that the list of injected objects grows in one place rather than in each new
-    /// tab's `body`. Two entries so far: the theme, and the language — the latter bringing the `Locale`
-    /// and the `LayoutDirection` with it, so that no screen has to remember to set either.
+    /// tab's `body`. Three entries: the theme, the language — the latter bringing the `Locale` and the
+    /// `LayoutDirection` with it, so that no screen has to remember to set either — and the session, which
+    /// ``RootView`` branches on and ``LogoutControl`` ends.
+    ///
+    /// **The tab view models are not here**, and cannot be: they are *made* rather than held (see
+    /// ``AppEnvironment/makeTabViewModels()``), so injecting them from a `View` extension would make a fresh
+    /// set every time a `body` ran and reset every screen on every re-render. The composition root makes them
+    /// once and injects them itself.
     func hwEnvironment(_ environment: AppEnvironment) -> some View {
         hwTheme(environment.theme)
             .hwLanguage(environment.language)
+            .environment(environment.session)
     }
 }

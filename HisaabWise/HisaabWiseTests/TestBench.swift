@@ -98,6 +98,34 @@ enum TestBench {
         Data(#"{"accessToken":"\#(access)","refreshToken":"\#(refresh)"}"#.utf8)
     }
 
+    /// A coordinator that is signed in, over a fixture transport.
+    ///
+    /// Signed in by actually signing in, rather than by setting a flag: `isSignedIn` is `private(set)` and
+    /// the point of the shell's tests is what the *real* sequence leaves behind. Both stores are in-memory,
+    /// so no suite writes a credential to the machine it runs on.
+    @MainActor
+    static func signedInSession() async throws -> SessionCoordinator {
+        let kept = InMemoryTokenStore()
+        let transport = FixtureTransport(stubs: [
+            Endpoint.login: .response(
+                status: 200,
+                body: tokenPair(access: accessToken(), refresh: "refresh-1")
+            ),
+            Endpoint.me: .response(
+                status: 200,
+                body: Data(#"{"email":"a@b.com","displayName":"Neeraj","emailVerified":true}"#.utf8)
+            ),
+            Endpoint.logout: .response(status: 200, body: Data("{}".utf8)),
+        ])
+        let session = SessionCoordinator(
+            client: client(transport, refreshTokens: kept),
+            keptStore: kept,
+            transientStore: InMemoryTokenStore()
+        )
+        try await session.signIn(email: "a@b.com", password: "a-long-password", keepMeSignedIn: false)
+        return session
+    }
+
     /// The claims a token carries, read back the way the server would read them — so a test can assert
     /// on what was *presented* rather than on what the client believes it holds.
     static func claims(inJWT token: String) throws -> [String: Int] {

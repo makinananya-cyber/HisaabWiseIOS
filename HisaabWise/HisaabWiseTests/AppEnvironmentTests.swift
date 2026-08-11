@@ -40,6 +40,28 @@ struct AppEnvironmentTests {
         #expect(await transport.recordedRequests.map(\.path) == [Endpoint.budget])
     }
 
+    /// The tab view models are **made**, never held — which is what lets the composition root throw a
+    /// signed-out user's screen state away and ask for a clean set (ADR-0026). A graph that cached them would
+    /// hand the next session the previous user's salary, and the root would have no way to refuse it.
+    @Test("every call makes a fresh set of tab view models, with nothing loaded in them")
+    func tabViewModelsAreMadeRatherThanCached() async throws {
+        let transport = FixtureTransport(stubs: [Endpoint.budget: try .ok(.budgetINR)])
+        let environment = makeEnvironment(transport: transport)
+
+        let first = environment.makeTabViewModels()
+        try await first.home.load()
+        #expect(first.home.state.value != nil)
+
+        let second = environment.makeTabViewModels()
+
+        // A different object, and one that has never fetched: `.loading` rather than the figures the first set
+        // is still holding.
+        #expect(ObjectIdentifier(second.home) != ObjectIdentifier(first.home))
+        #expect(second.home.state.value == nil)
+        #expect(Set(second.everyModel.map(ObjectIdentifier.init))
+            .isDisjoint(with: Set(first.everyModel.map(ObjectIdentifier.init))))
+    }
+
     @Test("composes a theme, so a screen is not left to find one")
     func composesATheme() {
         let theme = ThemeManager()

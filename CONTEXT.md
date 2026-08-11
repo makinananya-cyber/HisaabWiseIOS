@@ -65,6 +65,46 @@ is the five in-app screens; Landing and Auth are `brand` (ADR-0021) and are not 
 conformances. Making the chrome appearance-agnostic is work for whichever of #13–#16 needs it, with
 two real callers to shape it.
 
+**the shell** — `AppShell`, the `TabView` with a `NavigationStack` per tab: Home · Expenses · Learn · Reports ·
+Account, all reachable from all, with log out as the only way out. The design's `.tabbar` CSS is **not**
+converted — re-implementing a system container would mean re-implementing the safe-area inset, the material, the
+selection semantics, and VoiceOver's "tab 2 of 5" (Rule 1). Its decisions are: labels always visible, selection
+marked with `--galaxy` through `surface.ink`, and its five stroke icons as the SF Symbols that draw the same
+things. The unselected `--ink-3` is the system's grey, because reaching it means `UITabBar.appearance()`.
+See [ADR-0026](docs/adr/0026-shell-plumbing.md).
+
+**`RootView`** — the one branch on `SessionCoordinator.isSignedIn`: the shell, or Landing. That is what makes
+"log out returns to Landing" a consequence rather than navigation code — the sign-out clears the session and the
+root follows, so no screen has to know it is being dismissed. It reads **no** `scenePhase`, deliberately.
+
+**`TabViewModels`** — one view model per tab, **made** by `AppEnvironment.makeTabViewModels()`, held by the
+composition root, and injected once. Five named properties, so every tab has one by construction. Held rather
+than made in a `body`: a view model built during a render resets its screen on every re-render, and the reset
+looks like a slow network. Conforms to `Observable` by hand rather than through the macro — every property is a
+`let`, and what changes is the state inside each model. **Its lifetime is the session's, not the app's**: the
+root replaces the whole set when `isSignedIn` goes false, because a view model holds the last response it got
+and a signed-out `HomeViewModel` is still holding a salary. Invariant 8's reasoning about caches applies to
+objects too — per-user data that outlives the user is a leak, not a warm start.
+
+**unwritten tab root** — `UnwrittenTabRoot` plus `UnwrittenScreenViewModel`, the stand-in for the four screens
+that are other tickets (#18, #19, #21, #23). A full `BaseView` conformance, so it renders through `StateView`,
+and it **makes no request**: calling the ADR-0020 screen endpoint would put a fictional contract in the client
+and render "Something went wrong" on four of five tabs. A screen that is not built is not a screen that is
+broken. Its `footer` slot carries `LogoutControl` on Account. **Retired the moment each screen lands.**
+
+**`LogoutControl`** — the only exit, and the only caller of `SessionCoordinator.signOut()` in the presentation
+layers (asserted). A system `confirmationDialog` rather than the design's own modal: the platform's red, an
+alert to VoiceOver, and no accidental dismissal. The design's copy verbatim, including "Stay signed in".
+
+**`scenePhase` has one reader** — the composition root, with two consumers: ADR-0008's foreground sequence and
+ADR-0014's privacy overlay, which takes the phase as an argument (`hwPrivacyOverlay(covering:)`). Passing it is
+what makes both halves testable; a view that read it would be a view whose branch no test could set.
+
+**`ImageRenderer` cannot draw a `TabView`** — it yields the unsupported-view glyph, a yellow field with a red
+bar. So no assertion about the shell is a pixel assertion; the renders prove the `body` evaluates with the
+environment it was given. Worth knowing before the snapshot suite (#9), alongside the note that a `BaseView`
+render lands on `.loading`: both want a hosted render.
+
 **component** — one entry in the shared control vocabulary in `Components/`: a button variant,
 a field, a label style, a card, a chip, a sheet, a row. **Presentational** — it takes values and
 closures, holds no view model, and cannot fetch. A screen never styles a control itself; a new
@@ -81,10 +121,13 @@ Four things about the vocabulary are deliberate and are decisions, not omissions
   same reasoning `ScreenChrome` gives for not being appearance-agnostic yet — two callers shape it better
   than one guess.
 - **There is no destructive button yet.** `.btn-danger` and Account's `.logout` are a real fifth shape and
-  arrive with Account (#17).
-- **`.tabbar` is not a component and `.mark` has no asset.** The tab bar is the five-tab shell's `TabView` —
-  converting the CSS would mean re-implementing a system container, which Rule 1 rules out — and the
-  wordmark tile in `.topbar` waits on an image, since the asset catalogue carries colour sets only.
+  arrive with Account (#23).
+- **`.tabbar` is not a component; `.mark` now is.** The tab bar is the five-tab shell's `TabView` —
+  converting the CSS would mean re-implementing a system container, which Rule 1 rules out. The wordmark
+  **no longer waits on an image**: the design carries the logo as a base64 PNG in five places, it is extracted
+  to `hwMark` in the asset catalogue, and `HWMark` draws it on the milky tile the design specifies (ADR-0026).
+  The privacy overlay is the caller that needed it. `HWTopBar` can adopt it when #17 wants it — the design's
+  tile is `--card` there and `--milky` on brand, which is one argument better had with two callers.
 - **Display text is a `Text`, control copy is a `LocalizedStringResource`.** A button title or a field
   label is always app copy; a card subtitle, a chip label, or a row's name may be a server string
   (ADR-0003, ADR-0020), so the caller decides which. `HWComponentCopy` holds the only copy a component
@@ -328,9 +371,11 @@ and last are `offline`.
 **It maps no `APIError`** — that has one owner and this is not it, so what it takes from a
 failed request is `client.hasSession`, not an error code. `onForeground()` is a directly
 awaitable method, not a `scenePhase` observer, so ADR-0008's ordering — refresh-if-near-expiry
-**then** `GET /v1/me` — is something a test asserts. The composition root observes
-`scenePhase` and calls it; issue #5 takes that over.
-See [ADR-0023](docs/adr/0023-session-plumbing.md).
+**then** `GET /v1/me` — is something a test asserts. **The composition root observes `scenePhase` and calls
+it, and keeps doing so**: issue #5 was expected to take that over and deliberately did not, because a
+`RootView` that read the phase would be a `RootView` whose session branch no test could set (ADR-0026). It is
+injected into the environment now, where `RootView` branches on it and `LogoutControl` ends it.
+See [ADR-0023](docs/adr/0023-session-plumbing.md), [ADR-0026](docs/adr/0026-shell-plumbing.md).
 
 ## Content
 
@@ -381,10 +426,14 @@ code yields generic copy; the server's `message` is never displayed, and is neve
 (ADR-0016). A code with a flow of its own rather than a sentence — `ACCOUNT_PENDING_DELETION` gets
 the restore screen — is deliberately absent.
 
-**privacy overlay** — the logo-on-`galaxy` view applied at `scenePhase == .inactive` so the
-app-switcher snapshot carries no financial figures. Not app lock: returning requires no
-authentication.
-See [ADR-0014](docs/adr/0014-privacy-surfaces.md).
+**privacy overlay** — `PrivacyOverlay`, the `HWMark`-on-`galaxy` view covering **every scene phase but
+`.active`** so the app-switcher snapshot carries no financial figures. Applied at the composition root over both
+worlds, Landing included — a rule with an exception in it is a rule somebody has to remember. Not app lock:
+returning requires no authentication, and a scan asserts the file reaches for no field, no biometry, and no tap
+target. **It does not animate**, and that is the one place ADR-0012's replace-not-remove does not apply: iOS
+takes the snapshot at `.inactive`, so a cross-fade would put half a screen of figures in the picture the system
+keeps.
+See [ADR-0014](docs/adr/0014-privacy-surfaces.md), [ADR-0026](docs/adr/0026-shell-plumbing.md).
 
 **fixture corpus** — the JSON files in `Fixtures/Resources`, read by both the decoding tests and the
 SwiftUI previews, so a fixture that drifts from the API breaks a test rather than rotting a

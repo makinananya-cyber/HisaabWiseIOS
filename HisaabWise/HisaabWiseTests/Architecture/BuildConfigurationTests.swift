@@ -126,6 +126,42 @@ struct BuildConfigurationTests {
         #expect(shipping.subtracting(debug).isEmpty)
     }
 
+    // MARK: - What the app runs on
+
+    /// ADR-0001 — **iPhone only, portrait only.** Both are set in the project rather than in an `.xcconfig`,
+    /// and both are the kind of setting Xcode will happily widen for you: adding an iPad destination sets
+    /// the device family, and a target created from a fresh template arrives with four orientations.
+    ///
+    /// The criterion issue #5 states is "already set in the project; assert it stays", so this asserts the
+    /// absence of any *other* value rather than the presence of one — a fourth configuration that quietly
+    /// allowed landscape would satisfy a presence check and fail this.
+    @Test("the app is iPhone-only and portrait-only in every configuration")
+    func theAppIsPortraitOnlyOnIPhone() throws {
+        let project = try String(contentsOf: SourceTree.projectFile, encoding: .utf8)
+        let lines = project.split(separator: "\n").map { $0.trimmingCharacters(in: .whitespaces) }
+
+        let family = lines.filter { $0.hasPrefix("TARGETED_DEVICE_FAMILY") }
+        // Three configurations for the app target and three for the tests, all of them iPhone.
+        #expect(family.count >= Self.names.count, "the device family is set in \(family.count) places")
+        #expect(
+            family.allSatisfy { $0 == "TARGETED_DEVICE_FAMILY = 1;" },
+            "a configuration targets something other than iPhone: \(family)"
+        )
+
+        let orientations = lines.filter { $0.hasPrefix("INFOPLIST_KEY_UISupportedInterfaceOrientations") }
+        #expect(
+            orientations.count >= Self.names.count,
+            "the supported orientations are set in \(orientations.count) places, for \(Self.names.count) configurations"
+        )
+        #expect(
+            orientations.allSatisfy { $0.hasSuffix("= UIInterfaceOrientationPortrait;") },
+            "a configuration allows an orientation other than portrait: \(orientations)"
+        )
+        // And the value nobody sets on purpose: upside-down, which iOS offers on iPhone and which the
+        // designs — fixed-height, bottom-anchored tab bar — were never drawn for.
+        #expect(!project.contains("UIInterfaceOrientationPortraitUpsideDown"))
+    }
+
     // MARK: - Reading the files
 
     /// The settings in one `.xcconfig`, comments removed and `$()` escapes resolved.

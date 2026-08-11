@@ -11,8 +11,20 @@ import SwiftUI
 struct HWPreviewGround: View {
     @Environment(ThemeManager.self) private var theme
 
+    /// Which of the two grounds the design ships (ADR-0021). Defaults to `surface`, the five in-app screens,
+    /// which is what nearly every component preview wants.
+    enum Appearance: Sendable {
+        case surface
+        case brand
+    }
+
+    var appearance: Appearance = .surface
+
     var body: some View {
-        theme.palette.surface.background.ignoresSafeArea()
+        switch appearance {
+        case .surface: theme.palette.surface.background.ignoresSafeArea()
+        case .brand: theme.palette.brand.background.ignoresSafeArea()
+        }
     }
 }
 #endif

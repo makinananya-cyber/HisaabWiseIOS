@@ -73,7 +73,7 @@ extension AppLanguage {
     }
 
     // A language's name for a picker row — its **endonym**, "English" and "العربية" — is deliberately absent
-    // until Account (#17) draws the picker that needs one. It is the one place copy is not translated, so it
+    // until Account (#23) draws the picker that needs one. It is the one place copy is not translated, so it
     // belongs to whichever row renders it and there is no row yet; `locale.localizedString(forLanguageCode:)`
     // is where it comes from when there is.
 }

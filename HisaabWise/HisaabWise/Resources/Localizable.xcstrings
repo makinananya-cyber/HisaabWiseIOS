@@ -1,150 +1,282 @@
 {
-  "sourceLanguage" : "en",
-  "strings" : {
-    "component.button.inFlight" : {
-      "comment" : "Read as a button's accessibility value while its action is in flight. The spinner that replaces the label is invisible to VoiceOver, so without this the control goes silent exactly when it is busy.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "In progress"
+  "sourceLanguage": "en",
+  "strings": {
+    "component.button.inFlight": {
+      "comment": "Read as a button's accessibility value while its action is in flight. The spinner that replaces the label is invisible to VoiceOver, so without this the control goes silent exactly when it is busy.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In progress"
           }
         }
       }
     },
-    "component.sheet.close" : {
-      "comment" : "The close affordance in every sheet's header. Icon-only, so this is the whole of what VoiceOver reads.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Close"
+    "component.sheet.close": {
+      "comment": "The close affordance in every sheet's header. Icon-only, so this is the whole of what VoiceOver reads.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Close"
           }
         }
       }
     },
-    "home.empty" : {
-      "comment" : "Home, when the server has figures for no months yet.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Nothing to show yet."
+    "home.empty": {
+      "comment": "Home, when the server has figures for no months yet.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nothing to show yet."
           }
         }
       }
     },
-    "home.income.accessibilityLabel" : {
-      "comment" : "VoiceOver label for the income figure. %@ is the server-formatted amount and is never reformatted.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Income %@"
+    "home.income.accessibilityLabel": {
+      "comment": "VoiceOver label for the income figure. %@ is the server-formatted amount and is never reformatted.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Income %@"
           }
         }
       }
     },
-    "home.income.label" : {
-      "comment" : "Caption above the income figure on Home.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Income"
+    "home.income.label": {
+      "comment": "Caption above the income figure on Home.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Income"
           }
         }
       }
     },
-    "state.failed.generic" : {
-      "comment" : "Every failure whose code this build does not recognise. Never the server's own message.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Something went wrong. Try again."
+    "shell.logout.action": {
+      "comment": "The log out control on Account, and the destructive action in its confirmation dialog.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Log out"
           }
         }
       }
     },
-    "state.failed.malformedResponse" : {
-      "comment" : "The server answered with a body the app could not read. Our bug, not the user's.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "We couldn't read the server's answer. Try again."
+    "shell.logout.confirm.cancel": {
+      "comment": "The cancel action in the log out confirmation dialog.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Stay signed in"
           }
         }
       }
     },
-    "state.failed.monthClosed" : {
-      "comment" : "MONTH_CLOSED — the month has been archived since the screen was opened.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "That month has closed. Reload to see the current one."
+    "shell.logout.confirm.message": {
+      "comment": "Body of the log out confirmation dialog.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your data stays safe. You'll need your password to sign back in."
           }
         }
       }
     },
-    "state.failed.rateLimited" : {
-      "comment" : "RATE_LIMITED — too many requests in the window.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Too many tries. Wait a moment, then try again."
+    "shell.logout.confirm.title": {
+      "comment": "Title of the log out confirmation dialog.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Log out of HisaabWise?"
           }
         }
       }
     },
-    "state.loading" : {
-      "comment" : "Shared across every screen: a request is in flight. Read aloud beside the spinner.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Loading…"
+    "shell.mark.accessibilityLabel": {
+      "comment": "VoiceOver label for the HisaabWise wordmark, which is an image.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HisaabWise"
           }
         }
       }
     },
-    "state.offline" : {
-      "comment" : "Shared across every screen: the device cannot reach the server. Offline is a supported mode, not a fault, so this must not read as one.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "You're offline. Reconnect and we'll fetch your figures."
+    "shell.tab.account": {
+      "comment": "Tab bar: the Account tab.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Account"
           }
         }
       }
     },
-    "state.retry" : {
-      "comment" : "The retry CTA on the offline and failed states.",
-      "extractionState" : "manual",
-      "localizations" : {
-        "en" : {
-          "stringUnit" : {
-            "state" : "translated",
-            "value" : "Try again"
+    "shell.tab.expenses": {
+      "comment": "Tab bar: the Expenses tab.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Expenses"
+          }
+        }
+      }
+    },
+    "shell.tab.home": {
+      "comment": "Tab bar: the Home tab.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Home"
+          }
+        }
+      }
+    },
+    "shell.tab.learn": {
+      "comment": "Tab bar: the Learn tab.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Learn"
+          }
+        }
+      }
+    },
+    "shell.tab.reports": {
+      "comment": "Tab bar: the Reports tab.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reports"
+          }
+        }
+      }
+    },
+    "shell.unwritten.note": {
+      "comment": "Placeholder body on a tab whose screen has not been written yet, and on the Landing placeholder. Deleted with the ticket that writes the screen.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This screen is not built yet."
+          }
+        }
+      }
+    },
+    "state.failed.generic": {
+      "comment": "Every failure whose code this build does not recognise. Never the server's own message.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Something went wrong. Try again."
+          }
+        }
+      }
+    },
+    "state.failed.malformedResponse": {
+      "comment": "The server answered with a body the app could not read. Our bug, not the user's.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "We couldn't read the server's answer. Try again."
+          }
+        }
+      }
+    },
+    "state.failed.monthClosed": {
+      "comment": "MONTH_CLOSED — the month has been archived since the screen was opened.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "That month has closed. Reload to see the current one."
+          }
+        }
+      }
+    },
+    "state.failed.rateLimited": {
+      "comment": "RATE_LIMITED — too many requests in the window.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Too many tries. Wait a moment, then try again."
+          }
+        }
+      }
+    },
+    "state.loading": {
+      "comment": "Shared across every screen: a request is in flight. Read aloud beside the spinner.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Loading…"
+          }
+        }
+      }
+    },
+    "state.offline": {
+      "comment": "Shared across every screen: the device cannot reach the server. Offline is a supported mode, not a fault, so this must not read as one.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You're offline. Reconnect and we'll fetch your figures."
+          }
+        }
+      }
+    },
+    "state.retry": {
+      "comment": "The retry CTA on the offline and failed states.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Try again"
           }
         }
       }
     }
   },
-  "version" : "1.0"
+  "version": "1.0"
 }

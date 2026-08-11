@@ -327,8 +327,13 @@ struct LocalisationTests {
     ///
     /// Keys are recognised by the shape the app spells them in — dotted, lower-camel segments at the start
     /// of a literal — which is also the shape of an SF Symbol name, so the lines that name a symbol are
-    /// excluded. That exclusion is the fragile part of this scan and it is narrow on purpose: a symbol only
-    /// ever reaches a use site through `systemName:`, `systemImage:`, or `StatePresentation`'s `symbol`.
+    /// excluded. That exclusion is the fragile part of this scan and it is narrow on purpose: a symbol
+    /// reaches a use site through `systemName:`, `systemImage:`, or `StatePresentation`'s `symbol`.
+    ///
+    /// **One place writes a symbol name with no label at all**: `AppTab.systemImage`, where the five tab
+    /// glyphs are returned from a `switch` exactly as the five tab *titles* are — so no token on the line can
+    /// tell `"chart.bar"` from `"shell.tab.reports"`. Rather than guess from the text, the scan asks `AppTab`
+    /// what its symbols are and takes those out. Exact, and it stays right when a glyph changes.
     ///
     /// The key may be followed by a space rather than the closing quote, because that is what a format
     /// string looks like in SwiftUI: `Text("home.income.accessibilityLabel \(figure)")` is one key and one
@@ -337,6 +342,7 @@ struct LocalisationTests {
     private static func renderedKeys() throws -> [String: String] {
         let keyShaped = try Regex(#"\"([a-z][A-Za-z0-9]*(?:\.[A-Za-z0-9]+)+)(?=[\s\"])"#)
         let namesASymbol = ["systemName:", "systemImage:", "symbol =", "symbol:"]
+        let tabGlyphs = Set(AppTab.allCases.map(\.systemImage))
         var keys: [String: String] = [:]
 
         for layer in presentationLayers {
@@ -344,7 +350,7 @@ struct LocalisationTests {
                 for line in try SourceTree.codeLines(of: file) {
                     guard !namesASymbol.contains(where: line.contains) else { continue }
                     for match in line.matches(of: keyShaped) {
-                        guard let key = match[1].substring else { continue }
+                        guard let key = match[1].substring, !tabGlyphs.contains(String(key)) else { continue }
                         keys[String(key)] = file.lastPathComponent
                     }
                 }

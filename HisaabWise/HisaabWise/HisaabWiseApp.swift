@@ -18,15 +18,24 @@ import SwiftUI
 @main
 struct HisaabWiseApp: App {
     private let environment: AppEnvironment
-    private let homeViewModel: HomeViewModel
 
-    /// The lifecycle observer ADR-0008's sequence needs, and the one place it may live: a `scenePhase`
-    /// observer is a *view* concern, and the reason `SessionCoordinator.onForeground()` is a plain
-    /// awaitable method is so that the ordering inside it can be tested without one.
+    /// The five tab view models, made here rather than by the shell: a view that made its own would make a new
+    /// set on every re-render, and a tab would lose its place every time the user switched away and back
+    /// (issue #5).
     ///
-    /// The five-tab shell (#5) takes this over along with the privacy overlay it also needs `scenePhase`
-    /// for. Until then it sits here, because a foreground sequence nobody calls is a sequence that is
-    /// wrong by the time somebody does.
+    /// **`@State`, and replaced when the session ends** — see `discardScreenState()`. A `let` would outlive the
+    /// user it belongs to.
+    @State private var tabViewModels: TabViewModels
+
+    /// **The app's one reader of `scenePhase`, with two consumers.** ADR-0008's foreground sequence needs it,
+    /// and so does ADR-0014's privacy overlay — and the phase belongs to the *scene*, so this is where it is
+    /// legible. `SessionCoordinator.onForeground()` is a plain awaitable method for exactly this reason: the
+    /// ordering inside it is testable without an observer.
+    ///
+    /// The earlier note here said the shell would take both over. It does not, and the reason is better than
+    /// the tidiness would have been: ``RootView`` reading the phase itself would make the session branch
+    /// untestable, because a renderer's phase is not something a test can set. So the phase is read once and
+    /// **passed** — `hwPrivacyOverlay(covering:)` takes it as an argument.
     @Environment(\.scenePhase) private var scenePhase
 
     init() {
@@ -35,12 +44,16 @@ struct HisaabWiseApp: App {
             transport: URLSessionTransport()
         )
         self.environment = environment
-        homeViewModel = environment.makeHomeViewModel()
+        _tabViewModels = State(initialValue: environment.makeTabViewModels())
     }
 
     var body: some Scene {
         WindowGroup {
-            HomeView(viewModel: homeViewModel)
+            RootView()
+                .environment(tabViewModels)
+                // Over everything, both worlds included: Landing carries no figures, but a rule with an
+                // exception in it is a rule somebody has to remember (ADR-0014).
+                .hwPrivacyOverlay(covering: scenePhase)
                 .hwEnvironment(environment)
                 .task { await environment.session.restore() }
                 .onChange(of: scenePhase) { previous, phase in
@@ -51,6 +64,18 @@ struct HisaabWiseApp: App {
                     // them would be machinery for the shell (#5) to inherit and then rewrite.
                     guard phase == .active, previous != .active else { return }
                     Task { await environment.session.onForeground() }
+                }
+                // **The session's end is the screens' end.** A view model holds the last response it got, and
+                // a signed-out `HomeViewModel` is still holding a salary — so the next sign-in would paint the
+                // previous user's figures for the frame between the shell appearing and its `.task` running
+                // `load()`. Invariant 8's reasoning about caches applies to objects too: per-user data that
+                // outlives the user is a leak, not a warm start.
+                //
+                // Here rather than in `SessionCoordinator`, which owns who is signed in and has no business
+                // knowing that screens exist, and rather than in ``RootView``, which owns no lifetimes.
+                .onChange(of: environment.session.isSignedIn) { _, isSignedIn in
+                    guard !isSignedIn else { return }
+                    tabViewModels = environment.makeTabViewModels()
                 }
         }
     }
