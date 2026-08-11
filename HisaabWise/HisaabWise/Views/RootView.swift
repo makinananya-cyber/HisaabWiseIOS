@@ -33,7 +33,17 @@ struct RootView: View {
                 LandingView(viewModel: landing) { preAuth.append(.signIn) }
                     .navigationDestination(for: PreAuthRoute.self) { route in
                         switch route {
-                        case .signIn: SignInPlaceholder()
+                        case .signIn:
+                            SignInView(
+                                session: session,
+                                onForgotPassword: { preAuth.append(.forgotPassword) },
+                                onRegister: { preAuth.append(.register) },
+                                onRestoreAccount: { preAuth.append(.restoreAccount) }
+                            )
+                        // The three screens sign-in leads to, each one ticket away. A placeholder rather than a
+                        // dead link, for the reason Get Started got a destination in #13.
+                        case .register, .forgotPassword, .restoreAccount:
+                            UnwrittenBrandScreen()
                         }
                     }
             }
@@ -64,19 +74,24 @@ enum RootWorld: Sendable, Equatable, CaseIterable {
     case landing
 }
 
-/// Where Landing can go. One case today, and a `NavigationStack` path rather than a boolean so that
-/// registration and password reset (#15, #16) are cases rather than a second mechanism.
+/// Where a signed-out user can go, as a path rather than a set of booleans so that each new pre-auth screen is
+/// a case rather than a second mechanism.
 enum PreAuthRoute: Hashable, Sendable, CaseIterable {
     case signIn
+    /// #15 — registration's three steps.
+    case register
+    /// #16 — request a password reset.
+    case forgotPassword
+    /// #24 — the way back from a pending deletion (ADR-0015).
+    case restoreAccount
 }
 
-/// Sign in, until #14 writes it.
+/// A pre-auth screen that has not been written yet — registration, password reset, restore.
 ///
-/// It exists so that **Get Started actually goes somewhere** — a call to action that did nothing would be the
-/// third dead button in this repo, and the criterion is that it navigates to sign-in. On `brand`, because Auth
-/// is a brand screen (ADR-0021), and reusing the placeholder sentence the unwritten tabs use so there is one
-/// string to delete rather than two.
-private struct SignInPlaceholder: View {
+/// It exists so that every control on sign-in **goes somewhere**: a link that did nothing would be the kind of
+/// dead affordance this repo has now removed twice. On `brand`, because these are brand screens (ADR-0021), and
+/// reusing the sentence the unwritten tabs use so there is one string to delete rather than four.
+private struct UnwrittenBrandScreen: View {
     @Environment(ThemeManager.self) private var theme
 
     var body: some View {

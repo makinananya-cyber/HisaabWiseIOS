@@ -70,12 +70,11 @@ struct RootViewTests {
         #expect(TestBench.render(RootView().environment(signedIn).environment(viewModels())) != nil)
     }
 
-    /// Where Landing can go. One case today, and asserted so that registration and password reset (#15, #16)
-    /// arrive as cases of this rather than as a second mechanism — and so that #14 replacing the placeholder is
-    /// a change somebody makes on purpose.
-    @Test("there is one route out of Landing, and it is sign-in")
-    func oneRouteOutOfLanding() {
-        #expect(PreAuthRoute.allCases == [.signIn])
+    /// Every pre-auth destination, as cases of one path rather than a set of booleans — so a new screen is a
+    /// case somebody adds on purpose and #15, #16, and #24 each replace one placeholder.
+    @Test("the pre-auth routes are the four screens before sign-in is finished")
+    func thePreAuthRoutes() {
+        #expect(PreAuthRoute.allCases == [.signIn, .register, .forgotPassword, .restoreAccount])
     }
 
     // MARK: - The app switcher

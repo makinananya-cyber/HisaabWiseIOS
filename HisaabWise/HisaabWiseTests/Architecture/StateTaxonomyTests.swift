@@ -67,15 +67,19 @@ struct StateTaxonomyTests {
     /// The mapping acceptance criterion, as a scan: `BaseViewModel.load()` is the **only** place an
     /// `APIError` becomes a `LoadState`. A second `catch APIError.offline` anywhere is a second chance to
     /// render a supported mode as a fault.
-    @Test("APIError becomes a LoadState in exactly one place")
-    func errorMappingHasOneOwner() throws {
-        // `Networking` is where `APIError` is declared and thrown; it is the mapping *out* of it that
-        // has one owner.
+    /// **One owner per kind of presentation, and there are two kinds.** A *read* becomes a ``LoadState`` in
+    /// `BaseViewModel.load()`. A *form* becomes field errors in `SignInViewModel`, which is not a `LoadState`
+    /// and never could be — "offline" under the password box is not the same thing as an offline screen (#14).
+    ///
+    /// The second owner is named here rather than smuggled in: adding a third means changing this list, which is
+    /// the point. `Networking` is skipped because that is where `APIError` is declared and thrown.
+    @Test("APIError becomes presentation in exactly two places, one per kind")
+    func errorMappingHasOneOwnerPerKind() throws {
         try expectAbsent(
             "APIError",
-            outside: "ViewModels/BaseViewModel.swift",
+            outside: ["ViewModels/BaseViewModel.swift", "ViewModels/SignInViewModel.swift"],
             skippingLayers: ["Networking"],
-            because: "BaseViewModel.load() is the one place APIError becomes a LoadState (issue #11)"
+            because: "a read becomes a LoadState in BaseViewModel.load(); a form becomes field errors in SignInViewModel"
         )
     }
 
@@ -87,7 +91,7 @@ struct StateTaxonomyTests {
         // to offer re-filing on `MONTH_CLOSED`. Turning a code into a *sentence* is the single-owner part.
         try expectAbsent(
             "ErrorCode",
-            outside: "DesignSystem/ErrorCopy.swift",
+            outside: ["DesignSystem/ErrorCopy.swift"],
             skippingLayers: ["Models", "ViewModels", "Networking"],
             because: "ErrorCopy is the one place a code becomes copy, and no screen ever sees one (ADR-0016)"
         )
@@ -98,19 +102,19 @@ struct StateTaxonomyTests {
     /// leave `HisaabWiseApp.swift` and `AppEnvironment.swift` free to break it.
     private func expectAbsent(
         _ symbol: String,
-        outside owner: String,
+        outside owners: [String],
         skippingLayers skipped: [String],
         because reason: String,
         sourceLocation: SourceLocation = #_sourceLocation
     ) throws {
-        let ownerFile = SourceTree.appSources.appending(path: owner).lastPathComponent
+        let ownerFiles = Set(owners.map { SourceTree.appSources.appending(path: $0).lastPathComponent })
         var files = try SourceTree.rootSwiftFiles()
         for layer in SourceTree.layers where !skipped.contains(layer) {
             files += try SourceTree.swiftFiles(in: layer)
         }
 
         var scanned = 0
-        for file in files where file.lastPathComponent != ownerFile {
+        for file in files where !ownerFiles.contains(file.lastPathComponent) {
             scanned += 1
             let offender = try SourceTree.codeLines(of: file).first { $0.contains(symbol) }
             #expect(

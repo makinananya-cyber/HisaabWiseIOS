@@ -13,6 +13,18 @@
         }
       }
     },
+    "component.field.revealPassword": {
+      "comment": "The eye button inside a password field.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show password"
+          }
+        }
+      }
+    },
     "component.sheet.close": {
       "comment": "The close affordance in every sheet's header. Icon-only, so this is the whole of what VoiceOver reads.",
       "extractionState": "manual",
@@ -309,6 +321,222 @@
           "stringUnit": {
             "state": "translated",
             "value": "This screen is not built yet."
+          }
+        }
+      }
+    },
+    "signin.action": {
+      "comment": "Sign-in submit button.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sign In"
+          }
+        }
+      }
+    },
+    "signin.email.label": {
+      "comment": "Sign-in email field label. [FIX] Product Spec §3.2 — the design asked for a username, which registration never collects.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Email"
+          }
+        }
+      }
+    },
+    "signin.email.placeholder": {
+      "comment": "Sign-in email field placeholder.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "you@example.com"
+          }
+        }
+      }
+    },
+    "signin.error.emailMissing": {
+      "comment": "Sign-in validation: the email box is empty.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Please enter your email."
+          }
+        }
+      }
+    },
+    "signin.error.passwordMissing": {
+      "comment": "Sign-in validation: the password box is empty.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Please enter your password."
+          }
+        }
+      }
+    },
+    "signin.error.passwordTooShort": {
+      "comment": "Sign-in validation: password under 8 characters. [FIX] the design's sign-in accepted 6; invariant 4 is 8+ everywhere.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Use at least 8 characters."
+          }
+        }
+      }
+    },
+    "signin.error.refused": {
+      "comment": "Sign-in failure. Deliberately identical whether or not the account exists, so the response cannot be used to discover which addresses are registered.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "That email and password do not match. Check both and try again."
+          }
+        }
+      }
+    },
+    "signin.error.support": {
+      "comment": "Sign-in hint after three refused attempts.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Still not working? Contact support and we'll help you back in."
+          }
+        }
+      }
+    },
+    "signin.forgot": {
+      "comment": "Sign-in link to the password reset flow.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Forgot password?"
+          }
+        }
+      }
+    },
+    "signin.keepSignedIn": {
+      "comment": "Sign-in checkbox; checked by default. Decides whether the refresh token goes to the Keychain or to memory.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keep me signed in"
+          }
+        }
+      }
+    },
+    "signin.password.label": {
+      "comment": "Sign-in password field label.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Password"
+          }
+        }
+      }
+    },
+    "signin.pendingDeletion.action": {
+      "comment": "Sign-in: the restore path out of pending deletion.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Restore my account"
+          }
+        }
+      }
+    },
+    "signin.pendingDeletion.title": {
+      "comment": "Sign-in: the account is inside its 30-day grace period.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This account is scheduled for deletion."
+          }
+        }
+      }
+    },
+    "signin.register.action": {
+      "comment": "Sign-in button to registration.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Create an account"
+          }
+        }
+      }
+    },
+    "signin.register.prompt": {
+      "comment": "Sign-in prompt above the register button.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Are you new here?"
+          }
+        }
+      }
+    },
+    "signin.subtitle": {
+      "comment": "Sign-in subtitle.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sign in to pick up your spending, savings and streaks."
+          }
+        }
+      }
+    },
+    "signin.title.first": {
+      "comment": "Sign-in headline, first line.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Welcome back."
+          }
+        }
+      }
+    },
+    "signin.title.second": {
+      "comment": "Sign-in headline, second line — drawn in the sky gradient.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Let's get you in."
           }
         }
       }

@@ -346,7 +346,10 @@ struct LocalisationTests {
         // which this did until Landing wrote `HWButton("landing.cta", systemImage: "arrow.forward")` — loses
         // any key that shares a line with a glyph, and loses it silently: the key then reads as an orphaned
         // catalogue entry rather than as a missing scan.
-        let symbolArgument = try Regex(#"(?:systemName|systemImage|symbol)\s*[:=]\s*\"[^\"]*\""#)
+        // Up to the end of the argument rather than just its first literal, because a control can choose its
+        // glyph inline — `systemName: isRevealed ? "eye.slash" : "eye"` — and matching only the first quote
+        // left the second reading as a localisation key.
+        let symbolArgument = try Regex(#"(?:systemName|systemImage|symbol)\s*[:=]\s*(?:\"[^\"]*\"|[A-Za-z_][A-Za-z0-9_.]*\s*\?\s*\"[^\"]*\"\s*:\s*\"[^\"]*\")"#)
         let tabGlyphs = Set(AppTab.allCases.map(\.systemImage))
         var keys: [String: String] = [:]
 

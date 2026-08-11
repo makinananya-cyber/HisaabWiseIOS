@@ -89,6 +89,22 @@ re-announces. And the first strapline is a **[FIX]**: the design named a currenc
 test scans all four so it cannot come back.
 See [ADR-0029](docs/adr/0029-landing-conversion.md).
 
+**sign in** — `SignInView` plus `SignInViewModel`, the second brand screen (#14). **Email is the identifier and
+the password rule is 8+** (Product Spec §3.2 [FIX] ×2 — the design asked for a username it never collects, and
+accepted six characters). **Every refusal reads the same**: the mapping is inverted so that everything from the
+login route is `credentialsRefused` *unless it is a known fault* (5xx · 429 · 400), because listing the refusal
+statuses instead left a `404 NO_SUCH_ACCOUNT` carrying its own copy and turning the form into an address
+checker. Three refusals suggest support and never gate a request — the backoff is the server's. The screen holds
+its own view model, unlike a tab's: a pushed form should lose its state when it goes, and here that state is a
+password.
+
+**`SignInFailure`** — what is wrong with the form, as a value that knows **which field it belongs beside**, so
+"field-level errors" is a property of the type. `unreachable` rather than `offline`: the word `offline` belongs to
+`LoadState` and the taxonomy scan is a text scan (the copy is still `state.offline`). It is the app's **second**
+owner of the `APIError` → presentation mapping, and `StateTaxonomyTests` names both — a read becomes a
+`LoadState`, a form becomes field errors. A third means changing that list.
+See [ADR-0030](docs/adr/0030-sign-in.md).
+
 **appearance** — `HWAppearance`, which of the design's two surfaces a control is drawn on, as a *parameter*
 rather than a mode: both ship at once, one before sign-in and one after (ADR-0021). It arrives on `HWButton` with
 Landing, and the design settles it rather than a guess — the landing `.cta` and auth's `.btn-primary` carry the
@@ -536,6 +552,7 @@ Recorded here because they are commitments, not suggestions. None has been made 
 | ~~[ADR-0005](docs/adr/0005-write-queue.md)~~ | ~~`DELETE /v1/expenses/:id` must be explicitly idempotent~~ — **downgraded to optional** by [ADR-0019](docs/adr/0019-no-offline-writes-curriculum-pdf.md): with no retries, an already-deleted id can never be re-sent. Still good hygiene |
 | [ADR-0010](docs/adr/0010-configuration-and-auth-links.md) | `POST /v1/auth/reset-password` must be callable from a web form, not only from the app |
 | [ADR-0015](docs/adr/0015-deletion-and-demo-account.md) | Technical Spec §5 — sign-in during the grace period returns `ACCOUNT_PENDING_DELETION` with the erase date; add `POST /v1/auth/restore` |
+| [ADR-0030](docs/adr/0030-sign-in.md) | **The client cannot yet read that erase date.** It decodes `{error:{code}}` and nothing else (ADR-0016), so showing it needs one decoded field — and a general `details` bag is how "the client never reads the server's prose" erodes. Sign-in handles the code distinctly and offers the restore path; the date lands with #24, which owns the grace period |
 | [ADR-0019](docs/adr/0019-no-offline-writes-curriculum-pdf.md) | Product Spec §6 — answer keys no longer ship "to enable offline lessons"; they ship because grading is client-side for responsiveness and the server recomputes (invariant 10) |
 | [ADR-0016](docs/adr/0016-presentation-details.md) | Product Spec §6 — amounts inside tips are illustrative and are never converted |
 | [ADR-0001](docs/adr/0001-platform-baseline.md) | Product Spec §5.2 — record iPhone-only, portrait-only |

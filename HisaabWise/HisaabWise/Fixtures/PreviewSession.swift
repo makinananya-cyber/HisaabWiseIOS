@@ -34,6 +34,13 @@ extension SessionCoordinator {
         return session
     }
 
+    /// A coordinator whose sign-in is refused, so the failed form can be previewed without typing.
+    @MainActor
+    static var previewRefusing: SessionCoordinator {
+        let body = Data(#"{"error":{"code":"UNAUTHENTICATED"}}"#.utf8)
+        return make(FixtureTransport(stubs: [Endpoint.login: .response(status: 401, body: body)]))
+    }
+
     @MainActor
     private static func make(_ transport: FixtureTransport) -> SessionCoordinator {
         SessionCoordinator(

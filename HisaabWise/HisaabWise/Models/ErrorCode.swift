@@ -47,4 +47,10 @@ extension ErrorCode {
     /// queue in the app: a request in flight across the boundary, or a client left open past midnight
     /// on the 1st, still hits it (Product Spec §4.5, ADR-0019).
     static let monthClosed = ErrorCode(rawValue: "MONTH_CLOSED")
+
+    /// The account is inside its 30-day deletion grace period, and signing in is an offer to restore it rather
+    /// than a failure (ADR-0015). **Deliberately absent from `ErrorCopy`**: a code with a *flow* rather than a
+    /// sentence is handled by the screen that owns the flow — sign-in offers the restore path (#14), and #24
+    /// draws the screen behind it.
+    static let accountPendingDeletion = ErrorCode(rawValue: "ACCOUNT_PENDING_DELETION")
 }
