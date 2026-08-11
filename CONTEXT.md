@@ -73,6 +73,32 @@ marked with `--galaxy` through `surface.ink`, and its five stroke icons as the S
 things. The unselected `--ink-3` is the system's grey, because reaching it means `UITabBar.appearance()`.
 See [ADR-0026](docs/adr/0026-shell-plumbing.md).
 
+**Landing** — `LandingView`, the first screen converted from the design (#13). **Not a `BaseView` and its view
+model has no `fetch()`**: it makes no request, so there is no `LoadState` to draw, and it sits on `brand`, which
+`ScreenChrome` does not paint. `LandingViewModel` holds the strapline *index* and no clock — the view's `.task`
+advances it, which is what lets Reduce Motion suppress the rotation by never starting it. The four straplines are
+the view's, because copy belongs where the localisation scans look for it.
+
+**The hero illustration is an SVG asset** (`hwHeroBook`), extracted verbatim from the design rather than
+hand-converted or re-picked; it ships in its settled state, and the six animations the design drives with CSS do
+not. **The screen scrolls when the type outgrows it** — the design's fixed viewport is a web assumption, and at
+AX5 the first build drew the headline through the strapline. **The wordmark is one `Text` carrying an
+`AttributedString`**, because two `Text`s in an `HStack` reorder under RTL and a brand name is one word whichever
+way the layout runs. **The strapline's sentence is an accessibility *value*, not a label**, so the rotation never
+re-announces. And the first strapline is a **[FIX]**: the design named a currency the app does not display, and a
+test scans all four so it cannot come back.
+See [ADR-0029](docs/adr/0029-landing-conversion.md).
+
+**appearance** — `HWAppearance`, which of the design's two surfaces a control is drawn on, as a *parameter*
+rather than a mode: both ship at once, one before sign-in and one after (ADR-0021). It arrives on `HWButton` with
+Landing, and the design settles it rather than a guess — the landing `.cta` and auth's `.btn-primary` carry the
+same fill and the same ink. Brand buttons are **pills**; in-app ones use the card radius. The one pair that is
+not a transcription is brand `soft`, which resolves to brand `ghost` because the design has no `.btn-soft` there.
+
+**ambient loop** — a repeating decorative animation whose period is measured in seconds, through
+`HWCurve.loop(seconds:)`. Deliberately outside the four-duration scale: those are *transition* clusters, and
+rounding a 6-second breath into 500ms would make it twitch. Landing's hero float and its pill dot are the two.
+
 **`RootView`** — the one branch on `SessionCoordinator.isSignedIn`: the shell, or Landing. That is what makes
 "log out returns to Landing" a consequence rather than navigation code — the sign-out clears the session and the
 root follows, so no screen has to know it is being dismissed. It reads **no** `scenePhase`, deliberately.
@@ -100,10 +126,11 @@ alert to VoiceOver, and no accidental dismissal. The design's copy verbatim, inc
 ADR-0014's privacy overlay, which takes the phase as an argument (`hwPrivacyOverlay(covering:)`). Passing it is
 what makes both halves testable; a view that read it would be a view whose branch no test could set.
 
-**`ImageRenderer` cannot draw a `TabView`** — it yields the unsupported-view glyph, a yellow field with a red
-bar. So no assertion about the shell is a pixel assertion; the renders prove the `body` evaluates with the
-environment it was given. Worth knowing before the snapshot suite (#9), alongside the note that a `BaseView`
-render lands on `.loading`: both want a hosted render.
+**`ImageRenderer` cannot draw a `TabView` — or a `NavigationStack`** — both yield the unsupported-view glyph, a
+yellow field with a red bar, byte for byte identical. So no assertion about the shell or the root is a pixel
+assertion; the renders prove the `body` evaluates with the environment it was given, and the *decisions* are
+values instead: `RootView.world(isSignedIn:)` is the branch. Worth knowing before the snapshot suite (#9),
+alongside the note that a `BaseView` render lands on `.loading`: all three want a hosted render.
 
 **component** — one entry in the shared control vocabulary in `Components/`: a button variant,
 a field, a label style, a card, a chip, a sheet, a row. **Presentational** — it takes values and

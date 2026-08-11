@@ -82,3 +82,56 @@ struct HWEntrance: Sendable, Hashable {
         }
     }
 }
+
+extension HWEntrance {
+    /// The design's staggered arrival — `.enter` with `.d0`…`.d5` — as the delay for one step.
+    ///
+    /// Six delays, transcribed: `0`, `.12`, `.30`, `.52`, `.76`, `.98`. They are not a constant interval and
+    /// the acceleration is the effect, so they are a list rather than `step * 0.19`. A step past the last one
+    /// holds at the last delay instead of extending the sequence: the design has six bands and a seventh
+    /// arriving 1.2 seconds after the first would read as a stall.
+    static func staggerDelay(step: Int) -> Double {
+        let delays = [0, 0.12, 0.30, 0.52, 0.76, 0.98]
+        return delays[min(max(step, 0), delays.count - 1)]
+    }
+}
+
+extension View {
+    /// Rises into place on first appearance, `step` places down the design's stagger.
+    ///
+    /// `.enter{opacity:0;transform:translateY(22px);animation:rise .75s var(--ease-out) forwards}` — one
+    /// modifier rather than an `@State` per band, so a screen's `body` reads as its layout.
+    ///
+    /// **Suppressed means already arrived, not arriving instantly.** Under Reduce Motion the content is simply
+    /// there, which is what the design's own `prefers-reduced-motion` block does (`.enter{opacity:1;transform:
+    /// none}`). This is the one shape where ADR-0012's replace-not-remove has nothing to replace: the movement
+    /// *is* the arrival, and the arrival has already happened by the time anybody looks.
+    func hwEnters(step: Int, suppressed: Bool) -> some View {
+        modifier(HWStaggeredEntrance(step: step, suppressed: suppressed))
+    }
+}
+
+/// The stagger, as a modifier so the `@State` it needs is not repeated per band.
+struct HWStaggeredEntrance: ViewModifier {
+    let step: Int
+    let suppressed: Bool
+
+    @State private var hasArrived = false
+
+    /// The design's `translateY(22px)` starting offset.
+    private static let rise: CGFloat = 22
+
+    func body(content: Content) -> some View {
+        let arrived = hasArrived || suppressed
+
+        return content
+            .opacity(arrived ? 1 : 0)
+            .offset(y: arrived ? 0 : Self.rise)
+            .animation(
+                suppressed ? nil : HWMotion.easeOut.animation(.slow)
+                    .delay(HWEntrance.staggerDelay(step: step)),
+                value: hasArrived
+            )
+            .onAppear { hasArrived = true }
+    }
+}

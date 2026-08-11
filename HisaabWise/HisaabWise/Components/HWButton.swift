@@ -66,32 +66,72 @@ struct HWButtonAppearance: Sendable, Equatable {
     let elevation: HWShadow?
     let radius: HWRadius
 
-    init(variant: HWButtonVariant, palette: HWPalette) {
-        radius = .large
-        switch variant {
-        case .primary:
+    init(variant: HWButtonVariant, appearance: HWAppearance = .surface, palette: HWPalette) {
+        // The design's brand buttons are pills — `border-radius:29px` on a 58pt control, `30` on the
+        // landing CTA's 60 — where the in-app ones use the 18pt card radius. Half my height is what a pill
+        // radius means, so it is the `pill` token rather than a number (ADR-0021).
+        radius = appearance == .brand ? .pill : .large
+
+        switch (appearance, variant) {
+        case (.surface, .primary):
             // `linear-gradient(112deg,var(--galaxy),var(--planetary))`, `color:var(--milky)`.
             fill = .gradient(palette.accent.deep, palette.accent.base)
             foreground = palette.brand.ink
             border = nil
             elevation = .medium
-        case .soft:
+        case (.surface, .soft):
             // `background:var(--card);border:1px solid var(--line-2);color:var(--planetary)`.
             fill = .flat(palette.surface.raised)
             foreground = palette.accent.base
             border = palette.surface.separatorStrong
             elevation = .small
-        case .ghost:
+        case (.surface, .ghost):
             // The tinted control: `background:var(--tint)` with the hairline border.
             fill = .flat(palette.accent.tint)
             foreground = palette.accent.base
             border = palette.surface.separator
             elevation = nil
-        case .quiet:
+        case (.surface, .quiet):
             // `background:none;border:1px solid var(--border);color:var(--muted)`.
             fill = .unfilled
             foreground = palette.surface.inkSecondary
             border = palette.surface.separator
+            elevation = nil
+
+        case (.brand, .primary):
+            // `linear-gradient(100deg,var(--milky),var(--meteor) 48%,var(--milky));color:var(--galaxy)` —
+            // the light control on the dark ground, and the same values the landing `.cta` carries.
+            //
+            // **Three stops become two.** The design's first and last stops are the same colour; the middle
+            // one is what its `sweep` animation slides across. Two stops keep the wash and drop the sheen,
+            // which is ambient decoration rather than information.
+            //
+            // The middle stop is `--meteor`, which lives in the palette as a *surface* background role. The
+            // design paints a light ground colour on the dark surface here, exactly as it does for the
+            // wordmark tile (see ``HWMark``), so the role reads oddly and is right.
+            fill = .gradient(palette.brand.ink, palette.surface.backgroundSecondary)
+            foreground = palette.brand.background
+            border = nil
+            // No shadow on the control itself: the design puts a blurred `--sky` glow *behind* it, which is
+            // the screen's to draw because it sits outside the button's own bounds.
+            elevation = nil
+        // **Two variants, one treatment, deliberately.** `.btn-ghost` is the variant the design spells on
+        // `brand` and nowhere else — the `surface` twin above is the adaptation, not the original — and the
+        // design has **no `.btn-soft` on brand** at all: its secondary filled control there *is* the ghost.
+        // Folded into one arm rather than duplicated, so the collapse is visible instead of looking like two
+        // rows that happen to agree. `HWButtonTests` states the same thing as an exception to "no two
+        // variants draw alike", which holds on `surface` and cannot on `brand`.
+        case (.brand, .ghost), (.brand, .soft):
+            // `background:rgba(sky,.07);border:1px solid var(--border-lit);color:var(--sky)`.
+            fill = .flat(palette.brand.raised)
+            foreground = palette.brand.inkAccent
+            border = palette.brand.separatorStrong
+            elevation = nil
+        case (.brand, .quiet):
+            // `background:none;border:1px solid var(--border);color:var(--muted)`.
+            fill = .unfilled
+            foreground = palette.brand.inkSecondary
+            border = palette.brand.separator
             elevation = nil
         }
     }
@@ -136,19 +176,25 @@ struct HWButton: View {
 
     private let title: LocalizedStringResource
     private let variant: HWButtonVariant
+    private let appearance: HWAppearance
     private let systemImage: String?
     private let state: HWButtonState
     private let action: () -> Void
 
+    /// - Parameter appearance: which of the design's two surfaces this button sits on (ADR-0021). Defaults to
+    ///   `surface`, the five in-app screens; Landing and Auth pass `brand` at the call site, where a reviewer
+    ///   can see it, rather than the control inferring it from the environment.
     init(
         _ title: LocalizedStringResource,
         variant: HWButtonVariant = .primary,
+        appearance: HWAppearance = .surface,
         systemImage: String? = nil,
         state: HWButtonState = .ready,
         action: @escaping () -> Void
     ) {
         self.title = title
         self.variant = variant
+        self.appearance = appearance
         self.systemImage = systemImage
         self.state = state
         self.action = action
@@ -159,7 +205,7 @@ struct HWButton: View {
     static let minimumHeight: CGFloat = 52
 
     var body: some View {
-        let appearance = HWButtonAppearance(variant: variant, palette: theme.palette)
+        let appearance = HWButtonAppearance(variant: variant, appearance: self.appearance, palette: theme.palette)
 
         Button(action: action) {
             HWButtonLabel(state: state, foreground: appearance.foreground) {

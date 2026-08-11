@@ -18,52 +18,64 @@ struct RootViewTests {
 
     // MARK: - Which world
 
-    @Test("signed out draws Landing rather than the tabs")
-    func signedOutDrawsLanding() throws {
+    /// **The branch, as a value.** `ImageRenderer` draws neither a `TabView` nor a `NavigationStack` — both
+    /// come back as the unsupported-view glyph, byte for byte identical — so the pixel comparison this suite
+    /// used to make compared two pictures of the same yellow square and would have passed with the branch
+    /// inverted. `RootView.world(isSignedIn:)` is the decision, and this is it.
+    @Test("the session decides the world")
+    func theSessionDecidesTheWorld() {
+        #expect(RootView.world(isSignedIn: true) == .shell)
+        #expect(RootView.world(isSignedIn: false) == .landing)
+        // Two worlds, and only two: a third would be a state no screen has been written for.
+        #expect(RootWorld.allCases.count == 2)
+    }
+
+    @Test("a fresh session is signed out, so the app starts at Landing")
+    func aFreshSessionStartsAtLanding() {
         let session = SessionCoordinator(
             client: TestBench.client(FixtureTransport()),
             keptStore: InMemoryTokenStore(),
             transientStore: InMemoryTokenStore()
         )
+
         #expect(!session.isSignedIn)
-
-        let root = TestBench.render(RootView().environment(session).environment(viewModels()))
-        let landing = TestBench.render(LandingView())
-
-        #expect(root?.pngData() == landing?.pngData())
-    }
-
-    /// What is asserted is the **branch**, not the tab bar: `ImageRenderer` cannot draw a `TabView` and yields
-    /// its unsupported-view glyph instead (see `AppShellTests`). That is enough here — the question is whether
-    /// the root went somewhere other than Landing, and a glyph that is not Landing answers it.
-    @Test("signed in draws the tabs rather than Landing")
-    func signedInDrawsTheShell() async throws {
-        let session = try await TestBench.signedInSession()
-
-        let root = try #require(TestBench.render(RootView().environment(session).environment(viewModels())))
-        let landing = try #require(TestBench.render(LandingView()))
-
-        #expect(root.pngData() != landing.pngData())
+        #expect(RootView.world(isSignedIn: session.isSignedIn) == .landing)
     }
 
     /// The consequence the criterion names: "clears the session and returns to Landing". One object changes,
-    /// and the root follows it — which is only true if the root reads the *same* coordinator the sign-out
+    /// and the world follows it — which is only true if the root reads the *same* coordinator the sign-out
     /// went through.
     @Test("signing out returns the root to Landing")
     func signingOutReturnsToLanding() async throws {
         let session = try await TestBench.signedInSession()
-        let models = viewModels()
-        let signedIn = try #require(
-            TestBench.render(RootView().environment(session).environment(models))?.pngData()
-        )
+        #expect(RootView.world(isSignedIn: session.isSignedIn) == .shell)
 
         await session.signOut()
 
-        let signedOut = try #require(
-            TestBench.render(RootView().environment(session).environment(models))?.pngData()
+        #expect(RootView.world(isSignedIn: session.isSignedIn) == .landing)
+    }
+
+    /// And the root still builds with the environment it is given, in both worlds. A smoke test, and said to
+    /// be one: what it catches is a missing environment object, not a layout.
+    @Test("the root builds in both worlds")
+    func theRootBuilds() async throws {
+        let signedOut = SessionCoordinator(
+            client: TestBench.client(FixtureTransport()),
+            keptStore: InMemoryTokenStore(),
+            transientStore: InMemoryTokenStore()
         )
-        #expect(signedOut != signedIn)
-        #expect(signedOut == TestBench.render(LandingView())?.pngData())
+        #expect(TestBench.render(RootView().environment(signedOut).environment(viewModels())) != nil)
+
+        let signedIn = try await TestBench.signedInSession()
+        #expect(TestBench.render(RootView().environment(signedIn).environment(viewModels())) != nil)
+    }
+
+    /// Where Landing can go. One case today, and asserted so that registration and password reset (#15, #16)
+    /// arrive as cases of this rather than as a second mechanism — and so that #14 replacing the placeholder is
+    /// a change somebody makes on purpose.
+    @Test("there is one route out of Landing, and it is sign-in")
+    func oneRouteOutOfLanding() {
+        #expect(PreAuthRoute.allCases == [.signIn])
     }
 
     // MARK: - The app switcher

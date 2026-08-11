@@ -21,7 +21,7 @@ struct HWButtonTests {
         #expect(HWButtonVariant.allCases == [.primary, .soft, .ghost, .quiet])
     }
 
-    @Test("no two variants resolve to the same appearance")
+    @Test("no two variants resolve to the same appearance on surface")
     func variantsAreDistinct() {
         let appearances = HWButtonVariant.allCases.map {
             HWButtonAppearance(variant: $0, palette: .standard)
@@ -33,6 +33,40 @@ struct HWButtonTests {
                 #expect(appearance != other, "two variants draw identically")
             }
         }
+    }
+
+    /// **On `brand` the rule has one exception, and it is the design's.** There is no `.btn-soft` on the galaxy
+    /// surface — its secondary filled control *is* `.btn-ghost` — so those two resolve alike there and the
+    /// other pairs still do not. Stated rather than left to the suite above, which would otherwise read as
+    /// asserting something false of half the vocabulary (ADR-0029).
+    @Test("on brand, soft is the ghost and every other pair is still distinct")
+    func brandCollapsesSoftIntoGhost() {
+        func appearance(_ variant: HWButtonVariant) -> HWButtonAppearance {
+            HWButtonAppearance(variant: variant, appearance: .brand, palette: .standard)
+        }
+
+        #expect(appearance(.soft) == appearance(.ghost))
+        #expect(appearance(.primary) != appearance(.ghost))
+        #expect(appearance(.primary) != appearance(.quiet))
+        #expect(appearance(.ghost) != appearance(.quiet))
+    }
+
+    /// The two appearances are the design's two surfaces, and **no variant looks the same on both** — which is
+    /// the whole reason the parameter exists rather than a mode (ADR-0021).
+    @Test("every variant is drawn differently on the two surfaces", arguments: HWButtonVariant.allCases)
+    func theTwoSurfacesNeverAgree(_ variant: HWButtonVariant) {
+        let surface = HWButtonAppearance(variant: variant, appearance: .surface, palette: .standard)
+        let brand = HWButtonAppearance(variant: variant, appearance: .brand, palette: .standard)
+
+        #expect(surface != brand, "\(variant) draws identically on both surfaces")
+        // And the shapes differ: brand buttons are pills, in-app ones use the card radius.
+        #expect(brand.radius == .pill)
+        #expect(surface.radius == .large)
+    }
+
+    @Test("the appearances are the design's two surfaces, and only those")
+    func thereAreTwoAppearances() {
+        #expect(HWAppearance.allCases == [.surface, .brand])
     }
 
     @Test("only primary is a gradient, and only primary and soft are raised")
@@ -57,6 +91,16 @@ struct HWButtonTests {
         #expect(appearance(.soft).elevation != nil)
         #expect(appearance(.ghost).elevation == nil)
         #expect(appearance(.quiet).elevation == nil)
+
+        // **On `brand` nothing is raised**, including primary: the design puts a blurred glow *behind* the
+        // landing CTA rather than a shadow under it, and the glow is the screen's to draw because it sits
+        // outside the control's bounds (ADR-0029).
+        for variant in HWButtonVariant.allCases {
+            #expect(
+                HWButtonAppearance(variant: variant, appearance: .brand, palette: .standard).elevation == nil,
+                "\(variant) is raised on brand, where the design draws no shadow"
+            )
+        }
     }
 
     @Test("the quiet variant has no fill, and every other one does")

@@ -326,9 +326,10 @@ struct LocalisationTests {
     /// Every localisation key named in the presentation layers, with the file that names it.
     ///
     /// Keys are recognised by the shape the app spells them in — dotted, lower-camel segments at the start
-    /// of a literal — which is also the shape of an SF Symbol name, so the lines that name a symbol are
-    /// excluded. That exclusion is the fragile part of this scan and it is narrow on purpose: a symbol
-    /// reaches a use site through `systemName:`, `systemImage:`, or `StatePresentation`'s `symbol`.
+    /// of a literal — which is also the shape of an SF Symbol name, so a symbol's argument is **cut out of
+    /// the line** before the keys are read. Cutting rather than skipping the line is the fix for a real
+    /// blind spot: a control that takes both a title and a glyph writes them on one line, and skipping it
+    /// lost the title.
     ///
     /// **One place writes a symbol name with no label at all**: `AppTab.systemImage`, where the five tab
     /// glyphs are returned from a `switch` exactly as the five tab *titles* are — so no token on the line can
@@ -341,15 +342,19 @@ struct LocalisationTests {
     /// wants covered.
     private static func renderedKeys() throws -> [String: String] {
         let keyShaped = try Regex(#"\"([a-z][A-Za-z0-9]*(?:\.[A-Za-z0-9]+)+)(?=[\s\"])"#)
-        let namesASymbol = ["systemName:", "systemImage:", "symbol =", "symbol:"]
+        // A symbol's *argument*, removed from the line before the keys are read. Skipping the whole line —
+        // which this did until Landing wrote `HWButton("landing.cta", systemImage: "arrow.forward")` — loses
+        // any key that shares a line with a glyph, and loses it silently: the key then reads as an orphaned
+        // catalogue entry rather than as a missing scan.
+        let symbolArgument = try Regex(#"(?:systemName|systemImage|symbol)\s*[:=]\s*\"[^\"]*\""#)
         let tabGlyphs = Set(AppTab.allCases.map(\.systemImage))
         var keys: [String: String] = [:]
 
         for layer in presentationLayers {
             for file in try SourceTree.swiftFiles(in: layer) {
                 for line in try SourceTree.codeLines(of: file) {
-                    guard !namesASymbol.contains(where: line.contains) else { continue }
-                    for match in line.matches(of: keyShaped) {
+                    let withoutSymbols = line.replacing(symbolArgument, with: "")
+                    for match in withoutSymbols.matches(of: keyShaped) {
                         guard let key = match[1].substring, !tabGlyphs.contains(String(key)) else { continue }
                         keys[String(key)] = file.lastPathComponent
                     }

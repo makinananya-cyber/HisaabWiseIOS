@@ -29,6 +29,20 @@ struct HWCurve: Sendable, Hashable {
     func animation(_ duration: HWDuration) -> Animation {
         .timingCurve(p1x, p1y, p2x, p2y, duration: duration.seconds)
     }
+
+    /// An **ambient loop**, whose period is a number of seconds rather than an ``HWDuration`` step.
+    ///
+    /// The four durations are a *transition* scale — the design's 200/250/420/500ms clusters, collapsed so
+    /// that a screen cannot pick 320 over 300 and call it a decision (ADR-0021). An ambient loop is a
+    /// different measurement: the landing hero breathes over 6 seconds and the strapline's dot pulses over
+    /// 2.2, and neither is a response to anything the user did. Rounding those into the transition scale
+    /// would make them twitch.
+    ///
+    /// It is a separate method rather than a fifth duration so that the exception is visible at the call
+    /// site: a transition passing seconds is going around the scale, and this signature says it is not one.
+    func loop(seconds: Double) -> Animation {
+        .timingCurve(p1x, p1y, p2x, p2y, duration: seconds)
+    }
 }
 
 /// The design's easing curves, verbatim from its CSS custom properties.

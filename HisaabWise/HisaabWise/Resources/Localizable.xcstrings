@@ -61,6 +61,126 @@
         }
       }
     },
+    "landing.cta": {
+      "comment": "Landing's primary call to action; opens sign-in.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Get Started"
+          }
+        }
+      }
+    },
+    "landing.free": {
+      "comment": "Landing footnote under the call to action.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Free to start · No card required"
+          }
+        }
+      }
+    },
+    "landing.headline.first": {
+      "comment": "Landing headline, first line.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Know your money."
+          }
+        }
+      }
+    },
+    "landing.headline.second": {
+      "comment": "Landing headline, second line — drawn in the sky gradient.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Grow your future."
+          }
+        }
+      }
+    },
+    "landing.hero.accessibilityLabel": {
+      "comment": "VoiceOver label for the landing hero illustration — the design's own aria-label, verbatim.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "An open book resting on an open hand, with growth bars rising from one page and a coin above the other"
+          }
+        }
+      }
+    },
+    "landing.strapline.1": {
+      "comment": "Landing strapline 1 of 4. [FIX] Product Spec §3.1 — the design said “Every rupee”, which names a currency the app does not display; the line is currency-neutral instead.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Every expense, tracked without thinking about it."
+          }
+        }
+      }
+    },
+    "landing.strapline.2": {
+      "comment": "Landing strapline 2 of 4.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "See where your money goes — then decide where it should."
+          }
+        }
+      }
+    },
+    "landing.strapline.3": {
+      "comment": "Landing strapline 3 of 4.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Save smarter, not harder."
+          }
+        }
+      }
+    },
+    "landing.strapline.4": {
+      "comment": "Landing strapline 4 of 4.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Learn the habits that quietly build wealth."
+          }
+        }
+      }
+    },
+    "landing.strapline.accessibilityLabel": {
+      "comment": "VoiceOver label for the rotating strapline, so its text is read as a value rather than re-announcing a changed label.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "What HisaabWise does"
+          }
+        }
+      }
+    },
     "shell.logout.action": {
       "comment": "The log out control on Account, and the destructive action in its confirmation dialog.",
       "extractionState": "manual",
