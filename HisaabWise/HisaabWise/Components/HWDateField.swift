@@ -1,16 +1,22 @@
 import SwiftUI
 
-/// The design's date field — `<input type="date">` with its label `.pinned`, which on iOS is a `DatePicker`.
+/// The design's date field — `<input type="date">`, which on iOS Safari opens a picker in a sheet. So this is a
+/// **button that opens a sheet**, which is closer to the design than an inline control is.
 ///
-/// **The system's picker, deliberately, and it is the one place a date is rendered without our code touching
-/// it.** ADR-0011 keeps every formatter out of the app; a compact `DatePicker` draws the chosen date in the
-/// environment's own locale and calendar, which is the same rule applied to dates rather than an exception to it.
-/// Building a field that showed `12/03/1994` would mean choosing an order, and the order is the locale's.
+/// **It was a compact `DatePicker` drawn at `opacity(0)` under the placeholder, and the words were not
+/// tappable.** An `.overlay` is laid out by its parent but only the *picker's* own frame takes taps, and a
+/// compact picker's frame is the small date pill on the leading edge — so the visible "Choose your date of birth"
+/// was dead, and the live target was an invisible pill beside it. A `Button` has one unambiguous hit region, the
+/// whole field box, in both states.
 ///
-/// **`Date?`, not `Date`.** Nothing is chosen until the user chooses it — a picker defaulted to today's date
-/// minus eighteen years would let somebody submit a birthday they never entered, and the "please choose your date
-/// of birth" rule could then never fire. Until then the placeholder is drawn over the picker, which stays
-/// tappable underneath: one tap still opens the calendar.
+/// **The date is still rendered by the system, not by us.** `Text(_:format:)` resolves against the environment's
+/// locale and calendar — the one `hwLanguage(_:)` set (ADR-0011) — so nothing here chooses whether a day comes
+/// before a month. ADR-0003's no-formatter rule is about **money**, where the server owns conversion and
+/// rounding; a date of birth the user picked thirty seconds ago is not a server-owned figure.
+///
+/// **`Date?`, not `Date`.** Nothing is chosen until the user chooses it — a field defaulted to "eighteen years
+/// ago" would let somebody submit a birthday they never entered, and the "please choose your date of birth" rule
+/// could then never fire.
 ///
 /// **Brand only** — the design has one date field, on registration.
 struct HWDateField: View {
@@ -39,6 +45,9 @@ struct HWDateField: View {
         self.placeholder = placeholder
         self.error = error
     }
+
+    /// Whether the picker sheet is up. The field's own state: a caller that owned it would have to reset it.
+    @State private var isChoosing = false
 
     private var isInvalid: Bool { error != nil }
 
@@ -70,67 +79,99 @@ struct HWDateField: View {
         .animation(reduceMotion ? nil : HWMotion.easeOut.animation(.standard), value: isInvalid)
     }
 
+    /// The closed field: a button covering the whole box.
     private var box: some View {
-        HStack(spacing: 10) {
-            Image(systemName: "calendar")
-                .font(.hw(.bodyLarge))
-                .foregroundStyle(isInvalid ? theme.palette.brand.danger : theme.palette.brand.inkSecondary)
-                .accessibilityHidden(true)
+        Button {
+            isChoosing = true
+        } label: {
+            HStack(spacing: 10) {
+                Image(systemName: "calendar")
+                    .font(.hw(.bodyLarge))
+                    .foregroundStyle(isInvalid ? theme.palette.brand.danger : theme.palette.brand.inkSecondary)
+                    .accessibilityHidden(true)
 
-            picker
+                value
+
+                Spacer(minLength: 0)
+
+                // `.chev` — the same affordance the currency and question combos carry, because this is now the
+                // same kind of control.
+                Image(systemName: "chevron.down")
+                    .font(.hw(.caption).weight(.bold))
+                    .foregroundStyle(theme.palette.brand.inkSecondary)
+                    .accessibilityHidden(true)
+            }
+            .padding(.horizontal, 14)
+            .frame(minHeight: HWTextField.minimumHeight)
+            .hwBox(
+                fill: theme.palette.brand.raised,
+                radius: .large,
+                border: isInvalid ? theme.palette.brand.danger : theme.palette.brand.separator,
+                borderWidth: 1.5
+            )
+            .contentShape(.rect)
+        }
+        .buttonStyle(HWPressStyle.compact)
+        // One element: "Date of birth, 12 March 1994, button" — or the placeholder as the value while nothing is
+        // chosen, which is what stops it announcing a date nobody picked.
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text(label))
+        .accessibilityValue(accessibilityValue)
+        .accessibilityHint(error.map { Text($0) } ?? Text("component.combo.hint"))
+        .sheet(isPresented: $isChoosing) { sheet }
+    }
+
+    /// The chosen date, or the placeholder. **The system formats it** — `Text(_:format:)` against the environment
+    /// locale — so nothing here decides whether the day comes before the month.
+    @ViewBuilder
+    private var value: some View {
+        if let date {
+            Text(date, format: .dateTime.day().month(.wide).year())
+                .font(.hw(.bodyLarge).weight(.regular))
+                .foregroundStyle(theme.palette.brand.ink)
+                .fixedSize(horizontal: false, vertical: true)
+        } else {
+            Text(placeholder)
+                .font(.hw(.bodyLarge).weight(.regular))
+                .foregroundStyle(theme.palette.brand.inkSecondary.opacity(0.8))
+                .fixedSize(horizontal: false, vertical: true)
+        }
+    }
+
+    /// What VoiceOver reads as the value. `Text(_:format:)` resolves the same way it does on screen, so the two
+    /// cannot disagree.
+    private var accessibilityValue: Text {
+        if let date {
+            Text(date, format: .dateTime.day().month(.wide).year())
+        } else {
+            Text(placeholder)
+        }
+    }
+
+    /// The picker, in the sheet the design's native input opens.
+    ///
+    /// `.graphical` rather than the wheel: a date of birth is reached by year first, and a calendar's year header
+    /// is one tap away where a wheel is a long scroll. The picker's **own** colour scheme is forced dark, which is
+    /// not an ADR-0021 palette swap — it is telling a system control which ground it has been placed on, and the
+    /// galaxy panel is the ground. Left light, the calendar draws dark ink on a dark sheet.
+    private var sheet: some View {
+        HWSheetChrome(title: placeholder, onClose: { isChoosing = false }, appearance: .brand) {
+            DatePicker(selection: chosen, in: range, displayedComponents: .date) {
+                Text(label)
+            }
+                .datePickerStyle(.graphical)
+                .labelsHidden()
+                .tint(theme.palette.brand.inkAccent)
+                .environment(\.colorScheme, .dark)
+                .padding(.horizontal, 16)
+                .accessibilityLabel(Text(label))
 
             Spacer(minLength: 0)
         }
-        .padding(.horizontal, 14)
-        .frame(minHeight: HWTextField.minimumHeight)
-        .hwBox(
-            fill: theme.palette.brand.raised,
-            radius: .large,
-            border: isInvalid ? theme.palette.brand.danger : theme.palette.brand.separator,
-            borderWidth: 1.5
-        )
+        .presentationBackground(theme.palette.brand.backgroundDeep)
+        .presentationDetents([.medium, .large])
     }
 
-    /// The system picker, with the placeholder drawn over it while nothing is chosen.
-    ///
-    /// **`.opacity(0)` does not take a view out of the accessibility tree**, and the proxy binding reads
-    /// `range.upperBound` — so an untouched field used to announce "Date of birth, 1 January 2013", a date the
-    /// user never chose, to exactly the users who cannot see the placeholder saying otherwise. The value is
-    /// overridden in that state; when a date *has* been chosen the system's own value stands, because there is no
-    /// formatter here to reproduce it (ADR-0003, ADR-0011).
-    @ViewBuilder
-    private var picker: some View {
-        if date == nil {
-            systemPicker
-                .opacity(0)
-                .overlay(alignment: .leading) { prompt }
-                .accessibilityValue(Text(placeholder))
-        } else {
-            systemPicker
-        }
-    }
-
-    private var systemPicker: some View {
-        DatePicker(selection: chosen, in: range, displayedComponents: .date) {
-            Text(label)
-        }
-        .labelsHidden()
-        .datePickerStyle(.compact)
-        .tint(theme.palette.brand.inkAccent)
-        .accessibilityLabel(Text(label))
-        .accessibilityHint(error.map { Text($0) } ?? Text(verbatim: ""))
-    }
-
-    /// The placeholder, drawn over the hidden picker. Not announced: the picker beneath it carries the same words
-    /// as its value, so a second element would read the field twice.
-    private var prompt: some View {
-        Text(placeholder)
-            .font(.hw(.bodyLarge).weight(.regular))
-            .foregroundStyle(theme.palette.brand.inkSecondary.opacity(0.8))
-            .fixedSize(horizontal: false, vertical: true)
-            .accessibilityHidden(true)
-            .allowsHitTesting(false)
-    }
 }
 
 #if DEBUG

@@ -278,6 +278,30 @@ struct RegistrationViewTests {
         #expect(money.contains("viewModel.failure(for: .secondAnswer)"))
     }
 
+    // MARK: - The date field's tap target
+
+    /// **The whole field opens the picker.** It was a compact `DatePicker` at `opacity(0)` with the placeholder as
+    /// a non-hit-testing overlay — and an `.overlay` is laid out by its parent while only the *picker's* frame
+    /// takes taps, so the live target was an invisible date pill on the leading edge and the visible words were
+    /// dead. Found by tapping it.
+    ///
+    /// A source scan, because a hit region is not something a test can press. What it pins is the shape of the
+    /// fix: one `Button`, and nothing over the box that refuses taps.
+    @Test("the date field's tap target is the whole box, not a hidden control inside it")
+    func theDateFieldIsTappable() throws {
+        let source = try SourceTree.codeLines(
+            of: SourceTree.appSources.appending(path: "Components/HWDateField.swift")
+        ).joined(separator: "\n")
+
+        #expect(source.contains("Button {"), "the field is not a button, so its hit region is the picker's own")
+        #expect(source.contains(".contentShape(.rect)"), "the button's hit region is not the box it draws")
+        // The two halves of the old arrangement, each of which alone made the words untappable.
+        #expect(!source.contains(".opacity(date == nil ? 0 : 1)"))
+        #expect(!source.contains(".allowsHitTesting(false)"))
+        // And the picker is reached through a sheet, which is what the design's native input opens.
+        #expect(source.contains(".sheet(isPresented:"))
+    }
+
     // MARK: - They build
 
     /// A smoke test, and said to be one: what it catches is a missing environment object, not a layout.
