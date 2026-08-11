@@ -61,11 +61,18 @@ struct HWStreakCard: View {
     private let streak: Int
     /// "120 XP · next up, Needs vs. Wants" — composed server-side, because it joins two figures and a title.
     private let summary: String
+    /// The lesson **Continue** goes to, named on the control rather than only inside `summary`.
+    ///
+    /// The design's `.mini-go` reads just "Continue". Naming the lesson on it is the one addition: a control that
+    /// says where it goes is the difference between an affordance and a guess, and the criterion asks for the
+    /// lesson to be *shown*.
+    private let nextLesson: String
     private let action: () -> Void
 
-    init(streak: Int, summary: String, action: @escaping () -> Void) {
+    init(streak: Int, summary: String, nextLesson: String, action: @escaping () -> Void) {
         self.streak = streak
         self.summary = summary
+        self.nextLesson = nextLesson
         self.action = action
     }
 
@@ -94,16 +101,23 @@ struct HWStreakCard: View {
                     .foregroundStyle(theme.palette.surface.inkSecondary)
                     .fixedSize(horizontal: false, vertical: true)
 
-                HStack(spacing: 4) {
+                HStack(alignment: .firstTextBaseline, spacing: 4) {
+                    // Two elements rather than one assembled sentence: "Continue" is app copy and the lesson's
+                    // title is server content, and joining them at a call site is what ADR-0011 forbids.
                     Text("home.learning.continue")
                         .font(.hw(.caption).weight(.bold))
-                        .foregroundStyle(theme.palette.accent.base)
                         .fixedSize(horizontal: false, vertical: true)
+
+                    Text(verbatim: nextLesson)
+                        .font(.hw(.caption).weight(.bold))
+                        .fixedSize(horizontal: false, vertical: true)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+
                     // `chevron.forward` mirrors under Arabic; `.right` would point back the way the reader came.
                     Image(systemName: "chevron.forward")
                         .font(.hw(.micro).weight(.bold))
-                        .foregroundStyle(theme.palette.accent.base)
                 }
+                .foregroundStyle(theme.palette.accent.base)
             }
             .frame(maxWidth: .infinity, alignment: .leading)
             .padding(14)
@@ -116,6 +130,9 @@ struct HWStreakCard: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Text("home.learning.caption"))
         .accessibilityValue(Text("home.learning.accessibilityValue \(streakText) \(summary)"))
+        // Where it goes, as a hint — the label names the card and the value carries the figures, so the
+        // destination is the third thing and belongs in the third slot.
+        .accessibilityHint(Text("home.learning.hint \(nextLesson)"))
     }
 
     /// The streak as a string, because every argument this app's copy takes is a `String` — a number would resolve
@@ -213,7 +230,7 @@ struct HWReadRow: View {
                     + "there is your **20% savings target**."
             ) {}
 
-            HWStreakCard(streak: 4, summary: "120 XP · next up, Needs vs. Wants") {}
+            HWStreakCard(streak: 4, summary: "120 XP · 3 lessons done", nextLesson: "Needs vs. Wants") {}
 
             VStack(spacing: 2) {
                 HWReadRow(title: "Scam awareness", systemImage: "shield", accent: 3) {}
@@ -231,7 +248,7 @@ struct HWReadRow: View {
     ScrollView {
         VStack(spacing: 18) {
             HWTipCard(text: "Keep **three months of rent, food and bills** saved for emergencies.") {}
-            HWStreakCard(streak: 12, summary: "480 XP · next up, Borrowing and credit") {}
+            HWStreakCard(streak: 12, summary: "480 XP · 9 lessons done", nextLesson: "Borrowing and credit") {}
             HWReadRow(title: "Sending money home", systemImage: "globe", accent: 4) {}
         }
         .padding()
@@ -244,7 +261,7 @@ struct HWReadRow: View {
 #Preview("RTL — the glyphs lead on the right and the chevrons mirror") {
     VStack(spacing: 18) {
         HWTipCard(text: "احتفظ بمصروف **ثلاثة أشهر** للطوارئ.") {}
-        HWStreakCard(streak: 4, summary: "120 XP") {}
+        HWStreakCard(streak: 4, summary: "120 XP", nextLesson: "الاحتياجات مقابل الرغبات") {}
         HWReadRow(title: "الوعي بالاحتيال", systemImage: "shield", accent: 3) {}
     }
     .padding()

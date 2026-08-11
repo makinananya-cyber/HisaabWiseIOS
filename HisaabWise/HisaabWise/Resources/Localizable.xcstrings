@@ -241,6 +241,18 @@
         }
       }
     },
+    "home.learning.hint %@": {
+      "comment": "VoiceOver hint on the streak card. %@ is the next lesson's title, from the server.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Goes to %@"
+          }
+        }
+      }
+    },
     "home.reads.caption": {
       "comment": "Caption above the article teasers.",
       "extractionState": "manual",
@@ -417,6 +429,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "Nothing logged yet. Add a few expenses and this circle fills in with where your money goes."
+          }
+        }
+      }
+    },
+    "home.spending.nothingYet": {
+      "comment": "Under the zeroed total in the first-run spending ring, as the design's `drawEmptyDonut()` writes it.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "nothing yet"
           }
         }
       }

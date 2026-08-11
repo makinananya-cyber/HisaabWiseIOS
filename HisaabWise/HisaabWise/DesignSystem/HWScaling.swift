@@ -57,10 +57,20 @@ extension View {
     ///         HWCategoryList(budget.categories)   // the same figures, as rows
     ///     }
     /// ```
+    /// - Parameter describesItself: whether the visualisation already publishes descriptors VoiceOver can read,
+    ///   in which case the alternative is **not** installed as its representation below the threshold.
+    ///
+    ///   `false` for everything hand-built — a gradient with a pin on it has nothing a screen reader can do with
+    ///   it, so the list has to stand in. `true` for a Swift Charts view, where every `SectorMark` carries its own
+    ///   label and value: installing a representation there *replaces* those descriptors, so they are read by
+    ///   nothing at any size — below the threshold the representation supersedes them and above it the chart is not
+    ///   drawn. Which made ADR-0016's stated reason for choosing Swift Charts over a hand-rolled ring unrealised,
+    ///   and is what this parameter exists to fix.
     func hwVisualisation<Alternative: View>(
+        describesItself: Bool = false,
         @ViewBuilder replacedBy alternative: @escaping () -> Alternative
     ) -> some View {
-        modifier(HWVisualisationScaling(alternative: alternative))
+        modifier(HWVisualisationScaling(describesItself: describesItself, alternative: alternative))
     }
 }
 
@@ -71,6 +81,9 @@ extension View {
 /// (`donut.hwVisualisation { … }`) instead of as a wrapper somebody can forget to wrap it in.
 struct HWVisualisationScaling<Alternative: View>: ViewModifier {
     @Environment(\.dynamicTypeSize) private var size
+
+    /// Whether the content already has descriptors of its own — see `hwVisualisation(describesItself:replacedBy:)`.
+    let describesItself: Bool
 
     @ViewBuilder let alternative: () -> Alternative
 
@@ -85,10 +98,17 @@ struct HWVisualisationScaling<Alternative: View>: ViewModifier {
                 // the threshold happens to be — so moving the threshold later cannot silently un-cap the
                 // chart. `ScalingTests` pins the join the two make; ADR-0025 records the redundancy.
                 .dynamicTypeSize(...HWScaling.visualisationCeiling)
-                // What VoiceOver reads while the chart is the thing on screen. A `SectorMark`'s own
-                // per-mark descriptors say "40 percent" without saying what of (ADR-0016), and a chart
-                // announced as a chart is a chart nobody can read.
-                .accessibilityRepresentation(representation: alternative)
+                // What VoiceOver reads while the chart is the thing on screen — **unless the chart says it
+                // already has descriptors**. A hand-built shape has none, so the list stands in; a `SectorMark`
+                // publishes a label and a value per slice, and installing a representation over it means those
+                // descriptors are read by nothing at any size.
+                .accessibilityRepresentation {
+                    if describesItself {
+                        content
+                    } else {
+                        alternative()
+                    }
+                }
         }
     }
 }

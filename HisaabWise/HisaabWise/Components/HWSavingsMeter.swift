@@ -58,6 +58,11 @@ struct HWSavingsMeter: View {
 
     /// `.meter{height:14px}`.
     private static let trackHeight: CGFloat = 14
+    /// How wide the travelling label has turned out to be, measured rather than guessed.
+    ///
+    /// It is needed to keep the label inside the card: the design clamps its centre to `[half, width - half]` and
+    /// then re-aims the arrow, and neither is possible without knowing the label's own width.
+    @State private var labelWidth: CGFloat = 0
     /// `.meter-now` — the pin.
     private static let pinSize = CGSize(width: 6, height: 24)
 
@@ -90,13 +95,17 @@ struct HWSavingsMeter: View {
             GeometryReader { proxy in
                 let width = proxy.size.width
 
-                ZStack(alignment: .topLeading) {
-                    track
-                    pin(in: width)
+                VStack(alignment: .leading, spacing: 4) {
+                    travellingLabel(in: width)
+
+                    ZStack(alignment: .topLeading) {
+                        track
+                        pin(in: width)
+                    }
+                    .frame(height: Self.pinSize.height, alignment: .center)
                 }
-                .frame(height: Self.pinSize.height, alignment: .center)
             }
-            .frame(height: Self.pinSize.height)
+            .frame(height: Self.pinSize.height + Self.labelHeight + 4)
         }
         // **One element, and the bar is not it.** The track, the pin, and the label are three views drawing one
         // fact, so they are collapsed and the sentence the screen composed is read in their place.
@@ -122,6 +131,47 @@ struct HWSavingsMeter: View {
             )
             .frame(height: Self.trackHeight)
             .frame(maxHeight: .infinity)
+            .accessibilityHidden(true)
+    }
+
+    /// Room for the travelling label above the bar. A fixed height because the `GeometryReader` needs one, and the
+    /// label is one short line at the sizes the bar is drawn at — above the threshold the whole thing is replaced.
+    private static let labelHeight: CGFloat = 26
+
+    /// `.meter-cap` / `#mtag` — the saved figure, **travelling with the pin**.
+    ///
+    /// This is a large part of why the meter is hand-built (ADR-0016): the label is centred on the pin, clamped so
+    /// it stays inside the card at either extreme, and its arrow is then re-aimed at the pin it has stopped being
+    /// centred on. The design does exactly that in `place()`; no chart annotation does any of it.
+    private func travellingLabel(in width: CGFloat) -> some View {
+        // The design's `place()`: the pin's centre, then the label's centre clamped inside the bar, then the
+        // arrow's offset as the difference between them.
+        let pinCentre = clamped * width
+        let half = labelWidth / 2
+        let labelCentre = min(max(pinCentre, half), max(width - half, half))
+
+        return Text(verbatim: savedLabel)
+            .font(.hw(.caption).weight(.bold))
+            .foregroundStyle(theme.palette.surface.ink)
+            .fixedSize()
+            .padding(.horizontal, 8)
+            .padding(.vertical, 4)
+            .hwBox(fill: theme.palette.surface.raised, radius: .small, border: theme.palette.surface.separator)
+            .overlay(alignment: .bottomLeading) {
+                // `--arrow` — the pointer, moved back towards the pin by however far the label was clamped.
+                Triangle()
+                    .fill(theme.palette.surface.raised)
+                    .frame(width: 8, height: 4)
+                    .padding(.leading, max(0, pinCentre - labelCentre + half - 4))
+                    .offset(y: 4)
+                    .accessibilityHidden(true)
+            }
+            .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { labelWidth = $0 }
+            // Leading padding rather than an offset, for the reason the pin uses one: an offset does not mirror.
+            .padding(.leading, max(0, labelCentre - half))
+            .frame(height: Self.labelHeight, alignment: .bottom)
+            .animation(reduceMotion ? nil : HWMotion.easeOut.animation(.slow), value: clamped)
+            // The bar below carries the whole sentence; a second reading of the figure would be the third.
             .accessibilityHidden(true)
     }
 
@@ -154,18 +204,17 @@ struct HWSavingsMeter: View {
         .accessibilityHidden(true)
     }
 
-    /// `.meter-foot` — the saved figure on the left and the percentage pill on the right.
+    /// `.meter-foot` — the percentage pill at the trailing edge.
+    ///
+    /// The saved figure is **not** here any more: it travels with the pin, which is where the design puts it, and
+    /// having it in both places printed the same string twice and pushed the screen's foot sentence onto its own
+    /// line below the pill.
     private var foot: some View {
         HStack(alignment: .firstTextBaseline, spacing: 10) {
-            Text(verbatim: savedLabel)
-                .font(.hw(.body).weight(.semibold))
-                .foregroundStyle(theme.palette.surface.ink)
-                .fixedSize(horizontal: false, vertical: true)
-                .frame(maxWidth: .infinity, alignment: .leading)
-
+            Spacer(minLength: 0)
             pill
         }
-        // The saved figure and the pill are two readings of the same thing, and the bar above already says both.
+        // The pill is a third reading of what the bar above already says.
         .accessibilityHidden(true)
     }
 
@@ -216,6 +265,18 @@ struct HWSavingsMeter: View {
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .trailing)
         }
+    }
+}
+
+/// The label's pointer. A `Path` because the design's is a CSS triangle, which is a shape rather than a glyph.
+struct Triangle: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        path.move(to: CGPoint(x: rect.minX, y: rect.minY))
+        path.addLine(to: CGPoint(x: rect.maxX, y: rect.minY))
+        path.addLine(to: CGPoint(x: rect.midX, y: rect.maxY))
+        path.closeSubpath()
+        return path
     }
 }
 

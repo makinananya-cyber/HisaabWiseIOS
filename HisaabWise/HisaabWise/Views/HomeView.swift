@@ -97,13 +97,17 @@ struct HomeView: BaseView {
                 cardTop("home.spending.caption", sub: screen.monthLabel)
 
                 if screen.spending.isFirstRun {
-                    firstRun
+                    firstRun(screen)
                 } else {
-                    // **The donut draws the key itself.** `hwVisualisation` hands the same list to the chart as
-                    // its accessibility representation *and* as what replaces it above the size threshold, so a
-                    // second one here rendered the six rows twice at AX3 and walked VoiceOver through the
-                    // categories twice below it.
+                    // The ring, then the key — which the design draws at **every** size, and which is therefore
+                    // the screen's rather than something `hwVisualisation` supplies. Above the accessibility
+                    // threshold the ring goes and this list is what remains, so there is one list either way.
                     donut(screen)
+                    HWCategoryList(
+                        slices: Self.slices(screen),
+                        isolated: viewModel.isolated,
+                        onIsolate: { viewModel.isolate($0) }
+                    )
                     HWButton("home.spending.addMore", systemImage: "plus", action: onAddExpense)
                 }
             }
@@ -163,12 +167,33 @@ struct HomeView: BaseView {
     /// The **empty treatment, in one card** rather than `StateView`'s whole-screen state. `StateView`'s own note
     /// says the CTA belonging to an empty screen is that screen's own and arrives with the first screen that has
     /// one; this is that screen, and the CTA is here.
-    private var firstRun: some View {
+    private func firstRun(_ screen: HomeScreen) -> some View {
         VStack(spacing: 12) {
-            Image(systemName: "chart.pie")
-                .font(.hw(.heading))
-                .foregroundStyle(theme.palette.surface.inkTertiary)
-                .accessibilityHidden(true)
+            // **The real ring, in the empty-track colour**, with the readout zeroed — as the design's
+            // `drawEmptyDonut()` draws it. A glyph stood here until review: it made the first day's card a
+            // different card from every day after it.
+            HWEmptyRing {
+                VStack(spacing: 1) {
+                    Text("home.spending.total")
+                        .hwLabel()
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    Text(verbatim: screen.spending.total.display)
+                        .font(.hw(.subheading))
+                        .foregroundStyle(theme.palette.surface.inkTertiary)
+                        .fixedSize(horizontal: false, vertical: true)
+
+                    Text("home.spending.nothingYet")
+                        .font(.hw(.caption))
+                        .foregroundStyle(theme.palette.surface.inkTertiary)
+                        .fixedSize(horizontal: false, vertical: true)
+                }
+                .padding(.horizontal, 12)
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(Text("home.spending.total"))
+                .accessibilityValue(Text("home.spending.nothingYet"))
+            }
+            .frame(maxWidth: .infinity)
 
             Text("home.spending.firstRun")
                 .font(.hw(.body))
@@ -235,6 +260,7 @@ struct HomeView: BaseView {
             HWStreakCard(
                 streak: screen.learning.streak,
                 summary: screen.learning.summary,
+                nextLesson: screen.learning.nextLesson,
                 action: onContinueLearning
             )
 

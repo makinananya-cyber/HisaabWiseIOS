@@ -56,9 +56,16 @@ struct HWDonut: View {
     /// `viewBox="0 0 132 132"` with a 15-unit stroke on r=51 — a ring whose hole is about 68% of its diameter.
     private static let innerRadiusRatio = 0.68
     /// `GAP = 3` surface units between segments, as an inset in the same units the chart works in.
+    ///
+    /// The gaps are the design's — it draws `stroke-dasharray` short by `GAP` on every segment — so the ring is
+    /// deliberately not a closed circle. Looked at in the Simulator the seam between the last slice and the first
+    /// reads slightly wider than the others, because it is the one gap with the same colour on neither side.
     private static let angularInset = 1.5
     /// The design draws the ring at 132×132.
-    private static let diameter: CGFloat = 132
+    static let diameter: CGFloat = 132
+
+    /// `stroke-width="15"` — the ring's thickness, shared with the empty ring so the two are the same shape.
+    static let ringWidth: CGFloat = 15
 
     /// What `chartAngleSelection` writes: a position in the value domain, not a slice.
     @State private var selectedValue: Double?
@@ -68,8 +75,17 @@ struct HWDonut: View {
             // The ring is capped and then **replaced** above the threshold, and the replacement doubles as the
             // chart's accessibility representation — so VoiceOver reads the category list whether or not the list
             // is what is drawn (ADR-0012, `HWScaling`).
-            .hwVisualisation {
-                HWCategoryList(slices: slices, isolated: isolated, onIsolate: onIsolate)
+            // `describesItself` — every `SectorMark` carries a label and a value, and that is the whole reason
+            // this is Swift Charts rather than a hand-rolled arc (ADR-0016). Installing a representation over the
+            // chart would have replaced those descriptors, so they were read by nothing at any size.
+            //
+            // **And the replacement is nothing at all**, because the equivalent layout is already on the screen:
+            // the design draws the category key beside the ring at every size, so `HomeView` owns it and above the
+            // threshold the ring is simply absent. Passing the key here as well drew it twice at accessibility
+            // sizes — and passing it *only* here left the categories invisible at ordinary ones, which is the
+            // trade the first two attempts each got one half of.
+            .hwVisualisation(describesItself: true) {
+                EmptyView()
             }
     }
 
@@ -134,6 +150,34 @@ struct HWDonut: View {
         let palette = theme.palette.categories.all
         guard !palette.isEmpty else { return theme.palette.accent.base }
         return palette[(max(slice.slot, 1) - 1) % palette.count]
+    }
+}
+
+/// The design's `drawEmptyDonut()` — the ring a brand-new account gets.
+///
+/// **A real ring, not a glyph.** The design draws the same circle in `--empty` and keeps the centre readout with
+/// zeroes in it, so the card the user meets on their first day is the card they will keep seeing rather than a
+/// different one. Hand-drawn because there is nothing to slice: a `SectorMark` with one value would be a chart
+/// describing an absence.
+struct HWEmptyRing<Centre: View>: View {
+    @Environment(ThemeManager.self) private var theme
+
+    private let centre: Centre
+
+    init(@ViewBuilder centre: () -> Centre) {
+        self.centre = centre()
+    }
+
+    var body: some View {
+        Circle()
+            // The same geometry the donut uses, so the two cards are the same size and the swap is not a jump.
+            .stroke(theme.palette.feedback.emptyTrack, lineWidth: HWDonut.ringWidth)
+            .frame(width: HWDonut.diameter - HWDonut.ringWidth, height: HWDonut.diameter - HWDonut.ringWidth)
+            .frame(width: HWDonut.diameter, height: HWDonut.diameter)
+            .overlay { centre }
+            // The ring says nothing a screen reader needs; the readout inside it says all of it.
+            .accessibilityHidden(true)
+            .accessibilityElement(children: .contain)
     }
 }
 
