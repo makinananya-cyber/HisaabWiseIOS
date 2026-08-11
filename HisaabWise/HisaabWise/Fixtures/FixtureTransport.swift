@@ -88,6 +88,30 @@ actor FixtureTransport: Transport {
         self.holdingFor = holdingFor
     }
 
+    /// A transport that answers each fixture's own endpoints with that fixture's bytes.
+    ///
+    /// The ergonomic half of ADR-0013: a fixture knows which paths it is a response for
+    /// (``Fixture/endpoints``), so a caller says *which payloads* it wants served rather than repeating the
+    /// path-to-file mapping. `FixtureTransport.serving([.budgetINR, .meVerified])` is the whole of a
+    /// signed-in Home.
+    ///
+    /// - Throws: ``FixtureError`` if a file is missing, so a typo fails loudly rather than becoming a
+    ///   `noOutcome` thrown from somewhere unrelated later — and
+    ///   ``FixtureTransportError/twoFixturesForOnePath(path:)`` if two of the fixtures answer the same path.
+    ///   Two payloads for one endpoint is a caller that meant a *sequence* (`meUnverified` then `meVerified`,
+    ///   say), and quietly letting the last one win would answer every request with the wrong half of it.
+    static func serving(_ fixtures: [Fixture]) throws -> FixtureTransport {
+        var stubs: [String: Outcome] = [:]
+        for fixture in fixtures {
+            let outcome = try Outcome.ok(fixture)
+            for path in fixture.endpoints {
+                guard stubs[path] == nil else { throw FixtureTransportError.twoFixturesForOnePath(path: path) }
+                stubs[path] = outcome
+            }
+        }
+        return FixtureTransport(stubs: stubs)
+    }
+
     /// Every request the transport has seen, in order. The count is what proves single-flight
     /// refresh: exactly one refresh reaches the transport however many callers saw a `401`.
     var recordedRequests: [RecordedRequest] { recorded }
@@ -149,5 +173,7 @@ enum FixtureTransportError: Error, Equatable, Sendable {
     /// A request arrived that the test did not programme an answer for.
     case noOutcome(path: String)
     case malformedStub(path: String)
+    /// Two fixtures in one `serving(_:)` call answer the same path. See that method for why it refuses.
+    case twoFixturesForOnePath(path: String)
 }
 #endif

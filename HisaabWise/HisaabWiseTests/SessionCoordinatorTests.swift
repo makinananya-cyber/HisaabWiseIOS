@@ -15,13 +15,11 @@ struct SessionCoordinatorTests {
     private static let logout = "/v1/auth/logout"
     private static let me = "/v1/me"
 
-    private static let unverified = Data(
-        #"{"email":"a@b.com","displayName":"Neeraj","emailVerified":false}"#.utf8
-    )
-    private static let verified = Data(
-        #"{"email":"a@b.com","displayName":"Neeraj","emailVerified":true}"#.utf8
-    )
-    private static let acknowledged = Data("{}".utf8)
+    /// The three response bodies this suite stubs, **from the corpus** rather than written here (ADR-0013).
+    /// Two copies of the `GET /v1/me` shape is one copy that keeps passing after the model moves.
+    private static let unverified = TestBench.payload(.meUnverified)
+    private static let verified = TestBench.payload(.meVerified)
+    private static let acknowledged = TestBench.payload(.logoutAcknowledged)
 
     /// The three objects the graph composes, kept together so a test can reach the stores it is asserting
     /// about. Both stores are in-memory: which one is the *Keychain* is `AppEnvironment`'s decision and is
@@ -80,7 +78,7 @@ struct SessionCoordinatorTests {
         await harness.coordinator.restore()
 
         #expect(harness.coordinator.isSignedIn)
-        #expect(harness.coordinator.user?.email == "a@b.com")
+        #expect(harness.coordinator.user?.email == TestBench.identity.email)
     }
 
     @Test("restores nothing on a fresh install, and sends no request doing it")
@@ -192,6 +190,8 @@ struct SessionCoordinatorTests {
         let request = try #require(await harness.transport.recordedRequests.first { $0.path == Self.login })
         #expect(request.headers["Authorization"] == nil)
         let body = try JSONDecoder().decode([String: String].self, from: try #require(request.body))
+        // The literal this test signed in with, not the corpus's identity: this assertion is about what the
+        // client *sent*, and reading the expectation from a response fixture would make it circular.
         #expect(body["email"] == "a@b.com")
         #expect(body["password"] == "password1")
         #expect(body["timeZone"] == TimeZone.current.identifier)
@@ -303,7 +303,7 @@ struct SessionCoordinatorTests {
         await harness.coordinator.onForeground()
 
         #expect(harness.coordinator.isSignedIn)
-        #expect(harness.coordinator.user?.email == "a@b.com")
+        #expect(harness.coordinator.user?.email == TestBench.identity.email)
     }
 
     // MARK: - Signing out

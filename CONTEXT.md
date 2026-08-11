@@ -436,9 +436,41 @@ keeps.
 See [ADR-0014](docs/adr/0014-privacy-surfaces.md), [ADR-0026](docs/adr/0026-shell-plumbing.md).
 
 **fixture corpus** — the JSON files in `Fixtures/Resources`, read by both the decoding tests and the
-SwiftUI previews, so a fixture that drifts from the API breaks a test rather than rotting a
-preview.
-See [ADR-0013](docs/adr/0013-testing-and-previews.md).
+SwiftUI previews, so a fixture that drifts from the API breaks a test rather than rotting a preview. **Canned
+HTTP payloads, never pre-built domain objects**: a preview goes through the same decoding the app does.
+
+Each fixture declares the paths it answers (`Fixture.endpoints`), and `FixtureCorpusTests` reads every `/v1`
+literal out of `Endpoint.swift` and requires each to be claimed — **coverage is derived from the source, not
+from a list**, so the first commit that adds one of ADR-0020's screen endpoints is told to bring a payload.
+The converse holds too: a fixture may not answer a path nothing calls, which is what keeps a guessed contract
+out of the corpus. `FixtureTransport.serving([.budgetINR, .meVerified])` is how a test or a preview asks for
+payloads by name.
+
+**Two entries are load-bearing beyond their shape.** `budget-aed.json` carries `AED 8,000` — defect D1's own
+figure — while the rupee one stays the default preview, so a screen that has gone back to hardcoding looks
+right against exactly one fixture and wrong against the standing one. `budget-drifted.json` has a **blank**
+display string, which is the drift `Money`'s own guard refuses (a missing key would fail through `Decodable`
+and prove nothing), and it is followed to a screen: `HomeViewModel` over it lands on `failed`.
+
+**One exception to "the corpus is the only source":** the access token. A canned JWT cannot carry a moving
+expiry, so `session-tokens.json` is dated 2100 for the shape, and the session suites mint tokens against a
+live clock.
+See [ADR-0013](docs/adr/0013-testing-and-previews.md),
+[ADR-0027](docs/adr/0027-corpus-coverage-and-the-pinned-harness.md).
+
+**the pinned snapshot harness** — `SnapshotCase` (exactly four: populated · empty · RTL · AX3) and
+`SnapshotPin` (iPhone 17 on iOS 26.5, major and minor only). The suite **skips** rather than fails on any
+other host, because baselines are a function of device and runtime and a flaky gate gets deleted rather than
+fixed; CI (#10) pins the destination so it runs there.
+
+**`swift-snapshot-testing` is not in the project yet, and cannot be added from the CLI.** Every
+package-reference class makes this Xcode refuse to open `project.pbxproj`
+(`-[XCRemoteSwiftPackageReference _setOwner:]: unrecognized selector`), at every `objectVersion`. It is a GUI
+step: File ▸ Add Package Dependencies… → `swift-snapshot-testing` → Up to Next Major 1.19.4 → the
+**`HisaabWiseTests` target only** (linked into the app it would reach `PrivacyInfo.xcprivacy` and App Review).
+Until then the harness renders each case as a smoke check, and a test asserts the app target links no package
+products at all. Three of the four cases also need a **hosted** capture to be photographed loaded, since
+`ImageRenderer` captures the spinner (see the `BaseView` note above).
 
 ---
 

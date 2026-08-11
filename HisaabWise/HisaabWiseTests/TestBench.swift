@@ -60,9 +60,10 @@ enum TestBench {
 
     /// A transport that answers `PUT /v1/me/language` by agreeing to `language`.
     ///
-    /// The happy path four suites need, in one place: the body is a wrapper object so that a narrow decode
-    /// reads its one field out of the wider screen payload ADR-0020 will eventually put around it, and
-    /// getting that shape wrong in one of four copies would be a test passing for the wrong reason.
+    /// The happy path four suites need, in one place — and the body comes from the **corpus** rather than being
+    /// assembled here (ADR-0013). The shape matters: a narrow decode reads its one field out of the wider screen
+    /// payload ADR-0020 will eventually put around it, and a copy of that shape written in the test target is
+    /// the copy that would keep passing after the real one moved.
     static func languageTransport(agreeingTo language: AppLanguage) -> FixtureTransport {
         FixtureTransport(
             stubs: [Endpoint.language: .response(status: 200, body: languagePreference(language))]
@@ -71,7 +72,35 @@ enum TestBench {
 
     /// The body `PUT /v1/me/language` answers with, for the suites that need a *disagreeing* one.
     static func languagePreference(_ language: AppLanguage) -> Data {
-        Data(#"{"language":"\#(language.rawValue)"}"#.utf8)
+        switch language {
+        case .english: payload(.languageEnglish)
+        case .arabic: payload(.languageArabic)
+        }
+    }
+
+    /// The identity the corpus's `GET /v1/me` payloads describe.
+    ///
+    /// So that an assertion about who is signed in reads the fixture rather than repeating its email — a
+    /// literal in a test is the copy nobody updates when the payload changes.
+    static let identity: SessionUser = {
+        do {
+            return try JSONDecoder().decode(SessionUser.self, from: payload(.meVerified))
+        } catch {
+            preconditionFailure("The corpus's me-verified.json no longer decodes as SessionUser: \(error)")
+        }
+    }()
+
+    /// A fixture's bytes, for the many places a stub needs a body and cannot throw.
+    ///
+    /// **It traps**, deliberately: a missing fixture file is not a test outcome, it is a bundle assembled
+    /// wrong, and it reproduces for every suite. Returning empty `Data` instead would turn one broken
+    /// resource into a dozen unrelated decoding failures. `FixtureCorpusTests` is what reports it properly.
+    static func payload(_ fixture: Fixture) -> Data {
+        do {
+            return try fixture.data()
+        } catch {
+            preconditionFailure("The fixture \(fixture.rawValue).json is not in the bundle: \(error)")
+        }
     }
 
     // MARK: - Session
@@ -107,22 +136,21 @@ enum TestBench {
     static func signedInSession() async throws -> SessionCoordinator {
         let kept = InMemoryTokenStore()
         let transport = FixtureTransport(stubs: [
+            // Minted rather than taken from the corpus: `session-tokens.json` carries an `exp` in 2100 so that
+            // the *shape* is stable, and a session test needs a token with a live clock in it.
             Endpoint.login: .response(
                 status: 200,
                 body: tokenPair(access: accessToken(), refresh: "refresh-1")
             ),
-            Endpoint.me: .response(
-                status: 200,
-                body: Data(#"{"email":"a@b.com","displayName":"Neeraj","emailVerified":true}"#.utf8)
-            ),
-            Endpoint.logout: .response(status: 200, body: Data("{}".utf8)),
+            Endpoint.me: .response(status: 200, body: payload(.meVerified)),
+            Endpoint.logout: .response(status: 200, body: payload(.logoutAcknowledged)),
         ])
         let session = SessionCoordinator(
             client: client(transport, refreshTokens: kept),
             keptStore: kept,
             transientStore: InMemoryTokenStore()
         )
-        try await session.signIn(email: "a@b.com", password: "a-long-password", keepMeSignedIn: false)
+        try await session.signIn(email: identity.email, password: "a-long-password", keepMeSignedIn: false)
         return session
     }
 
