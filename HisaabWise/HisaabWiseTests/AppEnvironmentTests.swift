@@ -31,14 +31,14 @@ struct AppEnvironmentTests {
 
     @Test("hands the client it built to the view models it makes")
     func viewModelsGetTheComposedClient() async throws {
-        let transport = FixtureTransport(stubs: [Endpoint.budget: try .ok(.budgetINR)])
+        let transport = FixtureTransport(stubs: [Endpoint.screenHome: try .ok(.homeINR)])
         let environment = makeEnvironment(transport: transport)
 
         try await environment.makeHomeViewModel().load()
 
         // The request reached *this* transport, so the view model is on the graph's client and not one it
         // built for itself.
-        #expect(await transport.recordedRequests.map(\.path) == [Endpoint.budget])
+        #expect(await transport.recordedRequests.map(\.path) == [Endpoint.screenHome])
     }
 
     /// The tab view models are **made**, never held — which is what lets the composition root throw a
@@ -46,7 +46,7 @@ struct AppEnvironmentTests {
     /// hand the next session the previous user's salary, and the root would have no way to refuse it.
     @Test("every call makes a fresh set of tab view models, with nothing loaded in them")
     func tabViewModelsAreMadeRatherThanCached() async throws {
-        let transport = FixtureTransport(stubs: [Endpoint.budget: try .ok(.budgetINR)])
+        let transport = FixtureTransport(stubs: [Endpoint.screenHome: try .ok(.homeINR)])
         let environment = makeEnvironment(transport: transport)
 
         let first = environment.makeTabViewModels()
@@ -78,7 +78,7 @@ struct AppEnvironmentTests {
         // asking the server for English money strings, and ADR-0003 leaves the client no formatter to
         // put that right.
         let language = LanguageManager(selected: .arabic)
-        let transport = FixtureTransport(stubs: [Endpoint.budget: try .ok(.budgetINR)])
+        let transport = FixtureTransport(stubs: [Endpoint.screenHome: try .ok(.homeINR)])
         let environment = makeEnvironment(transport: transport, language: language)
 
         try await environment.makeHomeViewModel().load()

@@ -153,11 +153,27 @@ struct AccessibilityTests {
     /// cannot compose a figure of its own, whatever it does with the string it was given.
     @Test("no screen or component can spell a monetary value out itself")
     func moneyIsAnnouncedFromTheDisplayString() throws {
-        try SourceTree.expectAbsent(
-            [".minor", ".exponent", "minor:", "exponent:"],
-            from: ["Views", "Components"],
-            because: "a figure reaches VoiceOver as Money.display, which the server formatted (ADR-0003, ADR-0012)"
-        )
+        // `.minor` survives in **one** place: `HomeView.footLine` asks whether `saved` is *zero*, to choose
+        // between two catalogue sentences. Comparing a figure with nothing is not spelling one out — no digit
+        // reaches the screen from it — and the alternative was a second server field meaning "is it zero".
+        let permitted = ["case .low where savings.saved.minor == 0:"]
+
+        for layer in ["Views", "Components"] {
+            for file in try SourceTree.swiftFiles(in: layer) {
+                let code = try SourceTree.codeLines(of: file)
+                    .filter { line in !permitted.contains { line.contains($0) } }
+
+                for symbol in [".minor", ".exponent", "minor:", "exponent:"] {
+                    #expect(
+                        code.first { $0.contains(symbol) } == nil,
+                        """
+                        \(layer)/\(file.lastPathComponent) references \(symbol) — a figure reaches VoiceOver as \
+                        Money.display, which the server formatted (ADR-0003, ADR-0012)
+                        """
+                    )
+                }
+            }
+        }
     }
 
     // MARK: - Focus order

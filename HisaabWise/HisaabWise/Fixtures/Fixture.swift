@@ -66,6 +66,29 @@ enum Fixture: String, CaseIterable, Sendable {
     /// `PUT /v1/me/language`, agreeing to Arabic.
     case languageArabic = "language-arabic"
 
+    /// `GET /v1/screens/home` — the whole screen in one response (ADR-0020, #17).
+    ///
+    /// **Its `saved` is byte-identical to ``budgetINR``'s**, and that is the D1 regression test's anchor: the
+    /// screen payload is assembled from the budget engine, so a figure that differs between the two means the
+    /// assembly derived rather than read. `FixtureCorpusTests` asserts the two agree.
+    case homeINR = "home-inr"
+
+    /// `GET /v1/screens/home` for an account with nothing logged — the grey ring, a zero meter, and no streak.
+    ///
+    /// A *response*, not an absence: "no categories" and "a new account" are the same empty array and different
+    /// screens, so the payload says which (`spending.isFirstRun`).
+    case homeFirstRun = "home-first-run"
+
+    /// `GET /v1/content/tips` — all **49** tips, `{c}` tokens verbatim, emphasis as markdown.
+    ///
+    /// The count is the acceptance test the workspace's content rules set, so the corpus carries the whole pool:
+    /// **Show me another** cycles through it, and a trimmed sample would be a control that ran out.
+    case tips
+
+    /// `GET /v1/content/articles/scams` — one article body, with every block the design's structure has: a
+    /// heading, paragraphs, a key-value list, numbered steps, a callout, and sources.
+    case articleScams = "article-scams"
+
     /// `GET /v1/content/reference/countries` — all 251, as the design's own `COUNTRIES` constant carries them.
     ///
     /// **The counts are the acceptance test** (the workspace's content rules), so the corpus holds the whole
@@ -97,6 +120,9 @@ enum Fixture: String, CaseIterable, Sendable {
     var endpoints: [String] {
         switch self {
         case .budgetINR, .budgetAED, .budgetDrifted: [Endpoint.budget]
+        case .homeINR, .homeFirstRun: [Endpoint.screenHome]
+        case .tips: [Endpoint.contentTips]
+        case .articleScams: [Endpoint.article(id: "scams")]
         // Two paths, one set of bytes: a refresh answers with a login's shape, which is the whole of
         // ADR-0023's rotation decision expressed as a fixture.
         // Three paths, one set of bytes: a refresh answers with a login's shape (ADR-0023), and so does

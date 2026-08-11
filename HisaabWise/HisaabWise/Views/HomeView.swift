@@ -1,87 +1,394 @@
 import SwiftUI
 
-/// The far end of the walking skeleton: a canned HTTP payload, decoded through the real client, shown as
-/// text.
+/// Home, converted from the design's `home` document — and **the screen defect D1 lived on**.
 ///
-/// A placeholder in the literal sense — Home's actual content is Phase 2. What it establishes is that
-/// the only thing a view does with money is render the server's ``Money/display`` string, and that every
-/// screen goes through ``LoadState``.
+/// Five cards over one response (ADR-0020): the spending donut with its centre readout and category key, the
+/// savings meter, the tip of the day, the streak, and three article teasers. Every figure on it arrived computed.
+/// The prototype hardcoded `salary: 8000` here and derived "% of pay" against it; there is no salary on this
+/// screen to hardcode, because the readout arrives as a sentence.
 ///
-/// It is also the first ``BaseView``, and so the shape every later screen copies: declare the view model,
-/// declare the copy for the states with nothing in them, draw the loaded case. The four non-loaded states
-/// it used to draw inline are ``StateView``'s now, and the error mapping it used to carry is
-/// ``BaseViewModel/load()``'s.
+/// **The first-run month keeps the screen.** The design puts the grey ring and its CTA *inside* the spending card
+/// and leaves the savings meter, the tip, the streak, and the articles where they are — a new account still has a
+/// goal to see and a lesson to start. So this is not `LoadState.empty`, which would replace all five cards with
+/// one sentence; the empty *treatment* is reused in the one card that has nothing in it. Recorded in ADR-0032,
+/// because the ticket asked for `StateView`'s `.empty` and this is a deliberate narrowing of it.
 struct HomeView: BaseView {
     @Environment(ThemeManager.self) private var theme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
-    /// Held rather than read from `@Environment` so that a test can construct the view over a fixture
+    /// Held rather than read from `@Environment` so that a test can construct the screen over a fixture
     /// transport. The five-tab shell puts one per tab in the environment.
     let viewModel: HomeViewModel
 
-    init(viewModel: HomeViewModel) {
+    /// Where **Add Expense** goes — the Expenses tab, which the shell owns the selection of. A closure for the
+    /// reason Landing's routes are closures: the destination belongs to whoever owns the navigation, and a screen
+    /// that reached for the tab selection would be a screen that could move the user anywhere.
+    let onAddExpense: () -> Void
+
+    /// Where **Continue** goes — the Learn tab.
+    let onContinueLearning: () -> Void
+
+    init(
+        viewModel: HomeViewModel,
+        onAddExpense: @escaping () -> Void = {},
+        onContinueLearning: @escaping () -> Void = {}
+    ) {
         self.viewModel = viewModel
+        self.onAddExpense = onAddExpense
+        self.onContinueLearning = onContinueLearning
     }
 
-    /// Home overrides only `empty`. Offline, loading, and retry read the same here as anywhere, and
-    /// twenty rewordings of "you're offline" is the outcome ADR-0016 exists to prevent.
+    /// Home overrides only `empty`. Offline, loading, and retry read the same here as anywhere, and twenty
+    /// rewordings of "you're offline" is the outcome ADR-0016 exists to prevent.
+    ///
+    /// It is still supplied even though `isEmpty` is `false`: the server can answer with no screen at all, and a
+    /// screen that supplied no empty copy would fall back to a default that says nothing about Home.
     var stateCopy: StateCopy {
         StateCopy(empty: "home.empty")
     }
 
     @ViewBuilder
-    func loadedContent(_ budget: BudgetSummary) -> some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("home.income.label")
-                .font(.hw(.caption))
-                .foregroundStyle(theme.palette.surface.inkSecondary)
-            Text(verbatim: budget.income.display)
-                .font(.hw(.display))
-                .foregroundStyle(theme.palette.surface.ink)
+    func loadedContent(_ screen: HomeScreen) -> some View {
+        ScrollView {
+            VStack(spacing: 16) {
+                greeting(screen)
+                spendingCard(screen)
+                savingsCard(screen)
+                tipCard(screen)
+                duo(screen)
+            }
+            .padding(.horizontal, 18)
+            .padding(.vertical, 14)
         }
-        // **A caption over a figure is one thing to read, not two.** Left as two elements VoiceOver says
-        // "Income" and then "Income 65,000 rupees" — the caption twice, and the second time as part of a
-        // sentence that already contains it. `children: .ignore` collapses the pair and the label below is
-        // what is read in its place.
+        .scrollBounceBehavior(.basedOnSize)
+        // One destination, pushed onto the stack the shell wraps this tab in. The teaser carries the id and the
+        // title; the body is fetched by the screen it opens (ADR-0020).
+        .navigationDestination(for: HomeScreen.ArticleTeaser.self) { teaser in
+            ArticleView(viewModel: viewModel.articleViewModel(for: teaser), title: teaser.short)
+        }
+    }
+
+    // MARK: - The greeting
+
+    /// `.hello` — "Good morning, Ananya" over the date. **Both are the server's** (invariant 6): the prototype
+    /// read `new Date().getHours()`, which a device-clock change moves.
+    private func greeting(_ screen: HomeScreen) -> some View {
+        VStack(alignment: .leading, spacing: 2) {
+            Text("home.greeting \(screen.greeting) \(screen.name)")
+                .font(.hw(.title))
+                .foregroundStyle(theme.palette.surface.ink)
+                .fixedSize(horizontal: false, vertical: true)
+
+            Text(verbatim: screen.dateLabel)
+                .font(.hw(.body))
+                .foregroundStyle(theme.palette.surface.inkSecondary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isHeader)
+    }
+
+    // MARK: - Spending
+
+    private func spendingCard(_ screen: HomeScreen) -> some View {
+        HWCard {
+            VStack(alignment: .leading, spacing: 14) {
+                cardTop("home.spending.caption", sub: screen.monthLabel)
+
+                if screen.spending.isFirstRun {
+                    firstRun
+                } else {
+                    donut(screen)
+                    HWCategoryList(
+                        slices: Self.slices(screen),
+                        isolated: viewModel.isolated,
+                        onIsolate: { viewModel.isolate($0) }
+                    )
+                    HWButton("home.spending.addMore", systemImage: "plus", action: onAddExpense)
+                }
+            }
+        }
+    }
+
+    private func donut(_ screen: HomeScreen) -> some View {
+        HWDonut(
+            slices: Self.slices(screen),
+            isolated: viewModel.isolated,
+            onIsolate: { viewModel.isolate($0) }
+        ) {
+            centreReadout(screen)
+        }
+        .frame(maxWidth: .infinity)
+    }
+
+    /// `.donut-mid` — a caption, a figure, and a share. It says either the total and its **% of pay** or one
+    /// category and its **% of spend**, and both sentences arrive formatted.
+    private func centreReadout(_ screen: HomeScreen) -> some View {
+        let category = viewModel.isolatedCategory(in: screen)
+        // Pulled out as locals so the key below is **one literal**. Assembling it with `+` — which this did
+        // until the scan caught it — is the sentence assembly ADR-0011 forbids, and it also makes the key
+        // unreadable to `LocalisationTests`, so the copy goes missing silently.
+        let figure = category?.amount.display ?? screen.spending.total.display
+        let share = category?.shareLabel ?? screen.spending.shareOfPayLabel
+
+        return VStack(spacing: 1) {
+            (category.map { Text(verbatim: $0.name) } ?? Text("home.spending.total"))
+                .hwLabel()
+                .fixedSize(horizontal: false, vertical: true)
+
+            Text(verbatim: category?.amount.display ?? screen.spending.total.display)
+                .font(.hw(.subheading))
+                .foregroundStyle(theme.palette.surface.ink)
+                .fixedSize(horizontal: false, vertical: true)
+
+            // "9% of pay" for the whole ring, "54%" for one slice — the server's strings, either way.
+            Text(verbatim: category?.shareLabel ?? screen.spending.shareOfPayLabel)
+                .font(.hw(.caption))
+                .foregroundStyle(theme.palette.surface.inkTertiary)
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .padding(.horizontal, 12)
+        // Read as one sentence, and **as a value** so that isolating a slice re-announces the figure rather than
+        // the caption (ADR-0012).
         .accessibilityElement(children: .ignore)
-        // Composed from a catalogue format string plus the server's ``Money/display`` string: the sentence
-        // is translatable, and the figure is spoken exactly as the server formatted it rather than being
-        // re-spelled from the number (ADR-0003, ADR-0012).
-        .accessibilityLabel(Text("home.income.accessibilityLabel \(budget.income.display)"))
-        // No `.frame(maxWidth:)` here: the chrome already sizes and aligns what it is handed.
-        .padding()
+        .accessibilityLabel(Text("home.spending.total"))
+        .accessibilityValue(Text("home.spending.readout.accessibilityValue \(figure) \(share)"))
+        .animation(reduceMotion ? nil : HWMotion.easeOut.animation(.quick), value: viewModel.isolated)
+    }
+
+    /// `#firstrun` — the grey ring's card: a sentence and the one action worth offering.
+    ///
+    /// The **empty treatment, in one card** rather than `StateView`'s whole-screen state. `StateView`'s own note
+    /// says the CTA belonging to an empty screen is that screen's own and arrives with the first screen that has
+    /// one; this is that screen, and the CTA is here.
+    private var firstRun: some View {
+        VStack(spacing: 12) {
+            Image(systemName: "chart.pie")
+                .font(.hw(.heading))
+                .foregroundStyle(theme.palette.surface.inkTertiary)
+                .accessibilityHidden(true)
+
+            Text("home.spending.firstRun")
+                .font(.hw(.body))
+                .foregroundStyle(theme.palette.surface.inkSecondary)
+                .multilineTextAlignment(.center)
+                .fixedSize(horizontal: false, vertical: true)
+
+            HWButton("home.spending.addFirst", systemImage: "plus", action: onAddExpense)
+        }
+        .frame(maxWidth: .infinity)
+        .padding(.vertical, 10)
+        .accessibilityElement(children: .contain)
+    }
+
+    // MARK: - Savings
+
+    private func savingsCard(_ screen: HomeScreen) -> some View {
+        HWCard {
+            VStack(alignment: .leading, spacing: 14) {
+                cardTop("home.savings.caption", sub: screen.monthLabel)
+
+                HWSavingsMeter(
+                    position: screen.savings.position,
+                    savedLabel: screen.savings.saved.display,
+                    zeroLabel: screen.savings.zeroLabel,
+                    goalLabel: screen.savings.goal.display,
+                    percentageLabel: screen.savings.percentageLabel,
+                    verdict: Self.verdict(screen.savings.verdict),
+                    accessibilityDescription: Self.meterDescription(screen.savings)
+                )
+
+                // The `.mf-l` sentence, chosen by the **server's** verdict and interpolating the server's figures.
+                // Three whole sentences in the catalogue rather than one assembled from a verdict and a number:
+                // the prototype built it with string concatenation and `<b>` tags, which no translation can
+                // reorder (ADR-0011).
+                Text(Self.footLine(screen.savings))
+                    .font(.hw(.caption))
+                    .foregroundStyle(theme.palette.surface.inkSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            }
+        }
+    }
+
+    // MARK: - The tip
+
+    private func tipCard(_ screen: HomeScreen) -> some View {
+        let tip = viewModel.tip(in: screen)
+
+        return HWCard {
+            HWTipCard(text: tip.resolvedText) {
+                Task { await viewModel.showAnotherTip(after: tip) }
+            }
+        }
+    }
+
+    // MARK: - Streak and reading
+
+    /// `.duo` — the streak card and the reading list. A column rather than the design's two-up grid: at
+    /// accessibility sizes two cards side by side leave neither enough width, and the design's own breakpoint
+    /// stacks them.
+    private func duo(_ screen: HomeScreen) -> some View {
+        VStack(spacing: 16) {
+            HWStreakCard(
+                streak: screen.learning.streak,
+                summary: screen.learning.summary,
+                action: onContinueLearning
+            )
+
+            HWCard {
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("home.reads.caption")
+                        .hwEyebrow()
+                        .fixedSize(horizontal: false, vertical: true)
+                        .accessibilityAddTraits(.isHeader)
+
+                    ForEach(screen.articles) { teaser in
+                        // A `NavigationLink` rather than a button plus a path append: the row *is* the
+                        // destination, and the shell already wraps this tab in a stack.
+                        NavigationLink(value: teaser) {
+                            HWReadRowLabel(
+                                title: teaser.short,
+                                systemImage: Self.symbol(teaser.icon),
+                                accent: teaser.accent
+                            )
+                        }
+                        .buttonStyle(HWPressStyle.compact)
+                        .accessibilityLabel(Text(verbatim: teaser.short))
+                        .accessibilityHint(Text("home.reads.hint"))
+                    }
+                }
+            }
+        }
+    }
+
+    // MARK: - Card chrome
+
+    /// `.card-top` — the caption and the month beside it.
+    private func cardTop(_ caption: LocalizedStringResource, sub: String) -> some View {
+        HStack(alignment: .firstTextBaseline, spacing: 10) {
+            Text(caption)
+                .hwEyebrow()
+                .fixedSize(horizontal: false, vertical: true)
+                .frame(maxWidth: .infinity, alignment: .leading)
+
+            Text(verbatim: sub)
+                .hwLabel()
+                .fixedSize(horizontal: false, vertical: true)
+        }
+        .accessibilityElement(children: .combine)
+        .accessibilityAddTraits(.isHeader)
+    }
+
+    // MARK: - Mapping
+
+    /// The payload's categories as the donut's slices. A mapping, not a calculation: every number crosses
+    /// unchanged.
+    static func slices(_ screen: HomeScreen) -> [HWDonut.Slice] {
+        screen.spending.categories.map { category in
+            HWDonut.Slice(
+                id: category.id,
+                name: category.name,
+                share: category.share,
+                shareLabel: category.shareLabel,
+                amount: category.amount.display,
+                slot: category.slot
+            )
+        }
+    }
+
+    /// The payload's verdict as the meter's. Two enums rather than one shared: the meter is a component and knows
+    /// nothing about a screen payload (`LayeringTests`), and the payload knows nothing about a pill's colour.
+    static func verdict(_ verdict: HomeScreen.Verdict) -> HWSavingsMeter.Verdict {
+        switch verdict {
+        case .low: .low
+        case .onTrack: .onTrack
+        case .met: .met
+        }
+    }
+
+    /// The design's five article glyphs, as SF Symbols.
+    ///
+    /// `nonisolated` because `LocalisationTests` subtracts these from the localisation keys it finds in the source
+    /// — the same trick it uses for `AppTab.systemImage` — and a scan is not on the main actor.
+    nonisolated static func symbol(_ icon: HomeScreen.Icon) -> String {
+        switch icon {
+        case .shield: "checkmark.shield"
+        case .globe: "globe"
+        case .steps: "stairs"
+        case .lightbulb: "lightbulb"
+        case .alert: "exclamationmark.triangle"
+        }
+    }
+
+    /// The sentence VoiceOver reads instead of the bar: saved, goal, and the percentage, all server-formatted.
+    ///
+    /// A function rather than an expression at the call site, so the key is **one literal** — see the note in
+    /// `centreReadout`.
+    static func meterDescription(_ savings: HomeScreen.Savings) -> Text {
+        let saved = savings.saved.display
+        let goal = savings.goal.display
+        let percentage = savings.percentageLabel
+        return Text("home.savings.meter.accessibilityValue \(saved) \(goal) \(percentage)")
+    }
+
+    /// `.mf-l` — which of the three sentences the foot line shows.
+    ///
+    /// **The choice is the server's verdict and the words are the catalogue's.** That split is the whole of it: a
+    /// verdict about money is a calculation (defect D11 computed it two ways), and a sentence is copy.
+    static func footLine(_ savings: HomeScreen.Savings) -> LocalizedStringResource {
+        switch savings.verdict {
+        case .met:
+            "home.savings.foot.met \(savings.saved.display)"
+        case .low where savings.saved.minor == 0:
+            "home.savings.foot.nothing"
+        default:
+            "home.savings.foot.remaining \(savings.saved.display) \(savings.remaining?.display ?? savings.goal.display)"
+        }
+    }
+}
+
+/// The label half of ``HWReadRow``, for a `NavigationLink` — which supplies its own button behaviour, so the row
+/// cannot also be one.
+struct HWReadRowLabel: View {
+    let title: String
+    let systemImage: String
+    let accent: Int
+
+    var body: some View {
+        HWReadRow(title: title, systemImage: systemImage, accent: accent) {}
+            // The link is the control; the row's own button must not also take the tap.
+            .allowsHitTesting(false)
     }
 }
 
 #if DEBUG
-// The view models these use are assembled in `Fixtures/PreviewViewModels.swift` — a view has no
-// business building a client, and `LayeringTests` holds this file to that.
-#Preview("Home — INR salary") {
-    HomeView(viewModel: .previewINRSalary).hwTheme()
+#Preview("Home — a month with spending in it") {
+    NavigationStack { HomeView(viewModel: .previewINRSalary) }.hwTheme()
+}
+
+#Preview("Home — a brand-new account") {
+    NavigationStack { HomeView(viewModel: .previewFirstRun) }.hwTheme()
 }
 
 #Preview("Home — offline") {
-    HomeView(viewModel: .previewOffline).hwTheme()
+    NavigationStack { HomeView(viewModel: .previewOffline) }.hwTheme()
 }
 
-/// The RTL preview every screen carries from now on (ADR-0011). Arabic is a **layout** problem before it is
-/// a translation one, so this is the preview that pays for itself while the copy is still English: the
-/// caption and the figure lead from the right, and the server's display string keeps its own direction
-/// inside the mirrored column.
-///
-/// Driven through ``LanguageManager`` rather than by setting `\.layoutDirection` directly, which is what a
-/// component preview does. A screen preview should exercise what the app runs: one language choice, and the
-/// locale and the direction following from it.
+#Preview("Home — the endpoint is not written yet (501)") {
+    NavigationStack { HomeView(viewModel: .previewNotImplemented) }.hwTheme()
+}
+
 #Preview("Home — Arabic, right to left") {
-    HomeView(viewModel: .previewINRSalary)
+    NavigationStack { HomeView(viewModel: .previewINRSalary) }
         .hwTheme()
         .hwLanguage(LanguageManager(selected: .arabic))
 }
 
-/// Doubled copy, standing in for the pseudolanguage run the `HisaabWise (Double-Length)` scheme performs.
-/// Nothing here clamps a line count, so the caption wraps into a taller block rather than being cut off —
-/// which is the property `LocalisationTests` asserts and this preview is where you see it.
-#Preview("Home — AX5, where copy has the least room") {
-    HomeView(viewModel: .previewINRSalary)
+/// Where the two visualisations stand aside for their lists (ADR-0012).
+#Preview("Home — AX5") {
+    NavigationStack { HomeView(viewModel: .previewINRSalary) }
         .hwTheme()
         .dynamicTypeSize(.accessibility5)
 }

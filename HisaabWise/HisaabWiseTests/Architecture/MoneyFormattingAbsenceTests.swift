@@ -5,13 +5,29 @@ import Testing
 /// formatting API, and these assertions are what stop one being added quietly.
 @Suite("Absence of a money formatter")
 struct MoneyFormattingAbsenceTests {
+    /// **`Double` is banned for *money*, and one non-monetary use now exists.** `HomeScreen.Category.share` and
+    /// `Savings.position` are fractions a chart turns into an angle and a pin into a position — geometry the
+    /// server computed (ADR-0020), not amounts. The ban is worth keeping for everything else, so the scan names
+    /// the two fields rather than dropping `Double`: a *third* one has to be argued for here.
+    private static let geometryFields = ["let share: Double", "let position: Double"]
+
     @Test("the model layer holds no number formatting and no floating-point money")
     func modelsHoldNoFormattingMachinery() throws {
-        try SourceTree.expectAbsent(
-            ["NumberFormatter", "FormatStyle", "Decimal", "Double", "Float"],
-            from: ["Models"],
-            because: "the server formats money and the client never holds a monetary float (ADR-0003)"
-        )
+        for file in try SourceTree.swiftFiles(in: "Models") {
+            let code = try SourceTree.codeLines(of: file)
+                .filter { line in !Self.geometryFields.contains { line.contains($0) } }
+
+            for symbol in ["NumberFormatter", "FormatStyle", "Decimal", "Double", "Float"] {
+                #expect(
+                    code.first { $0.contains(symbol) } == nil,
+                    """
+                    Models/\(file.lastPathComponent) references \(symbol) — the server formats money and the \
+                    client never holds a monetary float (ADR-0003). The only exemptions are the two geometry \
+                    fractions named in `geometryFields`.
+                    """
+                )
+            }
+        }
     }
 
     @Test("nothing in the app formats a currency")

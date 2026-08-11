@@ -1,6 +1,54 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "article.empty": {
+      "comment": "Shown when an article body arrives with no sections — a title over white space looks broken in a way the empty state does not.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This article has nothing in it yet."
+          }
+        }
+      }
+    },
+    "article.sources.caption": {
+      "comment": "Caption above an article's source links. Official sources only — this is education, not regulated advice.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sources"
+          }
+        }
+      }
+    },
+    "article.sources.hint": {
+      "comment": "VoiceOver hint on a source link.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opens the source in your browser"
+          }
+        }
+      }
+    },
+    "article.step.accessibilityLabel %@ %@": {
+      "comment": "VoiceOver label for one numbered step in an article: %1$@ is its position and %2$@ the total. The step's words are its value.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Step %1$@ of %2$@"
+          }
+        }
+      }
+    },
     "component.button.inFlight": {
       "comment": "Read as a button's accessibility value while its action is in flight. The spinner that replaces the label is invisible to VoiceOver, so without this the control goes silent exactly when it is busy.",
       "extractionState": "manual",
@@ -145,26 +193,278 @@
         }
       }
     },
-    "home.income.accessibilityLabel %@": {
-      "comment": "VoiceOver label for the income figure. %@ is the server-formatted amount and is never reformatted. The key carries the specifier because that is what SwiftUI looks up for `Text(\"key \\(value)\")`.",
+    "home.greeting %@ %@": {
+      "comment": "The hello line. %1$@ is the server-chosen greeting (invariant 6 — never the device clock) and %2$@ the display name. Numbered so a language can order them its own way.",
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Income %@"
+            "value": "%1$@, %2$@"
           }
         }
       }
     },
-    "home.income.label": {
-      "comment": "Caption above the income figure on Home.",
+    "home.learning.accessibilityValue %@ %@": {
+      "comment": "VoiceOver value for the streak card: %1$@ is the streak count and %2$@ the server-composed XP and next-lesson line.",
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Income"
+            "value": "%1$@ day streak. %2$@"
+          }
+        }
+      }
+    },
+    "home.learning.caption": {
+      "comment": "Caption on the streak card.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Learning"
+          }
+        }
+      }
+    },
+    "home.learning.continue": {
+      "comment": "The streak card's affordance into the next lesson.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Continue"
+          }
+        }
+      }
+    },
+    "home.reads.caption": {
+      "comment": "Caption above the article teasers.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Read more about"
+          }
+        }
+      }
+    },
+    "home.reads.hint": {
+      "comment": "VoiceOver hint on an article teaser row.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opens the article"
+          }
+        }
+      }
+    },
+    "home.savings.caption": {
+      "comment": "Caption on the savings card.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Savings this month"
+          }
+        }
+      }
+    },
+    "home.savings.foot.met %@": {
+      "comment": "The savings foot line once the goal is met. %@ is the server-formatted saved figure.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You have saved %@ — your whole goal, and a little more."
+          }
+        }
+      }
+    },
+    "home.savings.foot.nothing": {
+      "comment": "The savings foot line when nothing has been saved. The design named a figure here; the client has no formatter to invent one, so the sentence does not.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nothing set aside yet this month. Even a small amount moves the pin."
+          }
+        }
+      }
+    },
+    "home.savings.foot.remaining %@ %@": {
+      "comment": "The savings foot line while the goal is still ahead: %1$@ is what is saved and %2$@ what is left. Both server-formatted.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You have put aside %1$@. Another %2$@ and you are there."
+          }
+        }
+      }
+    },
+    "home.savings.goal.label": {
+      "comment": "Row label in the savings meter's accessibility-size replacement.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Goal"
+          }
+        }
+      }
+    },
+    "home.savings.meter.accessibilityLabel": {
+      "comment": "VoiceOver label for the savings meter. The figures are its value, so a change re-announces them rather than the name.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Savings progress"
+          }
+        }
+      }
+    },
+    "home.savings.meter.accessibilityValue %@ %@ %@": {
+      "comment": "VoiceOver value for the savings meter: saved, goal, and the percentage — all server-formatted. Numbered so a language can reorder them.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ of a %2$@ goal, %3$@"
+          }
+        }
+      }
+    },
+    "home.savings.progress.label": {
+      "comment": "Row label in the savings meter's accessibility-size replacement.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Progress"
+          }
+        }
+      }
+    },
+    "home.savings.saved.label": {
+      "comment": "Row label in the savings meter's accessibility-size replacement.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Saved"
+          }
+        }
+      }
+    },
+    "home.spending.addFirst": {
+      "comment": "The first-run CTA in the spending card. Goes to the Expenses tab.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add Expenses"
+          }
+        }
+      }
+    },
+    "home.spending.addMore": {
+      "comment": "The standing CTA under the donut once there is spending to show.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Add Expense"
+          }
+        }
+      }
+    },
+    "home.spending.caption": {
+      "comment": "Caption on the spending card.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Where your money went"
+          }
+        }
+      }
+    },
+    "home.spending.firstRun": {
+      "comment": "Shown in the spending card for an account with no expenses. The rest of Home stays on screen — a new account still has a goal and a lesson.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nothing logged yet. Add a few expenses and this circle fills in with where your money goes."
+          }
+        }
+      }
+    },
+    "home.spending.readout.accessibilityValue %@ %@": {
+      "comment": "VoiceOver value for the donut's centre readout: %1$@ is the server-formatted amount and %2$@ its share. Numbered so a language can reorder them.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@, %2$@"
+          }
+        }
+      }
+    },
+    "home.spending.total": {
+      "comment": "The donut's centre caption when the whole ring is showing.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Total spent"
+          }
+        }
+      }
+    },
+    "home.tip.another": {
+      "comment": "Cycles to the next tip in the cached pool, in memory, resetting next launch (ADR-0016). The day's tip is the server's choice.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Show me another"
+          }
+        }
+      }
+    },
+    "home.tip.caption": {
+      "comment": "Caption on the tip card.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tip of the day"
           }
         }
       }

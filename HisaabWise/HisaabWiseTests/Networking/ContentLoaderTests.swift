@@ -265,16 +265,23 @@ struct ContentLoaderTests {
     // MARK: - Invariant 8
 
     /// **Cacheable means not per-user.** Every resource the store can hold is the same bytes for everybody, which
-    /// is precisely why it may be stored — and the three that exist are all under `/v1/content`.
+    /// is precisely why it may be stored — and every one of them is under `/v1/content`.
+    ///
+    /// `ContentResource.fixed` plus an article, because the enum stopped being `CaseIterable` when article bodies
+    /// arrived: an article is asked for by id, so the set is open and the *rule* is what is closed.
     @Test("every content resource is a cacheable route and nothing else is")
     func everyResourceIsCacheable() {
-        for resource in ContentResource.allCases {
+        let resources = ContentResource.fixed + [.article(id: "scams")]
+        for resource in resources {
             #expect(Endpoint.path(for: resource).hasPrefix("/v1/content"), "\(resource) is not a content route")
         }
 
         // And the paths that must bypass every cache have no resource, so nothing can put one in the store.
-        let cacheable = Set(ContentResource.allCases.map { Endpoint.path(for: $0) })
-        for perUser in [Endpoint.me, Endpoint.budget, Endpoint.login, Endpoint.refresh, Endpoint.register] {
+        let cacheable = Set(resources.map { Endpoint.path(for: $0) })
+        for perUser in [
+            Endpoint.me, Endpoint.budget, Endpoint.screenHome,
+            Endpoint.login, Endpoint.refresh, Endpoint.register,
+        ] {
             #expect(!cacheable.contains(perUser))
         }
     }

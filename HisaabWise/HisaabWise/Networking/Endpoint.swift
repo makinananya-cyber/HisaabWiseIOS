@@ -4,9 +4,20 @@
 /// the preview helpers, which is three places for one string to drift in. Tests deliberately keep their
 /// own literals so that a path change fails a test rather than being silently agreed to.
 enum Endpoint {
-    /// The only place 50/30/20, `saved`, and the goal verdict are computed (invariant 3). Home,
-    /// Expenses, and Reports all read it.
+    /// The budget engine's own endpoint — the only place 50/30/20, `saved`, and the goal verdict are computed
+    /// (invariant 3).
+    ///
+    /// **No screen reads it any more** (ADR-0020). Home did, and a screen that composes four responses is a
+    /// screen that derives the join; the engine now feeds `GET /v1/screens/home` server-side. It stays declared
+    /// because the engine still has one exposure point and the invariant still names it.
     static let budget = "/v1/budget"
+
+    // MARK: - Screens
+
+    /// `GET /v1/screens/home` — **the single request Home makes** (ADR-0020). Everything on the screen arrives
+    /// computed: the "% of pay" readout, the meter percentage, the goal verdict, the selected tip, the streak,
+    /// and the article teasers.
+    static let screenHome = "/v1/screens/home"
 
     // MARK: - Session
 
@@ -49,6 +60,23 @@ enum Endpoint {
     /// (invariant 5).
     static let contentSecurityQuestions = "/v1/content/security-questions"
 
+    /// The tip pool — `GET /v1/content/tips`. Cacheable, and the same 49 tips for everybody (invariant 8).
+    static let contentTips = "/v1/content/tips"
+
+    /// One article's body — `GET /v1/content/articles/scams`.
+    ///
+    /// **Separate from the screen payload, and cacheable** (invariant 8, ADR-0020): the teasers are per-user
+    /// enough to sit inside Home's response, but a body is editorial content that is identical for everybody, and
+    /// folding it in would make it per-user and throw the cache away.
+    ///
+    /// A function rather than a constant, so the collection path has one owner. ``articles`` is what the corpus's
+    /// coverage scan reads.
+    static func article(id: String) -> String { "\(articles)/\(id)" }
+
+    /// The collection the article bodies hang off. Declared so that a parameterised route is still a path the
+    /// fixture corpus can be checked against.
+    static let articles = "/v1/content/articles"
+
     /// The path a cacheable resource is fetched from.
     ///
     /// Here rather than on `ContentResource` itself, which lives in `Models` and must not know what a route is
@@ -58,6 +86,8 @@ enum Endpoint {
         case .countries: contentCountries
         case .currencies: contentCurrencies
         case .securityQuestions: contentSecurityQuestions
+        case .tips: contentTips
+        case .article(let id): article(id: id)
         }
     }
 

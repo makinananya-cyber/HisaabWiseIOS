@@ -88,7 +88,7 @@ struct FixtureCorpusTests {
         let covered = Set(Fixture.allCases.flatMap(\.endpoints))
         for path in declared {
             #expect(
-                covered.contains(path),
+                covered.contains(path) || covered.contains { $0.hasPrefix("\(path)/") },
                 """
                 \(path) has no fixture. A screen or a suite that needs it will write a payload inline, and \
                 the inline copy is the one that drifts (ADR-0013)
@@ -114,8 +114,17 @@ struct FixtureCorpusTests {
         .filter { $0.contains("\"/v1") }
 
         #expect(offenders.isEmpty, "a fixture names a path as a literal instead of through Endpoint: \(offenders)")
-        // And the mapping is not empty, or the coverage test above would be reading an empty set.
-        #expect(Set(Fixture.allCases.flatMap(\.endpoints)).isSubset(of: declared))
+        // And the mapping is not empty, or the coverage test above would be reading an empty set. **Prefix
+        // matching**, because one route is parameterised: `Endpoint.article(id:)` builds
+        // `/v1/content/articles/scams` from the declared `/v1/content/articles`, and an instance of a route is
+        // still that route. Equality would have forced either a literal per article id or a fixture claiming
+        // nothing.
+        for path in Set(Fixture.allCases.flatMap(\.endpoints)) {
+            #expect(
+                declared.contains { path == $0 || path.hasPrefix("\($0)/") },
+                "\(path) is not a route Endpoint declares, or an instance of one"
+            )
+        }
         #expect(!Fixture.allCases.flatMap(\.endpoints).isEmpty)
     }
 
@@ -146,11 +155,33 @@ struct FixtureCorpusTests {
     /// And what drift looks like from a *screen*, which is the consequence that matters: the whole chain —
     /// transport, client, `BaseViewModel.load()` — turns it into a failed state rather than into a screen
     /// drawing something wrong. A decoder test alone would leave open whether the client swallowed it.
+    ///
+    /// Home no longer reads `/v1/budget` (ADR-0020), so the drifted *budget* payload is exercised through the
+    /// screen endpoint's own drift instead: a blank `display` on a nested figure, which is the same `Money` guard
+    /// three levels down.
     @MainActor
     @Test("drift reaches a screen as a failure rather than as bad figures")
     func driftFailsAScreen() async throws {
+        var payload = try #require(
+            try JSONSerialization.jsonObject(with: TestBench.payload(.homeINR)) as? [String: Any]
+        )
+        var savings = try #require(payload["savings"] as? [String: Any])
+        var saved = try #require(savings["saved"] as? [String: Any])
+        saved["display"] = ""
+        savings["saved"] = saved
+        payload["savings"] = savings
+
+        let client = TestBench.client(
+            FixtureTransport(stubs: [
+                Endpoint.screenHome: .response(
+                    status: 200,
+                    body: try JSONSerialization.data(withJSONObject: payload)
+                ),
+            ])
+        )
         let viewModel = HomeViewModel(
-            client: TestBench.client(try FixtureTransport.serving([.budgetDrifted]))
+            client: client,
+            content: ContentLoader(client: client, store: InMemoryContentStore())
         )
 
         try await viewModel.load()
@@ -231,6 +262,26 @@ struct FixtureCorpusTests {
         let viewModel = HomeViewModel.previewINRSalary
         try await viewModel.load()
 
-        #expect(viewModel.state.value?.income.display == "₹65,000")
+        #expect(viewModel.state.value?.spending.total.display == "₹5,539")
+        #expect(viewModel.state.value?.savings.saved.display == "₹23,000")
+    }
+
+    /// **Defect D1's anchor, in the corpus itself.** The screen payload is assembled from the budget engine, so
+    /// `saved` has to be the *same* figure in both — a difference between them is the assembly having derived
+    /// rather than read, which is exactly the class of mistake D1 was.
+    @Test("the home payload and the budget payload agree about what was saved")
+    func theCorpusAgreesAboutSaved() throws {
+        let budget = try #require(
+            try JSONSerialization.jsonObject(with: TestBench.payload(.budgetINR)) as? [String: Any]
+        )
+        let home = try #require(
+            try JSONSerialization.jsonObject(with: TestBench.payload(.homeINR)) as? [String: Any]
+        )
+        let budgetSaved = try #require(budget["saved"] as? [String: Any])
+        let homeSaved = try #require((home["savings"] as? [String: Any])?["saved"] as? [String: Any])
+
+        #expect(homeSaved["minor"] as? Int == budgetSaved["minor"] as? Int)
+        #expect(homeSaved["display"] as? String == budgetSaved["display"] as? String)
+        #expect(homeSaved["currency"] as? String == budgetSaved["currency"] as? String)
     }
 }

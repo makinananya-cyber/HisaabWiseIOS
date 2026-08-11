@@ -286,7 +286,7 @@ struct LocalisationTests {
         // And the case the extraction is most likely to lose without anyone noticing: a key followed by an
         // interpolated argument rather than by the closing quote.
         #expect(
-            rendered["home.income.accessibilityLabel %@"] != nil,
+            rendered["home.savings.meter.accessibilityValue %@ %@ %@"] != nil,
             """
             the key extraction no longer finds keys inside format strings, or has stopped carrying their \
             specifiers — either way it is reading less than it says, which is how Home's income label came to \
@@ -341,10 +341,11 @@ struct LocalisationTests {
     /// blind spot: a control that takes both a title and a glyph writes them on one line, and skipping it
     /// lost the title.
     ///
-    /// **One place writes a symbol name with no label at all**: `AppTab.systemImage`, where the five tab
-    /// glyphs are returned from a `switch` exactly as the five tab *titles* are — so no token on the line can
-    /// tell `"chart.bar"` from `"shell.tab.reports"`. Rather than guess from the text, the scan asks `AppTab`
-    /// what its symbols are and takes those out. Exact, and it stays right when a glyph changes.
+    /// **Two places write a symbol name with no label at all**: `AppTab.systemImage` and
+    /// `HomeView.symbol(_:)`, where the glyphs are returned from a `switch` exactly as the tab *titles* are —
+    /// so no token on the line can tell `"chart.bar"` from `"shell.tab.reports"`. Rather than guess from the
+    /// text, the scan asks each type what its symbols are and takes those out. Exact, and it stays right when a
+    /// glyph changes.
     ///
     /// **An interpolated literal contributes the key *with* its specifiers**, which is the correction this
     /// scan needed. `Text("home.income.accessibilityLabel \(figure)")` looks up
@@ -377,6 +378,8 @@ struct LocalisationTests {
         // left the second reading as a localisation key.
         let symbolArgument = try Regex(#"(?:systemName|systemImage|symbol)\s*[:=]\s*(?:\"[^\"]*\"|[A-Za-z_][A-Za-z0-9_.]*\s*\?\s*\"[^\"]*\"\s*:\s*\"[^\"]*\")"#)
         let tabGlyphs = Set(AppTab.allCases.map(\.systemImage))
+            // The five article glyphs, from the one place that maps them (#17).
+            .union(HomeScreen.Icon.allCases.map(HomeView.symbol))
         var keys: [String: String] = [:]
 
         for layer in presentationLayers {

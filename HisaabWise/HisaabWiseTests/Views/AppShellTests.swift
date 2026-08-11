@@ -13,7 +13,10 @@ import Testing
 @MainActor
 struct AppShellTests {
     private func viewModels() -> TabViewModels {
-        TabViewModels(home: HomeViewModel(client: TestBench.client(FixtureTransport())))
+        TabViewModels(home: HomeViewModel(
+            client: TestBench.client(FixtureTransport()),
+            content: ContentLoader(client: TestBench.client(FixtureTransport()), store: InMemoryContentStore())
+        ))
     }
 
     // MARK: - Five tabs, in order

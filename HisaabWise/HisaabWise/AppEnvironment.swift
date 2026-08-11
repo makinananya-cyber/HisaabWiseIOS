@@ -82,7 +82,7 @@ final class AppEnvironment {
     }
 
     func makeHomeViewModel() -> HomeViewModel {
-        HomeViewModel(client: client)
+        HomeViewModel(client: client, content: content)
     }
 
     /// One view model per tab, made once for the shell to be handed (issue #5).

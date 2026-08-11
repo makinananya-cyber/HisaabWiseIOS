@@ -63,6 +63,6 @@ actor FileContentStore: ContentStore {
     }
 
     private func etagFile(for resource: ContentResource) -> URL {
-        directory.appending(path: "\(resource.rawValue).etag")
+        directory.appending(path: "\(resource.key).etag")
     }
 }

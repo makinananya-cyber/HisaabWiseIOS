@@ -116,10 +116,12 @@ struct StateViewTests {
     func serverMessageNeverReachesTheScreen() async throws {
         let prose = "Slow down, friend."
         let body = Data(#"{"error":{"code":"RATE_LIMITED","message":"\#(prose)"}}"#.utf8)
+        let client = TestBench.client(
+            FixtureTransport(stubs: [Endpoint.screenHome: .response(status: 429, body: body)])
+        )
         let viewModel = HomeViewModel(
-            client: TestBench.client(
-                FixtureTransport(stubs: [Endpoint.budget: .response(status: 429, body: body)])
-            )
+            client: client,
+            content: ContentLoader(client: client, store: InMemoryContentStore())
         )
 
         try await viewModel.load()

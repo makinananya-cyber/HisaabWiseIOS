@@ -13,7 +13,10 @@ import Testing
 @MainActor
 struct RootViewTests {
     private func viewModels() -> TabViewModels {
-        TabViewModels(home: HomeViewModel(client: TestBench.client(FixtureTransport())))
+        let client = TestBench.client(FixtureTransport())
+        return TabViewModels(
+            home: HomeViewModel(client: client, content: ContentLoader(client: client, store: InMemoryContentStore()))
+        )
     }
 
     // MARK: - Which world

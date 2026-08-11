@@ -55,8 +55,9 @@ struct ShellLocalisationTests {
 
     @Test("a real screen renders under both directions")
     func aRealScreenRendersEitherWay() async throws {
-        let transport = FixtureTransport(stubs: [Endpoint.budget: try .ok(.budgetINR)])
-        let viewModel = HomeViewModel(client: TestBench.client(transport))
+        let transport = FixtureTransport(stubs: [Endpoint.screenHome: try .ok(.homeINR)])
+        let client = TestBench.client(transport)
+        let viewModel = HomeViewModel(client: client, content: ContentLoader(client: client, store: InMemoryContentStore()))
         try await viewModel.load()
         let home = HomeView(viewModel: viewModel)
 

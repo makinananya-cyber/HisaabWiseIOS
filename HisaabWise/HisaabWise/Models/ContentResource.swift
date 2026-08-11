@@ -8,18 +8,47 @@ import Foundation
 /// **Cacheable means not per-user** (invariant 8): every resource here is the same bytes for everybody, which is
 /// exactly why it may be stored and revalidated. Nothing under `/v1/me`, `/v1/expenses`, or `/v1/reports` can
 /// ever become one of these.
-enum ContentResource: String, CaseIterable, Sendable {
+enum ContentResource: Hashable, Sendable {
     /// The 251 countries with their dial codes (#15).
     case countries
     /// The 160 ISO-4217 currencies (#15).
     case currencies
     /// The 14-question security bank (#15).
     case securityQuestions
+    /// The 49 tips (#17).
+    ///
+    /// **The pool, not the day's tip.** The selected tip arrives inside Home's payload, chosen server-side by
+    /// `dayKey` — the client owns no date arithmetic for it. This is what **Show me another** cycles through, and
+    /// ADR-0016 requires that cycling to be in memory over cacheable content rather than a request per tap.
+    case tips
+    /// One article's body, by id — `scams`, `remittance`, `credit` (#17).
+    ///
+    /// **The one resource with a parameter**, which is why this enum stopped being `String`-raw-valued: an
+    /// article body is per-article and there are three of them today. The id is part of the cache key, so two
+    /// articles cannot overwrite each other's file.
+    case article(id: String)
+
+    /// The resources that exist without being asked for by id. `CaseIterable` cannot describe this enum any
+    /// more, and a hand-written list of the three fixed ones is honest about that — the articles are enumerated
+    /// by the screen payload that carries their teasers, not by the client.
+    static let fixed: [ContentResource] = [.countries, .currencies, .securityQuestions, .tips]
+
+    /// The cache key. Stable, and **safe as a file name**: an id arrives from a server payload, and one
+    /// containing a slash would otherwise write outside the store's directory.
+    var key: String {
+        switch self {
+        case .countries: "countries"
+        case .currencies: "currencies"
+        case .securityQuestions: "securityQuestions"
+        case .tips: "tips"
+        case .article(let id): "article-\(id.filter { $0.isLetter || $0.isNumber || $0 == "-" })"
+        }
+    }
 
     /// The file the store writes, and the name its ETag is recorded under.
     ///
     /// **No path here.** Which route a resource is fetched from belongs to `Endpoint`, one layer up: this type
     /// is an identity — a cache key and a file name — and a model that named a `/v1` path would be a model that
     /// knows there is a server (`LayeringTests`).
-    var fileName: String { "\(rawValue).json" }
+    var fileName: String { "\(key).json" }
 }

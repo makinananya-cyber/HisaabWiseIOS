@@ -139,7 +139,14 @@ struct AppShell: View {
     private func root(_ tab: AppTab) -> some View {
         NavigationStack {
             switch tab {
-            case .home: HomeView(viewModel: viewModels.home)
+            case .home:
+                HomeView(
+                    viewModel: viewModels.home,
+                    // The two places Home sends the user, both of them **tabs** — so the shell supplies them
+                    // rather than Home reaching for a selection it does not own (#17).
+                    onAddExpense: { selection = .expenses },
+                    onContinueLearning: { selection = .learn }
+                )
             case .expenses: UnwrittenTabRoot(tab: tab, viewModel: viewModels.expenses)
             case .learn: UnwrittenTabRoot(tab: tab, viewModel: viewModels.learn)
             case .reports: UnwrittenTabRoot(tab: tab, viewModel: viewModels.reports)
