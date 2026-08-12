@@ -18,6 +18,39 @@ enum HWComponentCopy {
     /// (ADR-0012).
     static let inFlight: LocalizedStringResource = "component.button.inFlight"
 
+    /// The `.unit-guide` affordance on a Learn unit header. Icon-only, so this is the whole reading (#19).
+    static let unitGuide: LocalizedStringResource = "component.unit.guide"
+
+    /// What pressing an open lesson node does. A **hint** rather than a label: the label is the lesson's own
+    /// title, which is the server's, and only the *consequence* is the control's to describe.
+    static let lessonOpenHint: LocalizedStringResource = "component.lesson.hint.open"
+
+    /// And what pressing a locked one does. It is not a disabled control — the design refuses with a sentence
+    /// rather than swallowing the tap — so the hint says which, and a reader hears why before they press.
+    static let lessonLockedHint: LocalizedStringResource = "component.lesson.hint.locked"
+
+    /// The lesson the reader should do next — **the `START` flag's only reading**.
+    ///
+    /// The flag itself is hidden from VoiceOver, because a floating badge is a second element saying something
+    /// about the node beside it. That only works if the node says it, and for one build it did not: `isNext`
+    /// reached no accessibility surface at all, so a VoiceOver user could not tell which of fifteen lessons was
+    /// the cursor. Review caught the comment claiming otherwise. Accessibility is a parity requirement.
+    static let lessonNextHint: LocalizedStringResource = "component.lesson.hint.next"
+
     /// Every key the components render themselves.
-    static let keys = [closeSheet.key, inFlight.key]
+    static let keys = [
+        closeSheet.key, inFlight.key, unitGuide.key,
+        lessonOpenHint.key, lessonLockedHint.key, lessonNextHint.key,
+    ]
+
+    /// The hint for one lesson: where to start, what will happen, or why it will not.
+    ///
+    /// **One table, read by the node on the path and the row in the guide sheet**, so the two cannot come to
+    /// disagree about what a press does — the same reason `HWLessonRow.glyph(for:)` is one table.
+    static func lessonHint(state: HWLessonNodeState, isNext: Bool) -> LocalizedStringResource {
+        switch state {
+        case .locked: lessonLockedHint
+        case .available, .completed: isNext ? lessonNextHint : lessonOpenHint
+        }
+    }
 }

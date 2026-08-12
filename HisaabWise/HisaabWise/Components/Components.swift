@@ -26,6 +26,10 @@
 /// | `.hero` · `.entry` · `.empty` | ``HWCategoryHero`` · ``HWEntryRow`` · ``HWEmptyNote`` |
 /// | `.line` · `.editing .line` · `.fixed-val` | ``HWBillLine`` · ``HWBillLineEditor`` · ``HWFixedAmount`` |
 /// | `.money-sym` + `.money-code` · `.amount` | ``HWMoneyField``, ``HWMoneyProminence`` |
+/// | `.stat` + `.stat--streak` / `--xp` | ``HWStatChip`` |
+/// | `.unit-head` + `.unit-n` + `.unit-guide` | ``HWUnitHeader`` |
+/// | `.track` + `.links` · `.node` + `.ring` + `.face` + `.start` | ``HWLessonTrack`` |
+/// | `.guide-item` + `.gi-n` + `.gi-s` | ``HWLessonRow`` |
 ///
 /// **Components are presentational and know nothing.** They take values and closures. They do not
 /// import the networking layer, do not hold a view model, and do not fetch — `LayeringTests` asserts
@@ -34,6 +38,15 @@
 /// They draw with `DesignSystem`'s semantic colours and type scale, never with literals, so the
 /// dark-mode palette swap stays a palette swap. `ComponentVocabularyTests` asserts that too: no asset
 /// symbol reaches a component directly, no system font does, and no elevation is hand-rolled.
+///
+/// **What Learn's four entries do *not* convert** is worth naming, because each is a decision rather than an
+/// omission (#19, ADR-0034). `.stat--crown` is in the stylesheet and nothing renders it. The `.links` connectors
+/// are **measured** rather than computed, as the design measures them, so the whole path mirrors under Arabic for
+/// nothing. The `.start` flag's 1.6-second bob and the current node's `breathe` are **dropped rather than gated**
+/// on Reduce Motion: an attention loop's replacement is the flag itself, and a component that animates owes
+/// ADR-0012 a replacement it cannot have here. And the design's locked unit header — white on `#8B95AE`, about
+/// 2.9:1 — becomes the `locked` role with the surface's own ink on it, because the rest of this palette is
+/// asserted at 4.5:1 and those two greys are not tokens.
 ///
 /// **Two things from that CSS are deliberately absent**, and each says why:
 ///

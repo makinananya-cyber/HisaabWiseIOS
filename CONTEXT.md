@@ -148,8 +148,8 @@ and a signed-out `HomeViewModel` is still holding a salary. Invariant 8's reason
 objects too — per-user data that outlives the user is a leak, not a warm start.
 
 **unwritten tab root** — `UnwrittenTabRoot` plus `UnwrittenScreenViewModel`, the stand-in for the screens that are
-other tickets. **Three of them now**: Learn (#19), Reports (#21), and Account (#23) — Expenses retired its
-placeholder with #18, which is what "retired the moment each screen lands" means in practice. A full `BaseView` conformance, so it renders through `StateView`,
+other tickets. **Two of them now**: Reports (#21) and Account (#23) — Expenses retired its placeholder with #18 and
+Learn with #19, which is what "retired the moment each screen lands" means in practice. A full `BaseView` conformance, so it renders through `StateView`,
 and it **makes no request**: calling the ADR-0020 screen endpoint would put a fictional contract in the client
 and render "Something went wrong" on four of five tabs. A screen that is not built is not a screen that is
 broken. Its `footer` slot carries `LogoutControl` on Account. **Retired the moment each screen lands.**
@@ -172,6 +172,57 @@ client-side `+` lands on the wrong side of an Arabic figure.
 toolbar, the sheet. The split was found by looking: `ImageRenderer` does not lay out the content of a `ScrollView`,
 so a render of the whole page came back as an empty ground and the test asserting it rendered was passing on it.
 See [ADR-0033](docs/adr/0033-expenses.md).
+
+**Learn** — `LearnView` plus `LearnViewModel`, the unit map (#19): five units, fifteen lessons, a segmented progress
+ring on each, sequential unlocking, and the per-unit guide sheet. The lesson player is #20; an open node calls a
+closure the shell supplies, because a `navigationDestination` for a view that does not exist would be a fictional
+route in the client.
+
+**It is the one screen that reads two endpoints**, and that is invariant 8 deciding where the seam goes rather than an
+exception to ADR-0020. `GET /v1/curriculum` is ~100 KB of editorial content, the same bytes for everybody, stored on
+disk with an ETag; `GET /v1/screens/learn` is ~3 KB of per-user state that bypasses every cache. Folding either into
+the other breaks one of those rules. The client asks for both concurrently and joins them **by lesson id** —
+`LearnMap`, built once in the view model rather than as fifteen lookups in a `body`.
+
+**The join is a lookup, not a calculation**, and that is the test the exception has to pass: it introduces no figure
+that was not in one of the two responses. Every lock, every ring count, every label, and the ordering arrived
+computed. `isOpen(id)`, `firstOpen()`, `unitOpen`, and `qCount(l)` are all in the payload now.
+
+**A segmented ring's geometry is two `Int`s**, so `MoneyFormattingAbsenceTests`' three named `Double` exemptions stay
+three. The client *could* count the curriculum's own question steps and does not: a count is a calculation, and a ring
+whose segments came from one response while its fill came from another is a ring with two owners. The corpus asserts
+the two halves agree; `LearnViewModelTests` sends a payload where they do not and asserts the screen draws the
+payload's figure — the only way to tell a client that reads from a client that counts.
+
+**`LearnScreen.Stat`** — `Money`'s three-field shape applied to a figure that is not money. `display` because the
+client has no thousands separator (ADR-0003); `accessibilityLabel` because "4-day streak" is a count *and* a plural
+(ADR-0011); `value` because it is drawn by nothing, which is its job — it makes "Home and Learn agree about the
+streak" a numeric assertion rather than a comparison of two strings that could be wrong in the same way. The **unit
+number** deliberately does not arrive formatted: 1…5 has no separator and no plural, so `String(_:)` is the whole of
+its formatting, spelled in `Curriculum.Unit.numberText` where the number is *computed*.
+
+**`LearnScreen.LessonState` refuses to guess** where `Curriculum.Accent` and `Curriculum.Unit.Icon` degrade. The two
+presentation enums fall back to the design's own defaults; a lesson's state decides whether the reader can open it,
+and **both fallbacks are wrong in a way the reader cannot get out of** — `locked` strands them in front of a lesson
+they earned, `available` offers one the server refuses. A fourth state is a coordinated release, exactly as
+`ExpensesScreen.Kind` is.
+
+**The client renders the lock and the server enforces it**, so a stale lock costs one reload. A locked node is
+therefore **not a disabled control**: the design's `<button>` is `disabled` and its refusal comes from a container
+handler that fires anyway, and a SwiftUI `.disabled(true)` button fires nothing — so a reader would tap a padlock and
+be told nothing. It stays enabled and refuses with the design's own sentence.
+
+**The `START` flag is hidden from VoiceOver and the node says it instead** — one `HWComponentCopy.lessonHint(state:isNext:)`
+table, read by the node on the path and by the row in the guide sheet. It is one table because for one build it was
+none: the flag was hidden on the stated grounds that the node's hint said it, and `isNext` reached no accessibility
+surface at all, so a reader could not tell which of fifteen lessons was the cursor.
+
+**The path is replaced rather than shrunk** — the fifth clamp consumer and the first whose replacement is a *layout*
+rather than a chart's figures. A 78pt ring with a wrapping label under it, swung 56pt off the centre line, has
+nowhere to grow; above the threshold the same lessons are a column of `HWLessonRow`s, which is also the guide sheet's
+row and also the path's `accessibilityRepresentation` below the threshold. **The connectors are measured**, as the
+design measures them, and that is the RTL fix for nothing: a measured frame comes back already mirrored where a
+hand-computed `x` would need the direction read and negated. See [ADR-0034](docs/adr/0034-learn-unit-map.md).
 
 **`EntryDraft`** — the entry being typed, and it **outlives the screen deliberately**. A write that fails offline
 replaces `state` with `LoadState.offline` (ADR-0019), so a draft living in the payload would go with it; this one
@@ -504,8 +555,20 @@ usable without a connection — the curriculum PDF is
 ([ADR-0019](docs/adr/0019-no-offline-writes-curriculum-pdf.md)).
 See [ADR-0009](docs/adr/0009-content-cache.md).
 
+**The curriculum is its largest resource, and it is not under `/v1/content`.** Invariant 8 names *three* cacheable
+families — `/v1/content/*`, `/v1/curriculum*`, and `/v1/fx/rates` — so `GET /v1/curriculum` is the second of them
+rather than an exception to the first; it sits on its own root because the curriculum is the product, and the PDF
+(#25) hangs off the same path. `ContentLoaderTests` checks the invariant's own list now, and the converse too: no
+per-user route may sit inside a cacheable family.
+
+**What a cold launch with no network gets is the curriculum and not the screen**, which is ADR-0019 rather than a
+shortfall in the store. Content is the same for everybody and was already downloaded; progress is per-user and there
+is no offline read of it. So Learn is `LoadState.offline` on a second launch with the aeroplane on — and the ~100 KB
+does not have to come down again when it comes back.
+
 **screen payload** — what one `GET /v1/screens/*` returns: everything that screen draws, fully computed
-(ADR-0020). **Two exist**: Home and Expenses. Expenses is where the design's own JavaScript did the arithmetic, so
+(ADR-0020). **Three exist**: Home, Expenses, and Learn — the last being the one that is *half* of a screen, because
+the other half is cacheable content on its own ETag (see **Learn** above). Expenses is where the design's own JavaScript did the arithmetic, so
 its field names are a list of calculations that *moved* — `Category.total` for `catTotal(id)`, `wants.allowance` for a
 50/30/20 engine re-implemented in the browser (invariant 3 violated in the source material), `Entry.dateLabel` for a
 `whenLabel()` that read the device clock (invariant 6), and `entryCountLabel` for a pluralised count. Its payload
@@ -517,6 +580,14 @@ screen payload is assembled from it server-side, which the corpus asserts by mak
 byte-identical to `budget-inr.json`'s. Two `Double`s in the payload are **geometry** — a slice's fraction and the
 meter pin's position — and are named as the exemptions to the `Double` ban rather than quietly allowed.
 See [ADR-0032](docs/adr/0032-home.md).
+
+**an accent's `base` and `deep` are fill colours, not ink** — the finding Learn's five unit bands produced, and the
+one thing about them still unresolved. The design uses them as ink in five places and each measured under the 4.5:1
+(or 3:1 for a glyph) the rest of this palette is asserted at; four were fixed by taking the ink from a role that
+works on all five washes, and the fifth cannot be. White text on the band passes on `sky` and `violet`; galaxy passes
+on `sun`, `mint`, and `coral`; **no single token passes on all five**. What that needs is a fourth slot on
+`HWPalette.UnitAccent` — a per-accent `ink`, asserted by `ColorAssetTests` the way the six category slots are — which
+is a palette change to make on its own. The numbers are in [ADR-0034](docs/adr/0034-learn-unit-map.md).
 
 **a mark the framework knows, drawn by the framework; a shape the design invented, drawn by hand** — why the
 donut is Swift Charts and the savings meter is not, from one ADR. `SectorMark` publishes a per-mark accessibility
@@ -729,3 +800,14 @@ Recorded here because they are commitments, not suggestions. None has been made 
 | [ADR-0033](docs/adr/0033-expenses.md) | **`MONTH_CLOSED` must be answerable by a plain re-send.** The client reloads (to learn the live month's name), offers, and sends the *same* body again with a new key; the server derives `monthKey` at write time and the live month only moves forward (§4.5). No client-supplied month, and archives stay immutable |
 | [ADR-0033](docs/adr/0033-expenses.md) | **New endpoint** — `GET /v1/content/picklists` → `{transport:[{id, name}] ×22, other:[{id, name, opensFreeText?}] ×20}`, cacheable and ETag'd. **The option that asks the user what it actually was is flagged, not matched by name**: the prototype tests `/something else/i` against English text, which stops working the moment the list is translated |
 | [ADR-0033](docs/adr/0033-expenses.md) | **The currency reference list's missing `exponent`** (already recorded for ADR-0031) is now load-bearing in a second place: the screen payload carries one for the *display* currency, and registration still has none |
+| [ADR-0034](docs/adr/0034-learn-unit-map.md) | **`GET /v1/screens/learn`'s payload**, written by the client: `{streak{value,display,accessibilityLabel}, xp{…}, nextLesson?{unitId, lessonId, title}, units[{id, isUnlocked}], lessons[{id, state, segments, filledSegments, progressLabel}]}`. `state` is `completed`/`available`/`locked`. **No date, timestamp, or day key anywhere in it** — invariant 6, in the stronger form `ExpensesScreen` uses for its entry labels: the client cannot re-derive the streak because it has nothing to derive it from |
+| [ADR-0034](docs/adr/0034-learn-unit-map.md) | **Everything the design computed in the browser moves server-side**: `isOpen(id)` walking the flattened lesson list, `firstOpen()` scanning for the cursor, `unitOpen` reducing over a unit's lessons, and `qCount(l)` counting a lesson's question steps. The client renders the lock; **the server enforces it**, and `POST /v1/learn/lessons/:id/complete` (#20) must refuse a lesson whose predecessor is unfinished |
+| [ADR-0034](docs/adr/0034-learn-unit-map.md) | **`nextLesson` is absent, not null-ish, when every lesson is finished.** A cursor pointing at a sixteenth lesson is the state a screen assuming one draws wrongly |
+| [ADR-0034](docs/adr/0034-learn-unit-map.md) | **`segments` and `filledSegments` are the ring's geometry and must agree with the curriculum.** `segments` is the lesson's question count and `filledSegments` never exceeds it; a completed lesson's ring is **full** and a locked one is empty, so the tick and the ring cannot disagree |
+| [ADR-0034](docs/adr/0034-learn-unit-map.md) | **`streak` and `xp` are `{value, display, accessibilityLabel}`** — `Money`'s shape for a figure that is not money. `display` because the client has no thousands separator (ADR-0003); `accessibilityLabel` because a count with a plural in it has six forms in Arabic (ADR-0011); `value` because nothing draws it and the corpus asserts numeric agreement with Home's `learning.streak` |
+| [ADR-0034](docs/adr/0034-learn-unit-map.md) | **Home's `learning.nextLesson` must name a lesson the curriculum has.** It is a *title* rather than an id, so nothing about a wrong one would ever fail — `home-first-run.json` named "Money, plainly", which no unit carries. Better still would be Home carrying the id too |
+| [ADR-0034](docs/adr/0034-learn-unit-map.md) | **New endpoint** — `GET /v1/curriculum` → `{units:[{id, number, accent, title, subtitle, blurb, lessons:[{id, icon, title, blurb, steps:[…]}]}]}`, cacheable and ETag'd, **anonymous-safe** and per-locale. **5** units / **15** lessons / **124** steps (58 teach + 66 question; 50 single-choice + 14 numeric + 2 multi-select), asserted **exactly**. `accent` is one of `sun`/`mint`/`coral`/`sky`/`violet`; `icon` is one of fifteen names plus a `book` fallback |
+| [ADR-0034](docs/adr/0034-learn-unit-map.md) | **One `kind` per step, not two discriminators.** The design carries `t: "teach"｜"q"` and then `kind` on the questions, whose invalid combinations are representable. The wire form is one closed vocabulary: `teach` / `singleChoice` / `multiSelect` / `numeric` |
+| [ADR-0034](docs/adr/0034-learn-unit-map.md) | **Answer keys ship** (invariant 10), on the responsiveness argument alone — grading is client-side and the server recomputes XP from submitted per-question results. `answers` is an **array of option indices** for both choice kinds, single-choice carrying one; `answer` on a numeric step is a **whole number**, and the grading tolerance is a strict `< 0.5` |
+| [ADR-0034](docs/adr/0034-learn-unit-map.md) | **Editorial emphasis in the curriculum is markdown**, `{c}` verbatim, and the design's `?demo` block is never extracted. `<br><br>` inside a worked example becomes a blank line in one string, because the breaks are inside a single calculation rather than between paragraphs |
+| [ADR-0034](docs/adr/0034-learn-unit-map.md) | **`/v1/curriculum` is cacheable and is deliberately not under `/v1/content`** — invariant 8's second family. The PDF (#25) and any per-unit or per-locale variant hang off the same root, and burying them under `content` would make `/v1/content/curriculum/pdf` the address of the app's headline feature |

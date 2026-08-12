@@ -3,14 +3,14 @@ import SwiftUI
 /// A tab whose screen has not been written yet: the real chrome, the real state machinery, and one sentence
 /// where the screen goes.
 ///
-/// The shell is five tabs and four of the five screens are other tickets — Expenses (#18), Learn (#19),
-/// Reports (#21), Account (#23). This is what stands in until each arrives, and what it is careful to be is
-/// **honest**: it says the screen is not built, rather than fetching a route the backend has not written and
-/// showing "Something went wrong" (see ``UnwrittenScreenViewModel``).
+/// The shell is five tabs and four of the five screens were other tickets — Expenses (#18), Learn (#19),
+/// Reports (#21), Account (#23). **Two are left**: Reports and Account. This is what stands in until each
+/// arrives, and what it is careful to be is **honest**: it says the screen is not built, rather than fetching a
+/// route the backend has not written and showing "Something went wrong" (see ``UnwrittenScreenViewModel``).
 ///
 /// It is a full ``BaseView`` conformance rather than a plain `View`, which is issue #5's criterion — every tab
 /// root renders its state through ``StateView`` — and it is what makes the swap cheap: each of those four
-/// issues writes a screen and deletes one `case` from ``AppShell``.
+/// issues writes a screen and deletes one `case` from ``AppShell``. Two have, and each cost exactly that.
 ///
 /// The `footer` slot exists for Account, which carries ``LogoutControl``. A `ViewBuilder` rather than a value,
 /// for the reason ``HWTopBar`` gives for its trailing slot: it holds a *control*, and a placeholder that took
@@ -59,7 +59,7 @@ extension UnwrittenTabRoot where Footer == EmptyView {
 // `UnwrittenScreenViewModel` answers immediately — so the preview exercises the same path the app does, and
 // nothing writes `state` from outside `load()`.
 #Preview("An unwritten tab") {
-    UnwrittenTabRoot(tab: .expenses, viewModel: UnwrittenScreenViewModel()).hwTheme()
+    UnwrittenTabRoot(tab: .reports, viewModel: UnwrittenScreenViewModel()).hwTheme()
 }
 
 #Preview("Account — the one that carries the way out") {
@@ -74,7 +74,7 @@ extension UnwrittenTabRoot where Footer == EmptyView {
 }
 
 #Preview("AX5") {
-    UnwrittenTabRoot(tab: .learn, viewModel: UnwrittenScreenViewModel())
+    UnwrittenTabRoot(tab: .account, viewModel: UnwrittenScreenViewModel())
         .hwTheme()
         .dynamicTypeSize(.accessibility5)
 }

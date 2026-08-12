@@ -25,6 +25,15 @@ enum Endpoint {
     /// calendar.
     static let screenExpenses = "/v1/screens/expenses"
 
+    /// `GET /v1/screens/learn` — **the per-user half of Learn** (ADR-0020, ADR-0034): the streak, the XP, which
+    /// lesson is next, every lesson's unlock state, and the two counts each progress ring is drawn from.
+    ///
+    /// Learn is the one screen that reads a second endpoint, and ``curriculum`` is it. That is not an exception to
+    /// "one read per screen" — it is invariant 8 deciding where the seam goes: the curriculum is the same bytes for
+    /// everybody and is stored with an ETag, while everything here is per-user and bypasses every cache. The client
+    /// joins the two **by lesson id**, which is a lookup rather than a calculation.
+    static let screenLearn = "/v1/screens/learn"
+
     // MARK: - Expenses
 
     /// `POST /v1/expenses` — one new entry in a `log` category.
@@ -121,6 +130,15 @@ enum Endpoint {
     /// per-user and must bypass every cache, while the list it was picked from is not.
     static let contentPicklists = "/v1/content/picklists"
 
+    /// The whole curriculum — `GET /v1/curriculum`. 5 units, 15 lessons, 124 steps, answer keys included.
+    ///
+    /// **Not under `/v1/content`, and it is still cacheable.** Invariant 8 names three cacheable families —
+    /// `/v1/content/*`, `/v1/curriculum*`, and `/v1/fx/rates` — so this is the second of them rather than an
+    /// exception to the first. It sits on its own root because the curriculum is the *product*: the PDF (#25) and
+    /// per-unit or per-locale variants hang off the same path, and burying them under `content` would make
+    /// `/v1/content/curriculum/pdf` the address of the app's headline feature.
+    static let curriculum = "/v1/curriculum"
+
     /// One article's body — `GET /v1/content/articles/scams`.
     ///
     /// **Separate from the screen payload, and cacheable** (invariant 8, ADR-0020): the teasers are per-user
@@ -149,6 +167,7 @@ enum Endpoint {
         case .securityQuestions: contentSecurityQuestions
         case .tips: contentTips
         case .picklists: contentPicklists
+        case .curriculum: curriculum
         // The id here has already been through `ContentResource.forArticle(id:)`, which is the only way to build the
         // case — so this is the *sanitised* id, and the file name and the path cannot differ.
         case .article(let id): "\(articles)/\(id)"

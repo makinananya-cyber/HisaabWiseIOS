@@ -387,6 +387,11 @@ struct LocalisationTests {
             // not silently stop being subtracted.
             .union(ExpensesScreen.Icon.allCases.map(ExpensesView.symbol))
             .union(ExpensesScreen.Field.allCases.map(ExpenseCategoryView.glyph))
+            // The sixteen lesson glyphs and the three node-state ones (#19). Nine of the nineteen are dotted names.
+            // The state table is asked of the *component* rather than of the screen, because a node on the path and
+            // a row in the guide sheet read it from there — one table, subtracted once.
+            .union(Curriculum.Unit.Icon.allCases.map(LearnView.symbol))
+            .union(HWLessonNodeState.allCases.map(HWLessonRow.glyph))
         var keys: [String: String] = [:]
 
         for layer in presentationLayers {

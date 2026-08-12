@@ -329,6 +329,138 @@ struct FixtureCorpusTests {
         #expect(expenses.categories.filter { $0.flow == .incoming }.count == 1)
     }
 
+    // MARK: - The Learn payloads
+
+    @Test("the learn payloads decode into the type the app decodes them into")
+    func learnPayloadsDecode() throws {
+        let inProgress = try Fixture.learnInProgress.decode(LearnScreen.self)
+        #expect(inProgress.units.count == 5)
+        #expect(inProgress.lessons.count == 15)
+        #expect(inProgress.nextLesson?.lessonID == "u1l3")
+
+        let firstRun = try Fixture.learnFirstRun.decode(LearnScreen.self)
+        #expect(firstRun.streak.value == 0)
+        #expect(firstRun.lessons.filter { $0.state == .locked }.count == 14)
+
+        // The one payload with no cursor, which is a state a screen that assumed one draws wrongly.
+        #expect(try Fixture.learnComplete.decode(LearnScreen.self).nextLesson == nil)
+    }
+
+    /// **Home and Learn tell one story about one reader**, the way the Home/Expenses pair tells one about one
+    /// month.
+    ///
+    /// Both read the same streak and the same XP total from the same source, so a difference between the two
+    /// payloads is one of the two assemblies having worked something out — exactly the class of mistake defect D1
+    /// was. Asserted on `Stat.value` rather than on the display strings, which is what that field is for: two
+    /// strings can be wrong in the same way, and two numbers cannot be equal by accident.
+    @Test("the home payload and the learn payload agree about the streak, the XP, and what is next")
+    func theCorpusAgreesAboutLearning() throws {
+        let home = try Fixture.homeINR.decode(HomeScreen.self)
+        let learn = try Fixture.learnInProgress.decode(LearnScreen.self)
+        // Unwrapped rather than defaulted: `contains(learn.nextLesson?.title ?? "")` is `contains("")`, which is
+        // always true — so the assertion below would have gone silently vacuous the day a payload had no cursor.
+        // Review caught it. This fixture has one, and requiring it is what says so.
+        let next = try #require(learn.nextLesson)
+
+        #expect(home.learning.streak == learn.streak.value)
+        #expect(home.learning.nextLesson == next.title)
+        // Home's mini-card composes "120 XP · next up, Needs vs. Wants" server-side, so the figure and the lesson
+        // it names both have to be in it — a summary that had drifted from the XP total is the drift this catches.
+        #expect(home.learning.summary.contains(learn.xp.display))
+        #expect(home.learning.summary.contains(next.title))
+
+        // And the first-run pair, where the two payloads have to agree that there is no streak and no XP.
+        let newHome = try Fixture.homeFirstRun.decode(HomeScreen.self)
+        let newLearn = try Fixture.learnFirstRun.decode(LearnScreen.self)
+        #expect(newHome.learning.streak == newLearn.streak.value)
+        #expect(newHome.learning.nextLesson == (try #require(newLearn.nextLesson)).title)
+    }
+
+    /// **Every lesson Home or Learn names is a lesson the curriculum has.**
+    ///
+    /// Which is a check the corpus could not make before #19: `home-first-run.json` pointed **Continue** at a
+    /// lesson called "Money, plainly" that no unit carries, because #17 had no curriculum to check it against. The
+    /// teaser is a title rather than an id, so nothing about it would ever have failed — this is what makes it
+    /// fail.
+    @Test("every lesson the payloads name exists in the curriculum")
+    func everyNamedLessonExists() throws {
+        let curriculum = try Fixture.curriculum.decode(Curriculum.self)
+        let titles = Set(curriculum.allLessons.map(\.title))
+
+        for fixture in [Fixture.homeINR, .homeFirstRun] {
+            let named = try fixture.decode(HomeScreen.self).learning.nextLesson
+            #expect(titles.contains(named), "\(fixture.rawValue) points Continue at \"\(named)\", which no unit has")
+        }
+
+        for fixture in [Fixture.learnInProgress, .learnFirstRun] {
+            let next = try #require(try fixture.decode(LearnScreen.self).nextLesson)
+            let lesson = try #require(
+                curriculum.lesson(id: next.lessonID),
+                "\(fixture.rawValue) names the lesson \(next.lessonID), which no unit has"
+            )
+            #expect(lesson.title == next.title, "the payload's title for \(next.lessonID) is not the curriculum's")
+            #expect(curriculum.units.contains { $0.id == next.unitID })
+        }
+    }
+
+    /// **The screen payload and the curriculum agree about the questions in a lesson.**
+    ///
+    /// A ring's segment count is the server's (`LearnScreen.LessonProgress.segments`) precisely so the client does
+    /// not count the curriculum's own question steps — which means the two can disagree, and a corpus that let them
+    /// would be a corpus in which a ring is quietly one arc short. `LearnViewModelTests` asserts the *client* draws
+    /// the payload's figure; this asserts the corpus does not need it to.
+    @Test("every ring's segment count is the lesson's own question count")
+    func theCorpusAgreesAboutRingSegments() throws {
+        let curriculum = try Fixture.curriculum.decode(Curriculum.self)
+
+        for fixture in [Fixture.learnInProgress, .learnFirstRun, .learnComplete] {
+            let screen = try fixture.decode(LearnScreen.self)
+            #expect(screen.lessons.count == curriculum.allLessons.count)
+
+            for lesson in curriculum.allLessons {
+                let progress = try #require(
+                    screen.lesson(id: lesson.id),
+                    "\(fixture.rawValue) says nothing about \(lesson.id)"
+                )
+                #expect(
+                    progress.segments == lesson.questionCount,
+                    "\(fixture.rawValue) draws \(lesson.id)'s ring in \(progress.segments) arcs over \(lesson.questionCount) questions"
+                )
+                // And no ring is fuller than it has arcs, which would draw an eighth segment of five.
+                #expect((0...progress.segments).contains(progress.filledSegments))
+                // A finished lesson's ring is full, which is what makes the tick and the ring agree.
+                if progress.state == .completed { #expect(progress.filledSegments == progress.segments) }
+                // A locked one has nothing lit, because nothing in it has been answered.
+                if progress.state == .locked { #expect(progress.filledSegments == 0) }
+            }
+        }
+    }
+
+    /// **The sequential unlock rule holds in every Learn payload**, checked against the curriculum's own flattened
+    /// order: a lesson is locked unless the one before it is completed, and the first is never locked.
+    ///
+    /// The client renders this and the server enforces it, so what the corpus has to guarantee is that the fixtures
+    /// are *possible* states — a payload with lesson 5 open and lesson 4 locked would be a screen nobody could
+    /// reach, and a test written against it would be asserting a state the server cannot produce.
+    @Test("every learn payload is a state the unlock rule can produce")
+    func theCorpusRespectsTheUnlockRule() throws {
+        let curriculum = try Fixture.curriculum.decode(Curriculum.self)
+
+        for fixture in [Fixture.learnInProgress, .learnFirstRun, .learnComplete] {
+            let screen = try fixture.decode(LearnScreen.self)
+            var previousWasCompleted = true
+
+            for lesson in curriculum.allLessons {
+                let progress = try #require(screen.lesson(id: lesson.id))
+                #expect(
+                    progress.isOpen == previousWasCompleted,
+                    "\(fixture.rawValue): \(lesson.id) is \(progress.state) where the rule says otherwise"
+                )
+                previousWasCompleted = progress.state == .completed
+            }
+        }
+    }
+
     /// **Defect D1's anchor, in the corpus itself.** The screen payload is assembled from the budget engine, so
     /// `saved` has to be the *same* figure in both — a difference between them is the assembly having derived
     /// rather than read, which is exactly the class of mistake D1 was.

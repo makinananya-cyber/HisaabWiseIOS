@@ -85,6 +85,42 @@
         }
       }
     },
+    "component.lesson.hint.locked": {
+      "comment": "VoiceOver hint on a locked lesson. It is pressable and refuses with a sentence, so the hint says so before the reader presses it.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Locked until you finish the lesson before it"
+          }
+        }
+      }
+    },
+    "component.lesson.hint.next": {
+      "comment": "VoiceOver hint on the lesson the reader should do next. It is the only reading of the START flag on the path, which is hidden from VoiceOver because it is a second element about the node beside it.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Start here. Starts the lesson"
+          }
+        }
+      }
+    },
+    "component.lesson.hint.open": {
+      "comment": "VoiceOver hint on a lesson the reader can start.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Starts the lesson"
+          }
+        }
+      }
+    },
     "component.money.accessibilityEmpty %@": {
       "comment": "VoiceOver value for an empty money field. %@ is the ISO currency code.",
       "extractionState": "manual",
@@ -177,6 +213,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "Not rated yet"
+          }
+        }
+      }
+    },
+    "component.unit.guide": {
+      "comment": "VoiceOver label for the button on a unit header that lists its lessons. The design's own aria-label.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lessons in this unit"
           }
         }
       }
@@ -1317,6 +1365,90 @@
           "stringUnit": {
             "state": "translated",
             "value": "What HisaabWise does"
+          }
+        }
+      }
+    },
+    "learn.empty": {
+      "comment": "Shown when the curriculum arrives with no units in it — a content deployment that failed, rather than a reader with nothing to do.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "There are no lessons to show yet."
+          }
+        }
+      }
+    },
+    "learn.eyebrow": {
+      "comment": "The Learn tab's eyebrow, matching the other tab roots.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HisaabWise"
+          }
+        }
+      }
+    },
+    "learn.guide.title": {
+      "comment": "Title of the sheet listing a unit's lessons.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "In this unit"
+          }
+        }
+      }
+    },
+    "learn.notice.locked": {
+      "comment": "Toast shown when a locked lesson is pressed. The design's own words.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Finish the lesson before it to unlock this one."
+          }
+        }
+      }
+    },
+    "learn.start": {
+      "comment": "The design's START flag above the lesson the reader should do next. Uppercase in the design; the translation decides whether its language has a case to shout in.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "START"
+          }
+        }
+      }
+    },
+    "learn.title": {
+      "comment": "The Learn tab's title.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Learn"
+          }
+        }
+      }
+    },
+    "learn.unit.caption %@ %@": {
+      "comment": "A unit's caption — its number and its subject, e.g. \"Unit 3 · Debt & Credit\". Numbered arguments so a translation can put the subject first.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unit %1$@ · %2$@"
           }
         }
       }

@@ -17,7 +17,8 @@ struct RootViewTests {
         let content = ContentLoader(client: client, store: InMemoryContentStore())
         return TabViewModels(
             home: HomeViewModel(client: client, content: content),
-            expenses: ExpensesViewModel(client: client, content: content)
+            expenses: ExpensesViewModel(client: client, content: content),
+            learn: LearnViewModel(client: client, content: content)
         )
     }
 

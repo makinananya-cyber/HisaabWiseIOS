@@ -189,9 +189,20 @@ enum TestBench {
     /// Views here read `ThemeManager` from `@Environment`, so poking at `body` would trap on a missing
     /// object and prove nothing about the real hierarchy. This is a smoke test by design — pinned
     /// snapshots arrive with the snapshot harness (issue #9).
+    ///
+    /// - Parameter height: the height to render at, or `nil` to let the content have the height it asks for.
+    ///   The default pins a phone-sized band, which is what a smoke test wants. **`nil` is for a page taller than
+    ///   a phone**: a `VStack` handed less height than it needs *compresses* its children rather than overflowing,
+    ///   so a 2,700pt page pinned to 300 comes back as squashed mush — and two different payloads then squash into
+    ///   the *same* mush, which is how a "these renders differ" assertion passes or fails for no reason connected
+    ///   to the screen. Learn's unit map is the caller that found it.
     @MainActor
-    static func render(_ view: some View) -> UIImage? {
-        ImageRenderer(content: view.hwTheme().frame(width: 390, height: 300)).uiImage
+    static func render(_ view: some View, height: CGFloat? = 300) -> UIImage? {
+        let sized = view.hwTheme().frame(width: 390)
+        guard let height else {
+            return ImageRenderer(content: sized).uiImage
+        }
+        return ImageRenderer(content: sized.frame(height: height)).uiImage
     }
 
     /// The size a view actually wants at a phone's width, with the height left to the content.

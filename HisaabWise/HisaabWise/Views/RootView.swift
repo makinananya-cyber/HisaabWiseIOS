@@ -125,7 +125,7 @@ private struct UnwrittenBrandScreen: View {
 #Preview("Signed out — Landing") {
     RootView(makeRegistrationViewModel: { .preview })
         .environment(SessionCoordinator.preview)
-        .environment(TabViewModels(home: .previewINRSalary, expenses: .previewINR))
+        .environment(TabViewModels(home: .previewINRSalary, expenses: .previewINR, learn: .previewInProgress))
         .hwTheme()
 }
 
@@ -134,14 +134,14 @@ private struct UnwrittenBrandScreen: View {
 #Preview("Signed in — the shell") {
     RootView(makeRegistrationViewModel: { .preview })
         .environment(SessionCoordinator.previewSignedIn)
-        .environment(TabViewModels(home: .previewINRSalary, expenses: .previewINR))
+        .environment(TabViewModels(home: .previewINRSalary, expenses: .previewINR, learn: .previewInProgress))
         .hwTheme()
 }
 
 #Preview("RTL") {
     RootView(makeRegistrationViewModel: { .preview })
         .environment(SessionCoordinator.preview)
-        .environment(TabViewModels(home: .previewINRSalary, expenses: .previewINR))
+        .environment(TabViewModels(home: .previewINRSalary, expenses: .previewINR, learn: .previewInProgress))
         .hwTheme()
         .hwLanguage(LanguageManager(selected: .arabic))
 }
@@ -149,7 +149,7 @@ private struct UnwrittenBrandScreen: View {
 #Preview("AX5") {
     RootView(makeRegistrationViewModel: { .preview })
         .environment(SessionCoordinator.preview)
-        .environment(TabViewModels(home: .previewINRSalary, expenses: .previewINR))
+        .environment(TabViewModels(home: .previewINRSalary, expenses: .previewINR, learn: .previewInProgress))
         .hwTheme()
         .dynamicTypeSize(.accessibility5)
 }

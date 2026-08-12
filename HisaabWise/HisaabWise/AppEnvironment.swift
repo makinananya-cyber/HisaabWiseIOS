@@ -91,6 +91,13 @@ final class AppEnvironment {
         ExpensesViewModel(client: client, content: content)
     }
 
+    /// Learn's view model (#19). It needs the content loader for the same structural reason Expenses does and a
+    /// stronger one: the curriculum is not an ancillary list its screen can do without, it is half of what the
+    /// unit map draws (ADR-0034).
+    func makeLearnViewModel() -> LearnViewModel {
+        LearnViewModel(client: client, content: content)
+    }
+
     /// One view model per tab, made once for the shell to be handed (issue #5).
     ///
     /// **Made here and held by the composition root**, not held here: the graph is the app's lifetime and a
@@ -98,7 +105,11 @@ final class AppEnvironment {
     /// come and go. What this method owns is the one thing a view model needs and a view may not have — the
     /// client.
     func makeTabViewModels() -> TabViewModels {
-        TabViewModels(home: makeHomeViewModel(), expenses: makeExpensesViewModel())
+        TabViewModels(
+            home: makeHomeViewModel(),
+            expenses: makeExpensesViewModel(),
+            learn: makeLearnViewModel()
+        )
     }
 
     /// A registration form, made **fresh each time the screen is pushed** (#15).

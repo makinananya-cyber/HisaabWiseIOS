@@ -106,6 +106,40 @@ enum Fixture: String, CaseIterable, Sendable {
     /// the corpus exists at all: a screen drawing the over state has to be previewable.
     case expensesOverBudget = "expenses-over-budget"
 
+    /// `GET /v1/screens/learn` — the standing default, and **the same reader ``homeINR`` describes**: a four-day
+    /// streak, 120 XP, and "Needs vs. Wants" next (#19).
+    ///
+    /// That agreement is load-bearing in the way the Home/Expenses pair is: Home's mini-card and Learn's stats read
+    /// one streak and one XP total, so a difference between the two payloads is one of the two assemblies having
+    /// worked something out. `FixtureCorpusTests` asserts it, down to the lesson the two point at.
+    ///
+    /// The state itself is the design's own shape: the two lessons before the cursor completed, the cursor
+    /// **part-answered** so a ring has some arcs lit and some not, and everything after it locked.
+    case learnInProgress = "learn-in-progress"
+
+    /// `GET /v1/screens/learn` for an account that has opened nothing: one lesson available, fourteen locked, no
+    /// streak, and no XP.
+    ///
+    /// **The sequential-unlock rule at its starting position**, which is the one arrangement where "the lesson
+    /// before it" has no lesson before it — the design's `i === 0 || isDone(prev)`.
+    case learnFirstRun = "learn-first-run"
+
+    /// `GET /v1/screens/learn` with every lesson finished, and therefore **no `nextLesson` at all**.
+    ///
+    /// Absent rather than pointing at a sixteenth lesson, which is the only honest answer and the one a screen
+    /// that assumed a cursor would crash on. Kept as a third file for the reason ``expensesOverBudget`` is: a state
+    /// with its own layout has to be previewable.
+    case learnComplete = "learn-complete"
+
+    /// `GET /v1/curriculum` — **5** units, **15** lessons, **124** steps (58 teach + 66 question), answer keys
+    /// intact.
+    ///
+    /// The counts are the acceptance test the workspace's content rules set, so the corpus carries the whole
+    /// curriculum rather than a sample: the unit map draws all fifteen nodes at once, and the lesson player (#20) is
+    /// written against these very steps. The prototype's own "115 steps" comment is stale — `CurriculumTests`
+    /// asserts 124 **exactly**, not as a range.
+    case curriculum
+
     /// `GET /v1/content/picklists` — **22** transport modes and **20** "Other" types.
     ///
     /// The counts are the acceptance test the workspace's content rules set, so the corpus holds both lists
@@ -165,6 +199,10 @@ enum Fixture: String, CaseIterable, Sendable {
         case .expensesINR:
             [Endpoint.screenExpenses, Endpoint.expenses, Endpoint.fixedCosts, Endpoint.billLines]
         case .expensesFirstRun, .expensesOverBudget: []
+        // Same rule as the Expenses trio: three payloads for one path, and only one may claim it (see below).
+        case .learnInProgress: [Endpoint.screenLearn]
+        case .learnFirstRun, .learnComplete: []
+        case .curriculum: [Endpoint.curriculum]
         case .tips: [Endpoint.contentTips]
         case .picklists: [Endpoint.contentPicklists]
         case .articleScams: [Endpoint.articleBody(id: "scams")]

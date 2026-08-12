@@ -264,8 +264,18 @@ struct ContentLoaderTests {
 
     // MARK: - Invariant 8
 
+    /// **Invariant 8's cacheable families, as the closed list it is.** The invariant names three —
+    /// `GET /v1/content/*`, `/v1/curriculum*`, and `/v1/fx/rates` — and everything else must bypass every cache,
+    /// because a cache HIT on per-user data is a data breach rather than a performance win.
+    ///
+    /// Written out here rather than as one `/v1/content` prefix, which is what this scan checked until the
+    /// curriculum arrived (#19): the curriculum is the second family and not an exception to the first, so the
+    /// honest form of the rule is the invariant's own list. A fourth family is a change somebody makes here on
+    /// purpose.
+    private static let cacheableFamilies = ["/v1/content/", "/v1/curriculum", "/v1/fx/rates"]
+
     /// **Cacheable means not per-user.** Every resource the store can hold is the same bytes for everybody, which
-    /// is precisely why it may be stored — and every one of them is under `/v1/content`.
+    /// is precisely why it may be stored — and every one of them is in one of invariant 8's three families.
     ///
     /// `ContentResource.fixed` plus an article, because the enum stopped being `CaseIterable` when article bodies
     /// arrived: an article is asked for by id, so the set is open and the *rule* is what is closed.
@@ -273,16 +283,24 @@ struct ContentLoaderTests {
     func everyResourceIsCacheable() {
         let resources = ContentResource.fixed + [.forArticle(id: "scams")]
         for resource in resources {
-            #expect(Endpoint.path(for: resource).hasPrefix("/v1/content"), "\(resource) is not a content route")
+            let path = Endpoint.path(for: resource)
+            #expect(
+                Self.cacheableFamilies.contains { path.hasPrefix($0) },
+                "\(resource) is at \(path), which is not one of invariant 8's cacheable families"
+            )
         }
 
         // And the paths that must bypass every cache have no resource, so nothing can put one in the store.
         let cacheable = Set(resources.map { Endpoint.path(for: $0) })
         for perUser in [
-            Endpoint.me, Endpoint.budget, Endpoint.screenHome,
+            Endpoint.me, Endpoint.budget, Endpoint.screenHome, Endpoint.screenLearn,
             Endpoint.login, Endpoint.refresh, Endpoint.register,
         ] {
             #expect(!cacheable.contains(perUser))
+            #expect(
+                !Self.cacheableFamilies.contains { perUser.hasPrefix($0) },
+                "\(perUser) is per-user and sits inside a cacheable family (invariant 8)"
+            )
         }
     }
 

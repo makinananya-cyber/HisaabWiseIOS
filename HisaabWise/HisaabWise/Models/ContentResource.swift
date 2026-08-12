@@ -28,6 +28,16 @@ enum ContentResource: Hashable, Sendable {
     /// taps Transport is one tap from Other. Two ETagged resources would be two round trips for one screen's
     /// worth of options.
     case picklists
+    /// The whole curriculum — 5 units, 15 lessons, 124 steps (#19).
+    ///
+    /// **The largest resource the store holds, and the reason it is stored has changed.** ADR-0009 kept it on disk
+    /// so the lessons would work without a connection; ADR-0019 gave that job to the server-generated PDF (#25) and
+    /// left this one with latency and data use — 100 KB that changes when an editor changes it, revalidated for the
+    /// price of a `304`.
+    ///
+    /// One resource rather than one per unit, because the design carries the whole thing as a single constant and
+    /// the unit map draws all five units at once: five ETagged resources would be five round trips for one screen.
+    case curriculum
     /// One article's body, by id — `scams`, `remittance`, `credit` (#17).
     ///
     /// **The one resource with a parameter**, which is why this enum stopped being `String`-raw-valued: an
@@ -58,7 +68,9 @@ enum ContentResource: Hashable, Sendable {
     /// The resources that exist without being asked for by id. `CaseIterable` cannot describe this enum any
     /// more, and a hand-written list of the three fixed ones is honest about that — the articles are enumerated
     /// by the screen payload that carries their teasers, not by the client.
-    static let fixed: [ContentResource] = [.countries, .currencies, .securityQuestions, .tips, .picklists]
+    static let fixed: [ContentResource] = [
+        .countries, .currencies, .securityQuestions, .tips, .picklists, .curriculum,
+    ]
 
     /// The cache key. Stable, and **safe as a file name**: an id arrives from a server payload, and one
     /// containing a slash would otherwise write outside the store's directory.
@@ -69,6 +81,7 @@ enum ContentResource: Hashable, Sendable {
         case .securityQuestions: "securityQuestions"
         case .tips: "tips"
         case .picklists: "picklists"
+        case .curriculum: "curriculum"
         case .article(let id): "article-\(Self.sanitised(id))"
         }
     }

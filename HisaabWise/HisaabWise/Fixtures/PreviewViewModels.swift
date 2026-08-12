@@ -122,6 +122,66 @@ extension ExpensesViewModel {
     }
 }
 
+extension LearnViewModel {
+    /// The standing default preview: the same reader ``HomeViewModel/previewINRSalary`` describes — a four-day
+    /// streak, 120 XP, two lessons done, and a part-answered third.
+    @MainActor
+    static var previewInProgress: LearnViewModel {
+        preview(stubbing: .response(status: 200, body: TestPayload.bytes(.learnInProgress)))
+    }
+
+    /// A reader who has opened nothing: one lesson available, fourteen locked, and the **START** badge on the first.
+    @MainActor
+    static var previewFirstRun: LearnViewModel {
+        preview(stubbing: .response(status: 200, body: TestPayload.bytes(.learnFirstRun)))
+    }
+
+    /// Every lesson finished, and therefore **no badge anywhere** — the state a screen that assumed a cursor draws
+    /// wrongly, which is why it is previewable.
+    @MainActor
+    static var previewComplete: LearnViewModel {
+        preview(stubbing: .response(status: 200, body: TestPayload.bytes(.learnComplete)))
+    }
+
+    /// Offline, which must not render as a failure.
+    @MainActor
+    static var previewOffline: LearnViewModel {
+        preview(stubbing: .notConnected, curriculum: .notConnected)
+    }
+
+    /// A `501` — the state every unwritten screen endpoint answers with until the backend has one.
+    @MainActor
+    static var previewNotImplemented: LearnViewModel {
+        preview(stubbing: .response(status: 501, body: Data()))
+    }
+
+    /// - Parameter curriculum: what the cacheable half answers with. It defaults to the corpus's own curriculum
+    ///   even for the failure previews, because that is the shape of the real thing: the curriculum is served from
+    ///   the store while the per-user half is what a bad minute takes away (ADR-0019). The offline preview
+    ///   overrides it, since a first-ever launch with no connection has nothing stored either.
+    @MainActor
+    private static func preview(
+        stubbing outcome: FixtureTransport.Outcome,
+        curriculum: FixtureTransport.Outcome = .response(status: 200, body: TestPayload.bytes(.curriculum))
+    ) -> LearnViewModel {
+        let language = LanguageManager(selected: .english)
+        let client = APIClient(
+            baseURL: URL(string: "https://fixtures.invalid")!,
+            transport: FixtureTransport(stubs: [
+                Endpoint.screenLearn: outcome,
+                Endpoint.curriculum: curriculum,
+            ]),
+            language: language,
+            refreshTokens: InMemoryTokenStore()
+        )
+        return LearnViewModel(
+            client: client,
+            // In memory, so drawing a preview leaves nothing in the Caches directory of the machine drawing it.
+            content: ContentLoader(client: client, store: InMemoryContentStore())
+        )
+    }
+}
+
 extension ArticleViewModel {
     /// The scams article, which carries every block the structure has.
     @MainActor

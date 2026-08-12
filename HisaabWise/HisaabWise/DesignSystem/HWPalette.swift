@@ -30,6 +30,24 @@ struct HWPalette: Sendable {
     static let standard = HWPalette()
 }
 
+/// Which of the five Learn unit accents a view is drawn in, as a **name** rather than as three colours.
+///
+/// The design sets `--acc`, `--acc-soft`, and `--acc-deep` per unit from this palette, and a view that took the
+/// resolved triad would be a view whose caller had already reached into ``HWPalette/Units``. A name travels
+/// instead, and ``HWPalette/Units/accent(_:)`` is the one place it becomes colour — which is what keeps the later
+/// dark-mode swap a swap (ADR-0001).
+///
+/// Distinct from ``HWPalette/UnitAccent``, which is the *resolved* triad. This is the selector; that is the
+/// answer. It sits here rather than in `Components/` because both a component and a screen name a slot, and
+/// `HWAppearance` is the same shape of decision in the same layer.
+enum HWUnitTint: Sendable, Hashable, CaseIterable {
+    case sun
+    case mint
+    case coral
+    case sky
+    case violet
+}
+
 extension HWPalette {
     struct Surface: Sendable {
         var background = Color.hwBackground
@@ -117,6 +135,21 @@ extension HWPalette {
 
         /// In the order the workspace `CLAUDE.md` lists them: sun · mint · coral · sky · violet.
         var all: [UnitAccent] { [sun, mint, coral, sky, violet] }
+
+        /// The triad for one slot.
+        ///
+        /// Here rather than at the call site so that "which of the five" travels as a ``HWUnitTint`` and the
+        /// resolution happens once — a component or a screen switching over five slots itself would be a
+        /// second copy of this table, and the second copy is the one that forgets a slot (ADR-0001).
+        func accent(_ tint: HWUnitTint) -> UnitAccent {
+            switch tint {
+            case .sun: sun
+            case .mint: mint
+            case .coral: coral
+            case .sky: sky
+            case .violet: violet
+            }
+        }
     }
 
     /// The savings meter's gradient track, red through green (ADR-0016).
