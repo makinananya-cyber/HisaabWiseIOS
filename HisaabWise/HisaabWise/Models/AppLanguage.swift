@@ -72,8 +72,22 @@ extension AppLanguage {
         Locale.Language(identifier: rawValue).characterDirection == .rightToLeft
     }
 
-    // A language's name for a picker row — its **endonym**, "English" and "العربية" — is deliberately absent
-    // until Account (#23) draws the picker that needs one. It is the one place copy is not translated, so it
-    // belongs to whichever row renders it and there is no row yet; `locale.localizedString(forLanguageCode:)`
-    // is where it comes from when there is.
+    /// The language's name **in itself** — "English", "العربية". The row a picker draws for it (#23).
+    ///
+    /// **The one string in the app that is deliberately not translated.** A language picker that named Arabic
+    /// "Arabic" to an English reader and "الإنجليزية" to an Arabic one is a picker in which neither reader can
+    /// find their own language: the whole point of the row is to be legible to somebody who cannot read the
+    /// language the app is currently in. So each name is resolved in ``locale`` — its *own* locale — rather
+    /// than in the reader's.
+    ///
+    /// Not a catalogue key either, for the same reason: a key would be translated, which is exactly the
+    /// behaviour being avoided. `Locale` knows both names, so there is nothing here to author or to keep in
+    /// step.
+    ///
+    /// The design lists 87 languages with a hand-written endonym each (`{"c":"ar","n":"Arabic","v":"العربية"}`);
+    /// the app ships two and asks Foundation, which is the difference between converting the design's *decision*
+    /// — show the endonym — and converting its data.
+    var endonym: String {
+        locale.localizedString(forLanguageCode: rawValue)?.localizedCapitalized ?? rawValue
+    }
 }

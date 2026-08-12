@@ -7,9 +7,8 @@ import SwiftUI
 /// adds it *here*, with the design rule beside it, rather than inlining a one-off. ``dashed`` is the
 /// worked example of that rule being followed rather than described.
 ///
-/// **The design's destructive button is deliberately not here yet.** `.btn-danger` and Account's
-/// `.logout` are a real further shape, and they arrive with the Account screen (#23) where there is a
-/// caller to shape them — the same reasoning `ScreenChrome` applies to the `brand` appearance.
+/// **The destructive shape arrived with Account** (#23) — see ``destructive``, and read it for the half of the
+/// design's danger vocabulary that is still not here and why.
 enum HWButtonVariant: Sendable, Equatable, CaseIterable {
     /// `.btn-primary` — the galaxy→planetary gradient, raised. One per screen, at most.
     case primary
@@ -30,6 +29,22 @@ enum HWButtonVariant: Sendable, Equatable, CaseIterable {
     /// sits under, as distinct from `.btn-quiet`'s solid hairline, which acts on what is already there. The
     /// design uses it in exactly one place — "Add another bill" inside Utilities' edit mode.
     case dashed
+
+    /// `.logout` — the way out of the app, and the sixth shape: **card-coloured, with a danger border and
+    /// danger ink** (#23).
+    ///
+    /// `background:var(--card);border:1px solid rgba(192,69,58,.3);color:var(--danger)`, with the small
+    /// elevation. Not a filled red control: it is the only destructive action on a settings screen, it sits at
+    /// the bottom under four ordinary rows, and the design draws it restrained on purpose — the *confirmation*
+    /// is where the colour arrives.
+    ///
+    /// **The design's other danger control, `.btn-danger`, is still not here, and that is not an omission.**
+    /// It is the filled red gradient on the log-out confirmation dialog, and that confirmation is a
+    /// `confirmationDialog` rather than the design's own `.confirm` overlay (see ``LogoutControl``) — so its
+    /// destructive button is the platform's red, drawn by the system, and a variant transcribing the design's
+    /// gradient would have nowhere to be used. It arrives when something needs a filled destructive control
+    /// that is not a system alert, which is the rule that kept *this* case out until Account had a caller.
+    case destructive
 }
 
 /// What paints behind a button.
@@ -122,6 +137,19 @@ struct HWButtonAppearance: Sendable, Equatable {
             foreground = palette.accent.base
             border = palette.surface.separatorStrong
             elevation = nil
+        case (.surface, .destructive):
+            // `.logout{background:var(--card);border:1px solid rgba(192,69,58,.3);color:var(--danger);
+            // box-shadow:var(--shadow-s)}` — the card fill and the small lift of `.btn-soft`, with danger in
+            // place of accent in both the border and the ink.
+            //
+            // The border is `dangerSoft` rather than `danger` at 30%: the palette holds the design's own
+            // `--danger-soft` token, which is that same red at a tenth — a hairline the ink can be read
+            // against without a second red in the asset catalogue whose only job is to be a border
+            // (`ColorAssetTests`).
+            fill = .flat(palette.surface.raised)
+            foreground = palette.feedback.danger
+            border = palette.feedback.dangerSoft
+            elevation = .small
 
         case (.brand, .primary):
             // `linear-gradient(100deg,var(--milky),var(--meteor) 48%,var(--milky));color:var(--galaxy)` —
@@ -166,6 +194,16 @@ struct HWButtonAppearance: Sendable, Equatable {
             fill = .unfilled
             foreground = palette.brand.inkAccent
             border = palette.brand.separatorStrong
+            elevation = nil
+        case (.brand, .destructive):
+            // **The design has no destructive control on the galaxy ground either** — the only two are Account's
+            // `.logout` and its confirmation, both on `surface`. So this is the surface rule read through the
+            // brand tokens, exactly as `(.brand, .dashed)` is: the brand's own danger value (which is a *different
+            // colour* from the surface's — `#FFC9C0` against `#C0453A`, ADR-0021's clearest evidence that these
+            // are two surfaces) as both ink and hairline.
+            fill = .flat(palette.brand.raised)
+            foreground = palette.brand.danger
+            border = palette.brand.danger
             elevation = nil
         }
     }
@@ -240,23 +278,14 @@ struct HWButton: View {
     static let minimumHeight: CGFloat = 52
 
     var body: some View {
-        let appearance = HWButtonAppearance(variant: variant, appearance: self.appearance, palette: theme.palette)
-
         Button(action: action) {
-            HWButtonLabel(state: state, foreground: appearance.foreground) {
-                label(appearance)
-            }
-            .frame(maxWidth: .infinity, minHeight: Self.minimumHeight)
-            .padding(.horizontal, 16)
-            .hwBox(
-                fill: appearance.fill.shapeStyle,
-                radius: appearance.radius,
-                border: appearance.border,
-                borderWidth: appearance.borderDash == nil ? 1 : 1.5,
-                borderDash: appearance.borderDash,
-                elevation: state.keepsElevation ? appearance.elevation : nil
+            HWButtonFace(
+                title,
+                variant: variant,
+                appearance: appearance,
+                systemImage: systemImage,
+                state: state
             )
-            .contentShape(.rect)
         }
         .buttonStyle(HWPressStyle())
         .disabled(!state.isReady)
@@ -264,8 +293,59 @@ struct HWButton: View {
         .accessibilityLabel(Text(title))
         .accessibilityValue(state.accessibilityValue)
     }
+}
 
-    private func label(_ appearance: HWButtonAppearance) -> some View {
+/// The button's **face** — everything it looks like, with nothing that makes it a control.
+///
+/// Split out with Account (#23) for the reason ``HWRowLabel`` was: `ShareLink` is a control of its own, and a
+/// `Button` inside it is two controls for one action. So the export link wears this and the framework supplies the
+/// behaviour, which is the same trade `HWMonthRowLabel` makes inside a `NavigationLink`.
+///
+/// It is not a second button. It has no action, no `.disabled`, and no accessibility of its own: whatever wraps it
+/// owns all three, and ``HWButton`` is what wraps it almost everywhere.
+struct HWButtonFace: View {
+    @Environment(ThemeManager.self) private var theme
+
+    private let title: LocalizedStringResource
+    private let variant: HWButtonVariant
+    private let appearance: HWAppearance
+    private let systemImage: String?
+    private let state: HWButtonState
+
+    init(
+        _ title: LocalizedStringResource,
+        variant: HWButtonVariant = .primary,
+        appearance: HWAppearance = .surface,
+        systemImage: String? = nil,
+        state: HWButtonState = .ready
+    ) {
+        self.title = title
+        self.variant = variant
+        self.appearance = appearance
+        self.systemImage = systemImage
+        self.state = state
+    }
+
+    var body: some View {
+        let resolved = HWButtonAppearance(variant: variant, appearance: appearance, palette: theme.palette)
+
+        HWButtonLabel(state: state, foreground: resolved.foreground) {
+            label(resolved)
+        }
+        .frame(maxWidth: .infinity, minHeight: HWButton.minimumHeight)
+        .padding(.horizontal, 16)
+        .hwBox(
+            fill: resolved.fill.shapeStyle,
+            radius: resolved.radius,
+            border: resolved.border,
+            borderWidth: resolved.borderDash == nil ? 1 : 1.5,
+            borderDash: resolved.borderDash,
+            elevation: state.keepsElevation ? resolved.elevation : nil
+        )
+        .contentShape(.rect)
+    }
+
+    private func label(_ resolved: HWButtonAppearance) -> some View {
         HStack(spacing: 9) {
             if let systemImage {
                 Image(systemName: systemImage)
@@ -273,7 +353,7 @@ struct HWButton: View {
             Text(title)
         }
         .font(.hw(.bodyLarge).weight(.heavy))
-        .foregroundStyle(appearance.foreground)
+        .foregroundStyle(resolved.foreground)
         .multilineTextAlignment(.center)
         // Wraps rather than truncating once the text outgrows one line.
         .fixedSize(horizontal: false, vertical: true)
@@ -292,7 +372,7 @@ extension HWButtonState {
 ///
 /// Held in a `ZStack` rather than switched, so the button does not resize under its own spinner —
 /// `.btn.loading .lbl{opacity:0}` keeps the label's space for exactly that reason.
-private struct HWButtonLabel<Label: View>: View {
+struct HWButtonLabel<Label: View>: View {
     let state: HWButtonState
     let foreground: Color
     @ViewBuilder let label: () -> Label

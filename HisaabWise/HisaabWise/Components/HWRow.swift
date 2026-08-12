@@ -1,84 +1,69 @@
 import SwiftUI
 
-/// The design's `.row` — an icon, a name, an optional subtitle, an optional value, and a chevron.
+/// The design's `.row`, **as a label** — an icon, a name, an optional subtitle, an optional value, and a
+/// chevron.
 ///
-/// Account's settings list is made of these, and so is every list of things a tap opens. The shape is
-/// fixed by the CSS: `.row-ico` in a tinted square, `.row-txt` stacking `.row-name` over `.row-sub`,
-/// `.row-val` at the trailing edge, `.row-chev` last. Each of those is optional here because each is
-/// optional there — Account draws rows with a value and rows without one.
-struct HWRow: View {
+/// Account's settings list is made of these, and so is every list of things a tap opens. The shape is fixed by
+/// the CSS: `.row-ico` in a tinted square, `.row-txt` stacking `.row-name` over `.row-sub`, `.row-val` at the
+/// trailing edge, `.row-chev` last. Each of those is optional here because each is optional there — Account draws
+/// rows with a value and rows without one.
+///
+/// **A label rather than a control**, since #23: Account's rows are pushed pages, the shell hands out no path, so
+/// each row is a value-based `NavigationLink` — and a `Button` inside a link is two controls for one row. That is
+/// the split ``HWCategoryRowLabel`` and ``HWMonthRowLabel`` already make; ``HWRow`` below is the button form, kept
+/// for the callers that act rather than navigate.
+struct HWRowLabel: View {
     @Environment(ThemeManager.self) private var theme
 
-    private let systemImage: String
-    private let name: Text
-    private let subtitle: Text?
-    private let value: Text?
+    let systemImage: String
+    let name: Text
+    var subtitle: Text?
+    var value: Text?
     /// `.row-chev`, which the design omits on a row that acts rather than navigates.
-    private let showsDisclosure: Bool
-    private let action: () -> Void
-
-    init(
-        systemImage: String,
-        name: Text,
-        subtitle: Text? = nil,
-        value: Text? = nil,
-        showsDisclosure: Bool = true,
-        action: @escaping () -> Void
-    ) {
-        self.systemImage = systemImage
-        self.name = name
-        self.subtitle = subtitle
-        self.value = value
-        self.showsDisclosure = showsDisclosure
-        self.action = action
-    }
+    var showsDisclosure = true
 
     var body: some View {
-        Button(action: action) {
-            HStack(spacing: 11) {
-                icon
+        HStack(spacing: 11) {
+            icon
 
-                VStack(alignment: .leading, spacing: 2) {
-                    name
-                        .font(.hw(.bodyLarge).weight(.bold))
-                        .foregroundStyle(theme.palette.surface.ink)
-                    if let subtitle {
-                        subtitle
-                            .font(.hw(.caption))
-                            .foregroundStyle(theme.palette.surface.inkTertiary)
-                    }
-                }
-                .frame(maxWidth: .infinity, alignment: .leading)
-
-                if let value {
-                    value
-                        .font(.hw(.body).weight(.bold))
-                        .foregroundStyle(theme.palette.accent.base)
-                        .multilineTextAlignment(.trailing)
-                        // Wraps onto a second line rather than truncating at accessibility sizes.
-                        .fixedSize(horizontal: false, vertical: true)
-                }
-
-                if showsDisclosure {
-                    // `chevron.forward` rather than `chevron.right`: the glyph mirrors under RTL and the
-                    // named direction would not.
-                    Image(systemName: "chevron.forward")
+            VStack(alignment: .leading, spacing: 2) {
+                name
+                    .font(.hw(.bodyLarge).weight(.bold))
+                    .foregroundStyle(theme.palette.surface.ink)
+                if let subtitle {
+                    subtitle
                         .font(.hw(.caption))
-                        .foregroundStyle(theme.palette.accent.muted)
-                        // The chevron says "this opens", which the button trait already says.
-                        .accessibilityHidden(true)
+                        .foregroundStyle(theme.palette.surface.inkTertiary)
                 }
             }
-            .padding(.horizontal, 13)
-            .padding(.vertical, 12)
-            .frame(minHeight: HWTouchTarget.minimum)
-            .hwBox(fill: theme.palette.surface.raised, radius: .large, elevation: .small)
-            .contentShape(.rect)
+            .frame(maxWidth: .infinity, alignment: .leading)
+
+            if let value {
+                value
+                    .font(.hw(.body).weight(.bold))
+                    .foregroundStyle(theme.palette.accent.base)
+                    .multilineTextAlignment(.trailing)
+                    // Wraps onto a second line rather than truncating at accessibility sizes.
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            if showsDisclosure {
+                // `chevron.forward` rather than `chevron.right`: the glyph mirrors under RTL and the
+                // named direction would not.
+                Image(systemName: "chevron.forward")
+                    .font(.hw(.caption))
+                    .foregroundStyle(theme.palette.accent.muted)
+                    // The chevron says "this opens", which the control's own trait already says.
+                    .accessibilityHidden(true)
+            }
         }
-        .buttonStyle(HWPressStyle())
-        // Name, then subtitle, then value, as one element — three separate swipes for one row is the
-        // focus-order failure ADR-0012 is about.
-        .accessibilityElement(children: .combine)
+        .padding(.horizontal, 13)
+        .padding(.vertical, 12)
+        .frame(minHeight: HWTouchTarget.minimum)
+        .hwBox(fill: theme.palette.surface.raised, radius: .large, elevation: .small)
+        // **The hit region.** Without it the row draws and cannot be pressed, whether the control around it is a
+        // button or a link (ADR-0032).
+        .contentShape(.rect)
     }
 
     /// `.row-ico{background:var(--tint);color:var(--planetary)}`
@@ -89,6 +74,38 @@ struct HWRow: View {
             .frame(width: 40, height: 40)
             .hwBox(fill: theme.palette.accent.tint, radius: .small)
             .accessibilityHidden(true)
+    }
+}
+
+/// The same row as a **button**, for a row that acts rather than navigates.
+struct HWRow: View {
+    private let label: HWRowLabel
+    private let action: () -> Void
+
+    init(
+        systemImage: String,
+        name: Text,
+        subtitle: Text? = nil,
+        value: Text? = nil,
+        showsDisclosure: Bool = true,
+        action: @escaping () -> Void
+    ) {
+        label = HWRowLabel(
+            systemImage: systemImage,
+            name: name,
+            subtitle: subtitle,
+            value: value,
+            showsDisclosure: showsDisclosure
+        )
+        self.action = action
+    }
+
+    var body: some View {
+        Button(action: action) { label }
+            .buttonStyle(HWPressStyle())
+            // Name, then subtitle, then value, as one element — three separate swipes for one row is the
+            // focus-order failure ADR-0012 is about.
+            .accessibilityElement(children: .combine)
     }
 }
 

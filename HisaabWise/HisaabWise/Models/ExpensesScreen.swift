@@ -27,7 +27,7 @@ struct ExpensesScreen: Sendable, Hashable, Decodable {
     let wants: Wants
 
     /// What the user types in, for the amount field's own two labels.
-    let entry: EntryCurrency
+    let entry: AuthoringCurrency
 
     /// In the order they are drawn — seven of them. Ordering is a calculation too (ADR-0020), so the
     /// sequence arrives rather than the client sorting by kind or by amount.
@@ -77,30 +77,6 @@ struct ExpensesScreen: Sendable, Hashable, Decodable {
         /// is what happens when one of those is worked out in two places; it is also not the same question as
         /// `fill >= 1`, because the fill clamps and the verdict does not.
         let isOver: Bool
-    }
-
-    // MARK: - What the user types in
-
-    /// The display currency, as the amount field's own decoration and as the currency a new entry is
-    /// **authored in**.
-    ///
-    /// Money is stored exactly as authored, in the currency it was typed in — there is no storage base
-    /// (Product Spec §4.1 **[FIX]**). So this is not presentation trivia: it is what the client sends
-    /// alongside the minor units, and it is the server's answer to "what currency is this user typing in"
-    /// rather than a guess assembled from a locale.
-    ///
-    /// The **exponent** is here for the reason ADR-0031 had to ask the currency reference list for one: a
-    /// dinar typed `1.234` is 1234 minor units, not 123, and reading two decimal places for every currency is
-    /// right 157 times out of 160.
-    struct EntryCurrency: Sendable, Hashable, Decodable {
-        let code: CurrencyCode
-        /// `.amount .cur` — `₹`, `AED`, `د.إ`. Decoration around a number being typed, never formatting: what
-        /// comes *back* is formatted by the server (ADR-0003).
-        let symbol: String
-        /// `.amount .code` — the ISO code beside the field.
-        let displayCode: String
-        /// The currency's minor-unit digits — 2 for most, 3 for KWD/BHD/OMR, 0 for JPY/KRW.
-        let exponent: Int
     }
 
     // MARK: - A category

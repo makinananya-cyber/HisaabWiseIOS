@@ -110,27 +110,13 @@ struct AppShell: View {
 
     /// The strip itself. It carries no action: verification happens in the email, and ADR-0008's foreground
     /// revalidation is what makes the banner disappear when the user comes back from Safari having tapped the
-    /// link — a "resend" control belongs to the Account screen (#17), which owns the account's own settings.
+    /// link — a "resend" control is not among Account's criteria (#23), so no route for one has been invented.
+    ///
+    /// **``HWBanner`` rather than this view's own stack**, since #23: Account draws the same strip beside the
+    /// locked email, and a second copy of a glyph, a sentence and a tint is exactly what `Components` has a rule
+    /// against. The two are different *notices* about one fact, and the app-wide one is this.
     private var verificationBanner: some View {
-        HStack(spacing: 10) {
-            Image(systemName: "envelope.badge")
-                .font(.hw(.body))
-                .foregroundStyle(theme.palette.accent.base)
-                .accessibilityHidden(true)
-
-            Text("shell.verifyEmail")
-                .font(.hw(.caption))
-                .foregroundStyle(theme.palette.surface.ink)
-                .fixedSize(horizontal: false, vertical: true)
-                .frame(maxWidth: .infinity, alignment: .leading)
-        }
-        .padding(.horizontal, 18)
-        .padding(.vertical, 11)
-        .frame(maxWidth: .infinity)
-        .background(theme.palette.accent.tint)
-        // One element, read as a whole, and **not** a header: it is a notice above the tabs rather than the
-        // title of anything (ADR-0012).
-        .accessibilityElement(children: .combine)
+        HWBanner("shell.verifyEmail", systemImage: "envelope.badge")
     }
 
     /// One stack per tab, wrapped here rather than inside each screen: a screen that owned its own
@@ -160,7 +146,7 @@ struct AppShell: View {
             // the four unwritten screens that is real, and it is here rather than on a debug affordance
             // because "log out actually ends the session" is one of this issue's criteria.
             case .account:
-                UnwrittenTabRoot(tab: tab, viewModel: viewModels.account) { LogoutControl() }
+                AccountView(viewModel: viewModels.account)
             }
         }
     }
@@ -174,17 +160,10 @@ struct AppShell: View {
 }
 
 #if DEBUG
-/// The shell over fixtures, which is the only way to look at it until sign-in ships (#14): the app itself
-/// launches signed out, and `RootView` draws Landing.
+/// The shell over fixtures, which is the only way to look at it: the app itself launches signed out, and
+/// `RootView` draws Landing.
 @MainActor
-private func previewViewModels() -> TabViewModels {
-    TabViewModels(
-        home: .previewINRSalary,
-        expenses: .previewINR,
-        learn: .previewInProgress,
-        reports: .previewArchive
-    )
-}
+private func previewViewModels() -> TabViewModels { .preview }
 
 #Preview("The shell — five tabs") {
     AppShell()

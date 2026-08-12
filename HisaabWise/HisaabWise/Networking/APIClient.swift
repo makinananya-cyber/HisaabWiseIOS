@@ -103,7 +103,25 @@ actor APIClient {
         authorization: Authorization = .session,
         as type: Response.Type
     ) async throws -> Response {
-        try await perform(.get, path, body: nil, idempotencyKey: nil, authorization: authorization, as: type)
+        try await perform(.get, path, body: nil, idempotencyKey: nil, authorization: authorization) {
+            try self.decoder.decode(Response.self, from: $0)
+        }
+    }
+
+    /// Performs a `GET` presenting the session and answers with the body **undecoded**.
+    ///
+    /// One caller, and it is the reason this exists rather than a convenience: `GET /v1/me/export` is the UAE
+    /// PDPL access right, and what it returns is every collection this system holds about one person, streamed
+    /// (Technical Spec §5). Decoding it would mean the client owning a schema for all eleven; re-encoding it to
+    /// save would hand the user *this client's* idea of their data instead of the server's — which is the rule
+    /// `ContentLoader` already follows about storing bytes rather than values.
+    ///
+    /// It goes through ``perform`` like every other request, so it carries the four properties and answers a
+    /// `401` by refreshing once. What it does **not** go through is ``content(at:ifNoneMatch:)``, which is
+    /// anonymous and cacheable: a per-user response may never be read from a cache (invariant 8), and an
+    /// export is the most per-user response there is.
+    func bytes(at path: String) async throws -> Data {
+        try await perform(.get, path, body: nil, idempotencyKey: nil, authorization: .session) { $0 }
     }
 
     /// What a conditional `GET` on a cacheable content route answered with.
@@ -172,9 +190,10 @@ actor APIClient {
             path,
             body: try encoder.encode(body),
             idempotencyKey: idempotencyKey,
-            authorization: authorization,
-            as: type
-        )
+            authorization: authorization
+        ) {
+            try self.decoder.decode(Response.self, from: $0)
+        }
     }
 
     /// Performs a `PUT` and decodes the body.
@@ -191,9 +210,10 @@ actor APIClient {
             path,
             body: try encoder.encode(body),
             idempotencyKey: nil,
-            authorization: .session,
-            as: type
-        )
+            authorization: .session
+        ) {
+            try self.decoder.decode(Response.self, from: $0)
+        }
     }
 
     /// Performs a `DELETE` and decodes the body.
@@ -210,9 +230,10 @@ actor APIClient {
             path,
             body: nil,
             idempotencyKey: nil,
-            authorization: .session,
-            as: type
-        )
+            authorization: .session
+        ) {
+            try self.decoder.decode(Response.self, from: $0)
+        }
     }
 
     // MARK: - The session
@@ -277,9 +298,10 @@ actor APIClient {
                 Endpoint.logout,
                 body: body,
                 idempotencyKey: UUID().uuidString,
-                bearer: accessToken?.raw,
-                as: Acknowledgement.self
-            )
+                bearer: accessToken?.raw
+            ) {
+                try self.decoder.decode(Acknowledgement.self, from: $0)
+            }
         }
         await clearSession(signalling: false)
     }
@@ -314,16 +336,23 @@ actor APIClient {
     /// **The retry is once, and only on a `401`.** A second failure propagates: a loop here would turn a
     /// server that has decided against this session into a request storm, and the honest report of "the
     /// server will not accept this" is the one the taxonomy already has a state for.
-    private func perform<Response: Decodable & Sendable>(
+    ///
+    /// - Parameter read: how the body becomes a value. A closure rather than a `Decodable` type parameter,
+    ///   because one request in the app deliberately does not decode: `GET /v1/me/export` answers with bytes
+    ///   the client hands to a file rather than a shape it owns (``bytes(at:)``). The alternative was a second
+    ///   path through the retry logic, and the retry logic is the twenty lines that must not have two copies.
+    private func perform<Response: Sendable>(
         _ method: Method,
         _ path: String,
         body: Data?,
         idempotencyKey: String?,
         authorization: Authorization,
-        as type: Response.Type
+        reading read: @escaping (Data) throws -> Response
     ) async throws -> Response {
         guard case .session = authorization else {
-            return try await send(method, path, body: body, idempotencyKey: idempotencyKey, bearer: nil, as: type)
+            return try await send(
+                method, path, body: body, idempotencyKey: idempotencyKey, bearer: nil, reading: read
+            )
         }
 
         // The same request, twice: once as sent and once as retried. A local function rather than the
@@ -331,7 +360,7 @@ actor APIClient {
         // token they present — which is the only thing that should differ.
         func attempt(presenting bearer: String?) async throws -> Response {
             try await send(
-                method, path, body: body, idempotencyKey: idempotencyKey, bearer: bearer, as: type
+                method, path, body: body, idempotencyKey: idempotencyKey, bearer: bearer, reading: read
             )
         }
 
@@ -432,9 +461,10 @@ actor APIClient {
                 // without a key, present a token the server has already spent — and reuse revokes the
                 // whole family. One key per rotation attempt, since nothing here retries automatically.
                 idempotencyKey: UUID().uuidString,
-                bearer: nil,
-                as: SessionTokens.self
-            )
+                bearer: nil
+            ) {
+                try self.decoder.decode(SessionTokens.self, from: $0)
+            }
         } catch let error as APIError where error.isUnauthorized {
             // Definitive: the server has refused this refresh token. Either the family was revoked — by a
             // password change, a `logout-all`, or a reuse the backend caught — or it has expired. There is
@@ -470,13 +500,13 @@ actor APIClient {
     /// Every verb above funnels through ``respond`` — which is what makes "each of the four properties is set
     /// once" true rather than aspirational — and this adds the two rules that apply only to a *decodable*
     /// answer: a non-2xx status is an error, and a body that will not decode is `malformedResponse`.
-    private func send<Response: Decodable & Sendable>(
+    private func send<Response: Sendable>(
         _ method: Method,
         _ path: String,
         body: Data?,
         idempotencyKey: String?,
         bearer: String?,
-        as type: Response.Type
+        reading read: (Data) throws -> Response
     ) async throws -> Response {
         let (data, response) = try await respond(
             method, path, body: body, idempotencyKey: idempotencyKey, bearer: bearer
@@ -487,7 +517,7 @@ actor APIClient {
         }
 
         do {
-            return try decoder.decode(Response.self, from: data)
+            return try read(data)
         } catch {
             throw APIError.malformedResponse
         }

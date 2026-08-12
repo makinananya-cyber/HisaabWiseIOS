@@ -147,12 +147,72 @@ root replaces the whole set when `isSignedIn` goes false, because a view model h
 and a signed-out `HomeViewModel` is still holding a salary. Invariant 8's reasoning about caches applies to
 objects too — per-user data that outlives the user is a leak, not a warm start.
 
-**unwritten tab root** — `UnwrittenTabRoot` plus `UnwrittenScreenViewModel`, the stand-in for the screens that are
-other tickets. **One of them now**: Account (#23) — Expenses retired its placeholder with #18, Learn with #19, and
-Reports with #21, which is what "retired the moment each screen lands" means in practice. A full `BaseView` conformance, so it renders through `StateView`,
-and it **makes no request**: calling the ADR-0020 screen endpoint would put a fictional contract in the client
-and render "Something went wrong" on four of five tabs. A screen that is not built is not a screen that is
-broken. Its `footer` slot carries `LogoutControl` on Account. **Retired the moment each screen lands.**
+**unwritten tab root** — `UnwrittenTabRoot` plus `UnwrittenScreenViewModel`, the stand-in for the screens that were
+other tickets. **None of them now**: Expenses retired its placeholder with #18, Learn with #19, Reports with #21, and
+Account with #23, which is what "retired the moment each screen lands" means in practice. A full `BaseView`
+conformance, so it renders through `StateView`, and it **makes no request**: calling the ADR-0020 screen endpoint
+would put a fictional contract in the client and render "Something went wrong" on four of five tabs. A screen that is
+not built is not a screen that is broken.
+
+**It is kept rather than deleted**, and its `footer` slot with it. It is what a sixth tab, or a screen taken out for
+rework, stands on — and `AppShellTests` still exercises it against every `AppTab`, because what would break first is
+a tab whose copy went missing. `LogoutControl` moved out of the slot and onto `AccountPage`, where the design puts
+it.
+
+**Account** — `AccountView` plus `AccountPage`, four detail pages, and `AccountViewModel` (#23, ADR-0038). Two
+levels over one read: the profile card, four rows and the way out, and behind each row a page — a form, two option
+lists, and a three-step flow. **The screen that changes the other four**: display currency and language are what
+every payload in the app was formatted against, so changing one is a *re-read* of the app rather than a re-render of
+it (see **repaint**). It is also where three of the design's defects live in the smallest space — a salary read back
+out of its own rounded display string (D16), two security answers compared in the browser (D4), and a password row
+subtitle that is a date label (invariant 6).
+
+**repaint** — `ScreenRepaint`, and the thing a preference change *is*. A `@MainActor` protocol in `Models` with one
+method, conformed to by **`TabViewModels`** — the one object that holds all five view models. `AccountViewModel`
+holds it `weak` and `AppEnvironment` closes the loop with one `connect(to:)` call, for the reason it does the same
+for `LanguageManager` and `APIClient`: the graph has a genuine cycle, so one half is connected rather than injected,
+and an unconnected view model repaints nothing rather than failing. **Not a second seam** (ADR-0013) — the only
+conformance is the real one, in the app and in the tests alike. It re-reads the *other four* screens, sequentially:
+Account's own came back with the write (ADR-0020), and four screens loading at once behind a tab bar the user can tap
+means the tab they land on is the one still in flight.
+
+**refusal** — `AccountViewModel.Refusal`, and the one place in the app where a write that fails offline does **not**
+become `LoadState.offline`. Issue #23's own criterion: "offline, the row is disabled with an explanation rather than
+failing" — replacing the screen would take away the picker the user is standing in *and* the only explanation of why
+nothing changed.
+
+It is a **subject and a reason**. Two reasons, because "needs a connection" is worth trying again in a minute and
+"the server said no" is not; and a subject because a refusal is about **one control** — without it a failed export
+drew its sentence over the currency picker. **A refusal does not disable the control**, either: the app has no
+connectivity monitor by design (`URLSessionTransport` does not wait for connectivity), so there is nothing to
+disable a row *before* an attempt on, and disabling it *after* one — which this did until review — left the picker
+dead for the session with nothing to clear it. The row is disabled while a change is in flight; the explanation is
+what says nothing changed (ADR-0038).
+
+**the password change is one request** — `POST /v1/me/password`, carrying the current password, both security
+answers and the new one together. The three steps are the client's *sequencing* of one submission; nothing exists
+server-side until the last button, exactly as registration decided (ADR-0031). And a route that answered "is this the
+right current password?" before being told the new one would be a **password-checking oracle** behind a session,
+which is the class of thing the email-availability route was refused for. Its refusals therefore name a step —
+`INVALID_CREDENTIALS` back to the first, `SECURITY_ANSWERS_INVALID` back to the second — and **on a `422`, never a
+`401`**: a `401` spends the refresh token, and against a rotating family a mistyped password would end the session.
+
+**`SECURITY_ANSWERS_INVALID` does not say which answer missed**, and must not. The design reddens the specific field
+because it compared raw strings locally; §4.3 **[FIX]** compares argon2id hashes of a normalised form, and telling
+somebody which of two guesses landed is a hint to whoever is guessing. So the message goes under the first box only.
+
+**endonym** — a language's name in itself, "English" and "العربية", resolved in its *own* locale rather than the
+reader's (`AppLanguage.endonym`). The one string in the app that is deliberately not translated: a picker that named
+Arabic "Arabic" to an English reader and "الإنجليزية" to an Arabic one is a picker in which neither reader can find
+their own language. It comes from `Locale` rather than a catalogue key — a key would be translated, which is the
+behaviour being avoided.
+
+**the export** — `GET /v1/me/export`, the UAE PDPL access right, and the one per-user response the client **does not
+decode** (`APIClient.bytes(at:)`). What comes back is every collection this system holds about one person; modelling
+it would mean owning a schema for all eleven, and re-encoding it to save would hand the user this client's idea of
+their data rather than the server's. **Nothing is written to disk** — the bytes go into a `Transferable` and the user
+picks where they go, so there is no copy of one person's financial history in a temporary directory and nothing to
+remember to delete (ADR-0014). The file name is **not dated**: the client owns no calendar (invariant 6).
 
 **Expenses** — `ExpensesView` plus `ExpenseCategoryView` and `ExpensesViewModel`, the core loop and **the first
 screen in the app that writes** (#18). Two levels over one read: the monthly summary with its wants bar and the seven
@@ -400,8 +460,11 @@ Four things about the vocabulary are deliberate and are decisions, not omissions
   tinted and bordered controls. The `brand` appearance arrives with Landing and Auth (#13–#16), on the
   same reasoning `ScreenChrome` gives for not being appearance-agnostic yet — two callers shape it better
   than one guess.
-- **There is no destructive button yet.** `.btn-danger` and Account's `.logout` are a real fifth shape and
-  arrive with Account (#23).
+- **The destructive button arrived with Account** (#23) and is `HWButtonVariant.destructive` — the design's
+  `.logout`, card-coloured with a danger border and danger ink. Its *other* danger control, the filled
+  `.btn-danger` gradient, is still not here and is not an omission: it belongs to the log-out confirmation, which
+  is a `confirmationDialog` whose destructive button is the platform's red (ADR-0026), so a transcription would
+  have nowhere to be used.
 - **`.tabbar` is not a component; `.mark` now is.** The tab bar is the five-tab shell's `TabView` —
   converting the CSS would mean re-implementing a system container, which Rule 1 rules out. The wordmark
   **no longer waits on an image**: the design carries the logo as a base64 PNG in five places, it is extracted
@@ -475,8 +538,8 @@ the scans in `ComponentVocabularyTests` assert that every animating component re
 
 **screen endpoint** — one read endpoint per screen — `GET /v1/screens/home`, `/expenses`,
 `/learn`, `/reports`, `/reports/:monthKey`, `/account` — returning exactly what that screen
-renders, fully formatted. Writes keep their own resource addresses but **return the updated screen
-payload**, so the client re-renders from server truth instead of patching its own copy. Cacheable
+renders, fully formatted. **All six exist now** (#23 wrote the last of them). Writes keep their own resource
+addresses but **return the updated screen payload**, so the client re-renders from server truth instead of patching its own copy. Cacheable
 content (article bodies, curriculum, reference lists) stays on its own ETag'd endpoints.
 See [ADR-0020](docs/adr/0020-screen-scoped-endpoints.md).
 
@@ -699,7 +762,7 @@ is no offline read of it. So Learn is `LoadState.offline` on a second launch wit
 does not have to come down again when it comes back.
 
 **screen payload** — what one `GET /v1/screens/*` returns: everything that screen draws, fully computed
-(ADR-0020). **Five exist**: Home, Expenses, Learn, Reports, and one closed month — Learn being the one that is
+(ADR-0020). **Six exist**: Home, Expenses, Learn, Reports, one closed month, and Account — Learn being the one that is
 *half* of a screen, because the other half is cacheable content on its own ETag (see **Learn** above), and the month
 being the only one addressed by an **identity** rather than by a name (`/v1/screens/reports/:monthKey`). Reports'
 field names are a list of things the design's browser worked out about *history*: `Year.totalSaved` for a
@@ -994,3 +1057,13 @@ Recorded here because they are commitments, not suggestions. None has been made 
 | [ADR-0037](docs/adr/0037-reports-month-detail.md) | **`isAdapted` is the engine's own flag**, not `needs > income / 2` for the client to work out: it chooses which of two sentences explains the month's split. Likewise `isOver` on the wants allowance, and the three savings optionals — `remaining` when the goal was missed, `surplus` when it was passed, **neither** when it was met to the unit, which is the third sentence the design does not have |
 | [ADR-0037](docs/adr/0037-reports-month-detail.md) | **`facts` is a closed set of six `kind`s** — `salary`, `goal`, `saved`, `biggestCost`, `needs`, `leftOver`. The label is the app's copy keyed on the kind; `value` is a string because one of the six is a category *name*; and `note` is a **server sentence**, because it joins a figure to words. A seventh kind is dropped by the client rather than failing the month, so it is additive |
 | [ADR-0037](docs/adr/0037-reports-month-detail.md) | **Every date is a label and there is no timestamp** — "14 Feb", or "Fixed each month" for a bill with no day (invariant 6). `summaryLabel` carries a count, a plural, and a percentage in one server sentence, because Arabic has six plural forms and the design wrote `n === 1 ? ' entry' : ' entries'` |
+| [ADR-0038](docs/adr/0038-account.md) | **`GET /v1/screens/account`'s payload**, written by the client: `{profile{initials, displayName, email, summaryLabel}, rows[{section, name, hint, value?}], personal{displayName, email, isEmailVerified, salary, salaryCurrency{code, symbol, displayCode, exponent}, phone?{country, dialCode, national, display}}, language, currency, password{questions[{id, text}]}}`. `language` sits at the **root** because `PUT /v1/me/language` answers with this payload and the client decodes only that one field (ADR-0024) |
+| [ADR-0038](docs/adr/0038-account.md) | **Three strings that look derivable are the server's.** `initials` — because "first letter of the first two words, upper-cased" is wrong for a caseless script, a mononym, and a multi-scalar grapheme; `summaryLabel` — because the design concatenates a code and a language name, and a sentence assembled on the client cannot be reordered by a translation; and each row's `hint`, because "Changed 3 months ago" is a date label computed in the user's stored timezone (invariant 6) |
+| [ADR-0038](docs/adr/0038-account.md) | **The password row's value is not sent.** The server has no password and must never send a stand-in for one; the eight bullets are the design's decoration and are drawn client-side. Nor is any security *answer*, any hash, or any salt (invariant 5, defect D4) — only the two questions, by opaque id and localised text (§4.3 **[FIX]**, D12) |
+| [ADR-0038](docs/adr/0038-account.md) | **`PUT /v1/me` takes `{displayName, salary, phone?}` and cannot take an email** (invariant 4). `PUT` rather than the Technical Spec's `PATCH`: the design's Save commits the whole card, so there is no partial update to express and no fifth verb to add to the client. `phone` is **absent** rather than empty when not given (ADR-0031). Answers with the screen payload |
+| [ADR-0038](docs/adr/0038-account.md) | **`POST /v1/me/password` is one request** — `{currentPassword, securityAnswers[{questionId, answer}], newPassword}` — and there must be **no route that verifies a password or an answer on its own**: it would be a password-checking oracle behind a session. Its refusals name the step (`INVALID_CREDENTIALS`, `SECURITY_ANSWERS_INVALID`) and **come on a `422`, never a `401`** — a `401` spends the refresh token, and against a rotating family a mistyped password would end the session |
+| [ADR-0038](docs/adr/0038-account.md) | **`SECURITY_ANSWERS_INVALID` must not say which answer missed.** Comparison is against argon2id hashes of the normalised form (§4.3), and naming the one that landed is a hint to whoever is guessing. The client draws one message under the first box for that reason |
+| [ADR-0038](docs/adr/0038-account.md) | **`PUT /v1/me/currency` takes `{currency}` and nothing else**, and the salary comes back **converted** — `display` and `minor` both — with everything that is not money byte-identical. The client sends no figure and converts nothing (§4.1, ADR-0003); the corpus carries the same account in two currencies so that a server which moved a name or a question breaks a test |
+| [ADR-0038](docs/adr/0038-account.md) | **The salary's `minor` is what the field is edited from and `display` is what is read** (defect D16). The design reads its own rounded display string back on save, quantising the income the budget engine runs on. `salaryCurrency` is the currency being *typed in* and is why the field needs no reference list to draw a symbol |
+| [ADR-0038](docs/adr/0038-account.md) | **`GET /v1/me/export` answers with bytes the client never decodes** — streamed JSON, one object per collection (Technical Spec §5). It is per-user, so it presents the session and bypasses every cache (invariant 8); it may not be served from a cacheable family. The client writes nothing to disk and does not date the file (ADR-0014, invariant 6) |
+| [ADR-0038](docs/adr/0038-account.md) | **An unrecognised `section` fails the screen**, because a section decides which page opens and a fifth one drawn as `personal` puts a salary field over something that is not a salary. A fifth row is therefore a **coordinated release**, as a fourth verdict is |

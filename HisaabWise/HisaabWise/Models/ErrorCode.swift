@@ -54,6 +54,28 @@ extension ErrorCode {
     /// draws the screen behind it.
     static let accountPendingDeletion = ErrorCode(rawValue: "ACCOUNT_PENDING_DELETION")
 
+    /// The `currentPassword` on a password change was wrong (#23).
+    ///
+    /// **Not in `ErrorCopy`**, for the reason `EMAIL_TAKEN` is not: it is a *field* error on the first step of a
+    /// flow, and the screen that owns the flow draws it — the copy belongs beside the box, not in a placeholder
+    /// where the screen used to be.
+    ///
+    /// It is also why the password change is one request rather than three (``PasswordChange``): a route that
+    /// answered this question *before* being told the new password would be a password-checking oracle.
+    ///
+    /// **The route must carry it on a `422`, never a `401`** — a constraint on the backend, found by writing the
+    /// test for it. A `401` is answered by refreshing and retrying once (ADR-0007), and a refresh that the server
+    /// then refuses ends the session and clears the store: on a rotating token family, a mistyped current password
+    /// would sign the user out. `422` is what the client can read as "that field was wrong".
+    static let invalidCredentials = ErrorCode(rawValue: "INVALID_CREDENTIALS")
+
+    /// One or both security answers did not match the stored hashes (§4.3, invariant 5, #23).
+    ///
+    /// **It does not say which**, and the server must not: answers are compared as argon2id hashes of a
+    /// normalised form, and telling somebody which of two guesses landed is a hint to whoever is guessing. The
+    /// design reddens the specific field because it compared the raw strings in the browser, which is defect D4.
+    static let securityAnswersInvalid = ErrorCode(rawValue: "SECURITY_ANSWERS_INVALID")
+
     /// Registration refused because the email already has an account.
     ///
     /// **The only way the client ever learns an address is taken**, and only in response to a submission the user

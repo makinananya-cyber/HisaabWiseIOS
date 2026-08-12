@@ -30,26 +30,17 @@ struct HWPickerOption: Identifiable, Sendable, Equatable {
     }
 }
 
-/// The design's picker sheet — a title, a search box when the list is long, the options, and an empty state.
+/// The design's picker sheet — a title, and the option list inside it.
 ///
-/// One component for all four of the design's pickers, which is how the design itself is written: a single
+/// One component for all four of the design's *sheets*, which is how the design itself is written: a single
 /// `openSheet(config)` with four configs. Reproducing that as four sheets would be four chances for the search
 /// box, the tick, and the empty state to diverge.
 ///
-/// **The search box appears only past twelve rows**, as `sheetSearch.style.display = data.length > 12` does: a
-/// keyboard over a list of six is a keyboard in the way. Fourteen questions clear it by two, which is why the
-/// question pickers have one.
-///
-/// **Filtering is case-folded and diacritic-insensitive, and locale-free.** `lowercased()` rather than a
-/// localised comparison: the haystack is ISO codes and English names from server content, and a locale-sensitive
-/// fold would make the same query match differently for two users looking at identical data (ADR-0011).
+/// **The list itself is ``HWOptionList``** since #23, and the split is the design's own: Account draws the same
+/// searchable list of the same rows as a *pushed page* with a blurb over it, not as a sheet. So what is shared is
+/// the list and what is not is the panel — the same fold `HWFigureChips` came out of when Reports needed the
+/// three-up chip row outside `HWSpendSummary`.
 struct HWPickerSheet: View {
-    @Environment(ThemeManager.self) private var theme
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
-    /// The app's locale, for the one announcement this component makes. `HWAnnouncement` resolves against what it
-    /// is passed rather than reading a locale of its own (ADR-0011).
-    @Environment(\.locale) private var locale
-
     private let title: LocalizedStringResource
     /// The `.search input` placeholder — "Search country or code".
     private let searchPrompt: LocalizedStringResource
@@ -59,8 +50,6 @@ struct HWPickerSheet: View {
     private let appearance: HWAppearance
     private let onSelect: (String) -> Void
     private let onClose: () -> Void
-
-    @State private var query = ""
 
     init(
         title: LocalizedStringResource,
@@ -80,12 +69,72 @@ struct HWPickerSheet: View {
         self.onClose = onClose
     }
 
+    var body: some View {
+        HWSheetChrome(title: title, onClose: onClose, appearance: appearance) {
+            HWOptionList(
+                searchPrompt: searchPrompt,
+                options: options,
+                selection: selection,
+                appearance: appearance,
+                onSelect: onSelect
+            )
+        }
+    }
+}
+
+/// The design's `.opts` — a blurb, a search box past twelve rows, the options, and an empty state.
+///
+/// Two callers, which is why it is its own component: inside ``HWPickerSheet``'s panel, and as the whole of
+/// Account's Language and Currency pages, where the design draws the same list on the page itself under an
+/// `.explain` paragraph (#23).
+///
+/// **The search box appears only past twelve rows**, as `sheetSearch.style.display = data.length > 12` does: a
+/// keyboard over a list of six is a keyboard in the way. Fourteen questions clear it by two, which is why the
+/// question pickers have one; two shipped languages do not, which is why the language page has none.
+///
+/// **Filtering is case-folded and diacritic-insensitive, and locale-free.** `lowercased()` rather than a
+/// localised comparison: the haystack is ISO codes and English names from server content, and a locale-sensitive
+/// fold would make the same query match differently for two users looking at identical data (ADR-0011).
+struct HWOptionList: View {
+    @Environment(ThemeManager.self) private var theme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+    /// The app's locale, for the one announcement this component makes. `HWAnnouncement` resolves against what it
+    /// is passed rather than reading a locale of its own (ADR-0011).
+    @Environment(\.locale) private var locale
+
+    /// `.explain` — the paragraph over the list on Account's two option pages. `nil` inside a sheet, where the
+    /// title says what the list is for.
+    private let blurb: LocalizedStringResource?
+    private let searchPrompt: LocalizedStringResource
+    private let options: [HWPickerOption]
+    private let selection: String?
+    private let appearance: HWAppearance
+    private let onSelect: (String) -> Void
+
+    @State private var query = ""
+
+    init(
+        blurb: LocalizedStringResource? = nil,
+        searchPrompt: LocalizedStringResource,
+        options: [HWPickerOption],
+        selection: String?,
+        appearance: HWAppearance = .surface,
+        onSelect: @escaping (String) -> Void
+    ) {
+        self.blurb = blurb
+        self.searchPrompt = searchPrompt
+        self.options = options
+        self.selection = selection
+        self.appearance = appearance
+        self.onSelect = onSelect
+    }
+
     /// `data.length > 12` — the design's own threshold for showing the search box.
     static let searchThreshold = 12
 
     /// The rows a query leaves, or all of them.
     ///
-    /// `static` and pure so the filter is testable without a sheet on screen: "searching a currency by its ISO
+    /// `static` and pure so the filter is testable without a list on screen: "searching a currency by its ISO
     /// code finds it" is a rule, and a rule worth writing is worth asserting.
     static func filtered(_ options: [HWPickerOption], matching query: String) -> [HWPickerOption] {
         let needle = query.trimmingCharacters(in: .whitespacesAndNewlines).lowercased()
@@ -98,32 +147,39 @@ struct HWPickerSheet: View {
     private var visible: [HWPickerOption] { Self.filtered(options, matching: query) }
 
     var body: some View {
-        HWSheetChrome(title: title, onClose: onClose, appearance: appearance) {
-            VStack(spacing: 0) {
-                if options.count > Self.searchThreshold {
-                    search
-                        .padding(.horizontal, 20)
-                        .padding(.bottom, 10)
-                }
+        VStack(alignment: .leading, spacing: 0) {
+            if let blurb {
+                Text(blurb)
+                    .font(.hw(.body))
+                    .foregroundStyle(secondaryInk)
+                    .fixedSize(horizontal: false, vertical: true)
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 14)
+            }
 
-                if visible.isEmpty {
-                    empty
-                        // **A list that emptied says so.** Typing replaces the rows in place, so a VoiceOver user
-                        // searching "zzz" hears nothing change and has to swipe past the field to discover the
-                        // list is gone. The same reasoning `StateView` applies to the empty-handed states.
-                        .onAppear { HWAnnouncement.post("component.picker.empty", in: locale) }
-                } else {
-                    HWSheetList {
-                        ForEach(visible) { option in
-                            HWSheetRow(
-                                name: Text(verbatim: option.name),
-                                leading: option.leading,
-                                meta: option.meta.map { Text(verbatim: $0) },
-                                isSelected: option.id == selection,
-                                appearance: appearance
-                            ) {
-                                onSelect(option.id)
-                            }
+            if options.count > Self.searchThreshold {
+                search
+                    .padding(.horizontal, 20)
+                    .padding(.bottom, 10)
+            }
+
+            if visible.isEmpty {
+                empty
+                    // **A list that emptied says so.** Typing replaces the rows in place, so a VoiceOver user
+                    // searching "zzz" hears nothing change and has to swipe past the field to discover the
+                    // list is gone. The same reasoning `StateView` applies to the empty-handed states.
+                    .onAppear { HWAnnouncement.post("component.picker.empty", in: locale) }
+            } else {
+                HWSheetList {
+                    ForEach(visible) { option in
+                        HWSheetRow(
+                            name: Text(verbatim: option.name),
+                            leading: option.leading,
+                            meta: option.meta.map { Text(verbatim: $0) },
+                            isSelected: option.id == selection,
+                            appearance: appearance
+                        ) {
+                            onSelect(option.id)
                         }
                     }
                 }

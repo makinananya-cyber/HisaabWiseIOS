@@ -47,6 +47,10 @@
 /// | `.t-li` + `.t-dot` · `.eg` · `.tip` | ``HWTeachingEntry`` · ``HWWorkedExample`` · ``HWTeachingTip`` |
 /// | `.done-badge` · `.done-stats` + `.dstat` | ``HWDoneBadge`` · ``HWCompletionStats`` · ``HWCompletionStat`` |
 /// | `.week` + `.wd` · `.confetti` + `.cf` | ``HWWeekStrip`` · ``HWConfetti`` |
+/// | `.profile` + `.avatar` + `.pro-*` · `.bubble` + `.bubble-cap` | ``HWProfileHeader`` · ``HWSettingsTray`` |
+/// | `.card{padding:6px}` · `.info` + `.info-lab` · `.info-val` + `.locked` · `.info-note` | ``HWRowCard`` · ``HWInfoRow`` · ``HWInfoValue`` · ``HWInfoNote`` |
+/// | `.info input` + `.money-wrap .cur` · `.dial` · `.err` | ``HWInlineField`` · ``HWDialTrigger`` · ``HWFieldNote`` |
+/// | `.explain` + `.opts` (as a page rather than a sheet) | ``HWOptionList`` |
 ///
 /// **Components are presentational and know nothing.** They take values and closures. They do not
 /// import the networking layer, do not hold a view model, and do not fetch — `LayeringTests` asserts
@@ -67,9 +71,9 @@
 ///
 /// **Two things from that CSS are deliberately absent**, and each says why:
 ///
-/// - The destructive button — the design's `.btn-danger` and Account's `.logout` — which arrives with
-///   Account (#23), where there is a caller to shape it. The same reasoning `ScreenChrome` gives for not
-///   being appearance-agnostic yet: two callers shape a control better than one guess.
+/// - `.btn-danger`, the **filled** red gradient. Account's `.logout` arrived as ``HWButtonVariant/destructive``
+///   (#23); its confirmation did not, because that confirmation is a `confirmationDialog` whose destructive
+///   button is the platform's red (see ``LogoutControl``) — so a transcription would have nowhere to be used.
 /// - `.tabbar`. It is the five-tab shell's, and in SwiftUI it is a `TabView` rather than a control:
 ///   converting the CSS would mean re-implementing a system container, which Rule 1 rules out.
 ///
@@ -132,6 +136,34 @@
 /// pending**: ``HWMoneyField`` and ``HWCombo`` were brand-only while registration was their one caller, and
 /// Expenses (#18) is the second one that settled both — the combo's caption even moves, because the design puts
 /// it inside the box on one surface and above it on the other.
+///
+/// **What Account's ten entries decide** (#23, ADR-0038), because four of them are departures. ``HWRowCard`` is a
+/// *second* card rather than an inset parameter on ``HWCard``: the design gives Account's `.card` a 6px inset
+/// because its content is full-width rows with their own padding, and insetting them by sixteen more would draw a
+/// separator that stops short of the border. ``HWInlineField`` is **not** ``HWTextField``: `.info input` is an
+/// underlined field inside a row inside a card, and drawing `.field-box` there is three borders for one field where
+/// the design draws one. ``HWBanner`` is the shell's own "verify your email" strip, which was inlined in `AppShell`
+/// until this screen drew the same thing beside the locked email — two callers, so it is a component. And
+/// ``HWOptionList`` is folded out of ``HWPickerSheet`` on the fold ``HWFigureChips`` came out of: Account draws the
+/// same searchable list of the same rows as a *pushed page* under an `.explain` paragraph rather than as a sheet, so
+/// the list is shared and the panel is not.
+///
+/// Two components are **split into a label and a control**, both for the same reason: a control inside a control is
+/// two controls for one gesture. ``HWRowLabel`` is what a value-based `NavigationLink` wears — the split
+/// ``HWMonthRowLabel`` and ``HWCategoryRowLabel`` already make — and ``HWButtonFace`` is what a `ShareLink` wears,
+/// which is the export control on Account.
+///
+/// And two brand-only components grew a `surface` arm, which is the "two callers shape it better than one guess"
+/// rule paying out a third time: ``HWStepBar`` and ``HWStrengthMeter`` had registration as their only caller, and
+/// Account's password flow is the second. The meter's fourth level is the **departure**: the design's fourth colour
+/// is the palest of its four, which reads as strongest on the galaxy ground and as almost nothing on an off-white
+/// one — so the in-app ramp runs the other way and converts the design's *decision* (darker is stronger against
+/// this ground) rather than its four hex values.
+///
+/// Four of the profile card's flourishes are **dropped rather than gated** under Reduce Motion, on the reasoning the
+/// `START` flag's bob carries: the orbiting glow behind the card, the avatar's entrance pop, the ring pulsing around
+/// it, and the summary chip's pinging dot. An entrance's only honest replacement is the thing already being there,
+/// and a dot that pulses to mean nothing is an attention loop with nothing to attend to.
 ///
 /// The namespace itself is empty: the components are top-level types, so a call site reads
 /// `HWButton(…)` rather than `Components.HWButton(…)`.

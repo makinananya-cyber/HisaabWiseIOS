@@ -7,9 +7,10 @@ import SwiftUI
 /// and the label is for everything else, which is why the dots are hidden from VoiceOver rather than each
 /// carrying a position it would announce.
 ///
-/// **Brand only.** The design draws a step bar on the galaxy ground and nowhere else, because registration is
-/// the only multi-step form in the app. A `surface` arm would be an invention, and ADR-0021's whole point is
-/// that the two surfaces are converted separately rather than derived from one another.
+/// **Both appearances now.** It was brand-only while registration was the app's only multi-step form; Account's
+/// password change is the second (#23), and the design draws its `.steps` on the light ground with the same
+/// three shapes and different colours. ADR-0021's point holds — the arms are transcribed separately below rather
+/// than one being derived from the other.
 struct HWStepBar: View {
     @Environment(ThemeManager.self) private var theme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
@@ -24,18 +25,22 @@ struct HWStepBar: View {
     /// VoiceOver's reading of the back affordance, which is icon-only. The design gives each step its own —
     /// "Back to your details", "Back to your money details" — so it is the caller's.
     private let backLabel: LocalizedStringResource
+    /// Which of the design's two surfaces the bar sits on (ADR-0021).
+    private let appearance: HWAppearance
 
     init(
         stepCount: Int,
         currentIndex: Int,
         label: LocalizedStringResource,
         backLabel: LocalizedStringResource,
+        appearance: HWAppearance = .brand,
         onBack: (() -> Void)? = nil
     ) {
         self.stepCount = stepCount
         self.currentIndex = currentIndex
         self.label = label
         self.backLabel = backLabel
+        self.appearance = appearance
         self.onBack = onBack
     }
 
@@ -52,7 +57,7 @@ struct HWStepBar: View {
             dots
 
             Text(label)
-                .hwEyebrow(.brand)
+                .hwEyebrow(appearance)
                 .opacity(0.75)
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .trailing)
@@ -70,7 +75,7 @@ struct HWStepBar: View {
         Button(action: action) {
             Image(systemName: "chevron.backward")
                 .font(.hw(.caption).weight(.bold))
-                .foregroundStyle(theme.palette.brand.inkAccent)
+                .foregroundStyle(currentDot)
                 .frame(width: HWTouchTarget.minimum, height: HWTouchTarget.minimum)
                 .contentShape(.rect)
         }
@@ -100,8 +105,21 @@ struct HWStepBar: View {
 
     /// `.dots i` unvisited, `.past` behind, `.on` current.
     private func colour(at index: Int) -> Color {
-        if index == currentIndex { return theme.palette.brand.inkAccent }
-        return index < currentIndex ? theme.palette.accent.muted : theme.palette.brand.separator
+        if index == currentIndex { return currentDot }
+        return index < currentIndex ? theme.palette.accent.muted : unvisitedDot
+    }
+
+    /// `.steps i.on{background:var(--planetary)}` in-app; the lit sky ink on the galaxy ground.
+    ///
+    /// The two are different roles for the same reason `HWTextField`'s border is: `--planetary` is the accent a
+    /// light surface reads, and on galaxy it is barely a shade off the background.
+    private var currentDot: Color {
+        appearance == .brand ? theme.palette.brand.inkAccent : theme.palette.accent.base
+    }
+
+    /// `.steps i{background:var(--line-2)}` — the step not reached yet.
+    private var unvisitedDot: Color {
+        appearance == .brand ? theme.palette.brand.separator : theme.palette.surface.separatorStrong
     }
 }
 
@@ -114,6 +132,28 @@ struct HWStepBar: View {
     }
     .padding(22)
     .background(HWPreviewGround(appearance: .brand))
+    .hwTheme()
+}
+
+#Preview("Step bar — in-app, on the password change") {
+    VStack(spacing: 28) {
+        HWStepBar(
+            stepCount: 3,
+            currentIndex: 0,
+            label: "Step 1 of 3",
+            backLabel: "Back",
+            appearance: .surface
+        )
+        HWStepBar(
+            stepCount: 3,
+            currentIndex: 1,
+            label: "Step 2 of 3",
+            backLabel: "Back to your current password",
+            appearance: .surface
+        ) {}
+    }
+    .padding(22)
+    .background(HWPreviewGround())
     .hwTheme()
 }
 

@@ -85,11 +85,13 @@ struct StateTaxonomyTests {
                 "ViewModels/SignInViewModel.swift",
                 "ViewModels/RegistrationViewModel.swift",
                 "ViewModels/ExpensesViewModel.swift",
+                "ViewModels/AccountViewModel.swift",
             ],
             skippingLayers: ["Networking"],
             because: """
                 a read becomes a LoadState in BaseViewModel.load(); a form becomes field errors in \
-                SignInViewModel; a write becomes an offline state or a re-filing offer in ExpensesViewModel
+                SignInViewModel; a write becomes an offline state or a re-filing offer in ExpensesViewModel, \
+                and a *preference* write becomes a notice beside the picker in AccountViewModel (#23)
                 """
         )
     }

@@ -97,6 +97,35 @@ enum TestBench {
         }
     }()
 
+    /// All five tab view models over one client, with the repaint loop closed exactly as `AppEnvironment` closes
+    /// it.
+    ///
+    /// One factory rather than the identical five-line literal `AppShellTests` and `RootViewTests` were each
+    /// carrying: a set that gains a member is otherwise two edits, and #23 was the ticket that added the fifth.
+    ///
+    /// - Parameter transport: what every one of the five reads from. An empty `FixtureTransport` by default, which
+    ///   is right for the suites that are about the *shell* rather than about any screen: every model then fails
+    ///   its load, which is a state, and none of them reaches the network.
+    @MainActor
+    static func tabViewModels(over transport: some Transport = FixtureTransport()) -> TabViewModels {
+        let client = client(transport)
+        let content = ContentLoader(client: client, store: InMemoryContentStore())
+        let account = AccountViewModel(
+            client: client,
+            content: content,
+            language: LanguageManager(selected: .english)
+        )
+        let models = TabViewModels(
+            home: HomeViewModel(client: client, content: content),
+            expenses: ExpensesViewModel(client: client, content: content),
+            learn: LearnViewModel(client: client, content: content),
+            reports: ReportsViewModel(client: client),
+            account: account
+        )
+        account.connect(to: models)
+        return models
+    }
+
     /// A fixture's bytes, for the many places a stub needs a body and cannot throw.
     ///
     /// **It traps**, deliberately: a missing fixture file is not a test outcome, it is a bundle assembled

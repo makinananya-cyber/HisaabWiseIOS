@@ -105,19 +105,40 @@ final class AppEnvironment {
         ReportsViewModel(client: client)
     }
 
+    /// Account's view model (#23). The only tab view model that takes the **language manager**, because the picker
+    /// that changes the app's language is on this screen and `LanguageManager` is its one owner (ADR-0024).
+    ///
+    /// It needs the content loader for the same reason Expenses does: its currency picker is the 160-currency
+    /// reference list and its dial-code sheet is the 251 countries, both cacheable content on their own ETags
+    /// rather than fields in a per-user payload (ADR-0009, ADR-0020).
+    func makeAccountViewModel() -> AccountViewModel {
+        AccountViewModel(client: client, content: content, language: language)
+    }
+
     /// One view model per tab, made once for the shell to be handed (issue #5).
     ///
     /// **Made here and held by the composition root**, not held here: the graph is the app's lifetime and a
     /// tab's view model is the shell's, which today are the same span and will not be once Landing and Auth can
     /// come and go. What this method owns is the one thing a view model needs and a view may not have — the
     /// client.
+    ///
+    /// **And it closes the second cycle in the graph** (#23). A display-currency or language change makes every
+    /// other screen's figures stale, so Account has to be able to re-read them; `TabViewModels` is the one object
+    /// that holds all five, and it holds Account. So one of the two is connected rather than injected, and it is
+    /// this one — for the reason `language.connect(to: client)` above is: the half-built state stays confined to
+    /// an object nobody has called yet, and an unconnected account view model changes the preference and repaints
+    /// nothing rather than failing.
     func makeTabViewModels() -> TabViewModels {
-        TabViewModels(
+        let account = makeAccountViewModel()
+        let models = TabViewModels(
             home: makeHomeViewModel(),
             expenses: makeExpensesViewModel(),
             learn: makeLearnViewModel(),
-            reports: makeReportsViewModel()
+            reports: makeReportsViewModel(),
+            account: account
         )
+        account.connect(to: models)
+        return models
     }
 
     /// A registration form, made **fresh each time the screen is pushed** (#15).

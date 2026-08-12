@@ -12,16 +12,7 @@ import Testing
 @Suite("The five-tab shell")
 @MainActor
 struct AppShellTests {
-    private func viewModels() -> TabViewModels {
-        let client = TestBench.client(FixtureTransport())
-        let content = ContentLoader(client: client, store: InMemoryContentStore())
-        return TabViewModels(
-            home: HomeViewModel(client: client, content: content),
-            expenses: ExpensesViewModel(client: client, content: content),
-            learn: LearnViewModel(client: client, content: content),
-            reports: ReportsViewModel(client: client)
-        )
-    }
+    private func viewModels() -> TabViewModels { TestBench.tabViewModels() }
 
     // MARK: - Five tabs, in order
 

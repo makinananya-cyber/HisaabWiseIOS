@@ -214,6 +214,54 @@ enum Fixture: String, CaseIterable, Sendable {
     /// they agree where both describe the same month, which is February.
     case reportsMonthQuiet = "reports-month-quiet"
 
+    /// `GET /v1/screens/account` — the whole screen in one response (ADR-0020, ADR-0038, #23), **and what
+    /// every Account write answers with**.
+    ///
+    /// **It is the identity `me-verified.json` describes**, down to the address: `FixtureCorpusTests` asserts the
+    /// two agree, because the profile header and the shell's own reading of who is signed in are two reads of one
+    /// account — and a difference between them is one of the two having invented a name.
+    ///
+    /// **The display name is a mononym on purpose.** "Neeraj" has one word in it, so the avatar's initials are
+    /// one letter — which is exactly the case the design's `split(/\s+/).slice(0, 2).map(w => w[0])` gets right
+    /// by accident and a two-word name would hide. The initials are the server's here (``AccountScreen/Profile``),
+    /// and a fixture that never exercised a name the rule is *about* would not be testing that.
+    ///
+    /// Its salary is the corpus's own ₹65,000 — the figure `home-inr.json`'s "9% of pay" is a share of, and the
+    /// one `reports-inr.json` runs its archive on until the raise.
+    case accountINR = "account-inr"
+
+    /// **The same account read in dirhams** — what `PUT /v1/me/currency` answers with, and the repaint's other
+    /// half.
+    ///
+    /// Converted at the corpus's one rate, so the salary's `display` **and its `minor`** both differ: a figure
+    /// arrives converted at read (ADR-0003), which is why the client sends no monetary value with a currency
+    /// change and performs no conversion of its own — it re-reads (§4.1). Everything that is not money is
+    /// byte-identical, which is what makes "a currency change repaints and changes nothing else" an assertion
+    /// rather than a claim.
+    ///
+    /// It claims no path, because ``accountINR`` claims them and `FixtureTransport.serving(_:)` refuses two
+    /// fixtures for one route — which is exactly right here: they are two *reads* of one address, and the test
+    /// that matters stubs them in sequence.
+    case accountAED = "account-aed"
+
+    /// `GET /v1/me/export` — the UAE PDPL access right, as bytes.
+    ///
+    /// **The one fixture in the corpus with no `Decodable` behind it**, and the only one there is nothing to
+    /// assert about beyond its being a file: the client never decodes an export (``APIClient/bytes(at:)``), it
+    /// writes it out for the user to keep. So what this exercises is the path from a request to a shareable
+    /// file, and its shape is the Technical Spec's — one object per collection, which is why a single CSV of
+    /// "everything" was rejected there.
+    case meExport = "me-export"
+
+    /// `GET /v1/screens/account` for an account that has **not verified its email and has given no phone
+    /// number**.
+    ///
+    /// Two fields, and both draw a branch the standing payload does not: the banner beside the locked email
+    /// (ADR-0031's reminder, on the screen the email belongs to), and a phone that is **absent rather than
+    /// empty** — the optional-at-registration case (ADR-0031), which a fixture carrying `""` would have quietly
+    /// turned into a number nobody gave.
+    case accountUnverified = "account-unverified"
+
     /// `GET /v1/curriculum` — **5** units, **15** lessons, **124** steps (58 teach + 66 question), answer keys
     /// intact.
     ///
@@ -226,7 +274,7 @@ enum Fixture: String, CaseIterable, Sendable {
     /// `GET /v1/content/picklists` — **22** transport modes and **20** "Other" types.
     ///
     /// The counts are the acceptance test the workspace's content rules set, so the corpus holds both lists
-    /// whole: the transport list clears `HWPickerSheet`'s twelve-row search threshold by ten, and a trimmed
+    /// whole: the transport list clears `HWOptionList`'s twelve-row search threshold by ten, and a trimmed
     /// sample would be a sheet whose search box had never been exercised.
     case picklists
 
@@ -301,6 +349,15 @@ enum Fixture: String, CaseIterable, Sendable {
         // The lesson the standing Learn payload's cursor sits on, and a replay of one already finished. Only the
         // first claims a path, because `serving(_:)` refuses two fixtures for one route and these two are
         // alternative answers to the same *kind* of request rather than to the same lesson.
+        // **Three paths, one set of bytes**, which is ADR-0020's write rule once more: the read, the currency
+        // change, and the password change all answer with the updated account screen. `PUT /v1/me` answers with it
+        // too and is **not** here — `Endpoint.me` is one path with two verbs, only one fixture may claim a path,
+        // and the identity read holds it (``meVerified``). The personal write is stubbed explicitly by whichever
+        // test or preview exercises it, exactly as the second Reports month is.
+        case .accountINR: [Endpoint.screenAccount, Endpoint.currency, Endpoint.password]
+        case .meExport: [Endpoint.export]
+        // Same rule as the Expenses trio: three payloads for one path, and only the standing one may claim it.
+        case .accountAED, .accountUnverified: []
         case .lessonCompleted: [Endpoint.lessonCompletion(lessonID: "u1l3")]
         case .lessonRevisited: []
         case .curriculum: [Endpoint.curriculum]

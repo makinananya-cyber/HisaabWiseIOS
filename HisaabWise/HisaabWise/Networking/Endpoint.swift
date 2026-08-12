@@ -61,6 +61,17 @@ enum Endpoint {
         "\(screenReports)/\(pathSegment(monthKey))"
     }
 
+    /// `GET /v1/screens/account` — **the single read Account makes** (ADR-0020, ADR-0038, #23): the profile
+    /// header with its initials and its summary chip, the four rows in the order they are drawn with each
+    /// one's subtitle and value, the personal card's four lines, the stored language and display currency, and
+    /// the two security questions the password flow asks.
+    ///
+    /// **The date label is why the row subtitles are here.** "Changed 3 months ago" is computed against a day
+    /// boundary in the user's stored timezone (invariant 6); the design carries it as a literal and rewrites
+    /// it to "just now" in the browser, which is the same defect `Expenses.dateLabel` fixed one screen
+    /// earlier.
+    static let screenAccount = "/v1/screens/account"
+
     // MARK: - Learn
 
     /// `POST /v1/learn/lessons/{id}/complete` — a finished lesson, with **one result per question** (#20).
@@ -161,7 +172,45 @@ enum Endpoint {
 
     /// The identity revalidation ADR-0008 performs on foreground. Not a screen endpoint (ADR-0020): it
     /// carries who the user is, not what any screen draws.
+    ///
+    /// **One path, two verbs** (#23). `GET` answers with the identity (`SessionUser`); `PUT` replaces the three
+    /// editable personal details and answers with the **account screen payload** (``PersonalDetailsUpdate``).
+    /// Declared once, because a path has one owner however many verbs it speaks — and the pair is why the
+    /// corpus lets only one fixture claim a route.
     static let me = "/v1/me"
+
+    // MARK: - The account's own writes
+
+    /// `PUT /v1/me/currency` — the display currency, by ISO code.
+    ///
+    /// **Online-only by design** (ADR-0003): every figure on every screen is converted at read, so a change
+    /// the server has not accepted is a client showing dirhams over rupee arithmetic. There is no offline
+    /// write and no queue to hold one (ADR-0019).
+    ///
+    /// It answers with the account screen payload, and the **repaint** is the other four screens: their
+    /// figures were converted in the currency that was in force when they were read.
+    static let currency = "/v1/me/currency"
+
+    /// `POST /v1/me/password` — current password, both security answers, and the new password, in one request.
+    ///
+    /// A `POST` rather than a `PUT` because it is not a replacement of a value the client can name: it is a
+    /// submission the server judges, and it has a side effect beyond the field — every other session is
+    /// revoked (Product Spec §3.7 **[FIX]**). `APIClient.post` keys it like every other `POST` (ADR-0022),
+    /// which is exactly right here: a change that reached the server and lost its response must not be applied
+    /// twice against a `currentPassword` that is no longer current.
+    ///
+    /// **Why one request and not three**, and why there is deliberately no route that verifies a password on
+    /// its own: see ``PasswordChange``.
+    static let password = "/v1/me/password"
+
+    /// `GET /v1/me/export` — the UAE PDPL data-subject access right (Product Spec §8, Technical Spec §5).
+    ///
+    /// **The one per-user response the client does not decode.** It is streamed JSON built from cursors
+    /// server-side, holding every collection this system keeps about one person; modelling it would mean the
+    /// client owning a schema for all eleven of them, and re-encoding it to save would mean handing the user
+    /// this client's idea of their data rather than the server's — which is the same rule `ContentLoader`
+    /// follows about storing bytes rather than values. So it comes back as bytes and goes straight to a file.
+    static let export = "/v1/me/export"
 
     // MARK: - Content
 

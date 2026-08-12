@@ -906,4 +906,126 @@ struct FixtureCorpusTests {
             }
         }
     }
+
+    // MARK: - The Account payloads
+
+    @Test("the account payloads decode into the type the app decodes them into")
+    func accountPayloadsDecode() throws {
+        let account = try Fixture.accountINR.decode(AccountScreen.self)
+
+        #expect(account.rows.map(\.section) == [.personal, .language, .currency, .password])
+        #expect(account.language == .english)
+        #expect(account.currency.rawValue == "INR")
+        #expect(account.personal.salary.display == "\u{20B9}65,000")
+        #expect(account.personal.isEmailVerified)
+        #expect(account.password.questions.count == 2)
+
+        // The payload that claims no path, carrying the two branches the standing one cannot show.
+        let unverified = try Fixture.accountUnverified.decode(AccountScreen.self)
+        #expect(!unverified.personal.isEmailVerified)
+        // **Absent rather than empty** — phone is optional at registration (ADR-0031), and `""` would be a number
+        // nobody gave.
+        #expect(unverified.personal.phone == nil)
+    }
+
+    /// **The profile header and the shell's own reading of who is signed in are two reads of one account.**
+    ///
+    /// `GET /v1/me` carries the identity and `GET /v1/screens/account` carries the screen; a difference between
+    /// them is one of the two assemblies having invented a name, which is the same anchor the Home/Expenses pair
+    /// and the archive/detail pair are.
+    @Test("the account screen and the identity agree about who is signed in")
+    func theAccountAgreesWithTheIdentity() throws {
+        let account = try Fixture.accountINR.decode(AccountScreen.self)
+        let identity = try Fixture.meVerified.decode(SessionUser.self)
+
+        #expect(account.profile.email == identity.email)
+        #expect(account.profile.displayName == identity.displayName)
+        #expect(account.personal.email == identity.email)
+        #expect(account.personal.isEmailVerified == identity.emailVerified)
+        // And the card's third line is the header's address, because they are one field drawn twice.
+        #expect(account.personal.displayName == account.profile.displayName)
+    }
+
+    /// **Two reads of one account in two currencies, and the invariant-7 regression test's account half.**
+    ///
+    /// A currency change is a re-read: the salary arrives converted, `display` **and** `minor` both differ, and
+    /// everything that is not money is byte-identical. That is what makes "a currency change repaints and changes
+    /// nothing else" an assertion rather than a claim — and what makes the client's half of it *absence*: it sends
+    /// the ISO code and converts nothing.
+    @Test("the same account in dirhams differs in its money and in nothing else")
+    func theCurrencyPairDiffersOnlyInMoney() throws {
+        let rupees = try Fixture.accountINR.decode(AccountScreen.self)
+        let dirhams = try Fixture.accountAED.decode(AccountScreen.self)
+
+        // Money, converted.
+        #expect(rupees.personal.salary.display != dirhams.personal.salary.display)
+        #expect(rupees.personal.salary.minor != dirhams.personal.salary.minor)
+        #expect(dirhams.personal.salary.currency.rawValue == "AED")
+        #expect(dirhams.currency.rawValue == "AED")
+        #expect(dirhams.personal.salaryCurrency.code.rawValue == "AED")
+
+        // And everything that is not money, untouched.
+        #expect(rupees.profile.displayName == dirhams.profile.displayName)
+        #expect(rupees.profile.email == dirhams.profile.email)
+        #expect(rupees.profile.initials == dirhams.profile.initials)
+        #expect(rupees.personal.phone == dirhams.personal.phone)
+        #expect(rupees.password.questions == dirhams.password.questions)
+        #expect(rupees.language == dirhams.language)
+        #expect(rupees.rows.map(\.section) == dirhams.rows.map(\.section))
+        #expect(rupees.rows.map(\.hint) == dirhams.rows.map(\.hint))
+    }
+
+    /// **The initials are the server's, and the standing payload exercises the case the rule is about.**
+    ///
+    /// "Neeraj" is a mononym, so its initials are one letter — which the design's
+    /// `split(/\s+/).slice(0, 2).map(w => w[0])` gets right by accident and a two-word name would hide. The
+    /// avatar draws whatever arrives; what is asserted here is that it arrives at all.
+    @Test("the profile carries its own initials and its own summary line", arguments: [
+        Fixture.accountINR, .accountAED, .accountUnverified,
+    ])
+    func theProfileIsAssembledServerSide(_ fixture: Fixture) throws {
+        let account = try fixture.decode(AccountScreen.self)
+
+        #expect(!account.profile.initials.isEmpty)
+        #expect(account.profile.initials.count == 1, "the corpus's display name is a mononym on purpose")
+        // **One string, not two joined** — the design writes `currency.c + ' · ' + language.n`, and a sentence
+        // concatenated on the client is one no translation can reorder (ADR-0011).
+        #expect(account.profile.summaryLabel.contains(account.currency.rawValue))
+        #expect(!account.profile.summaryLabel.isEmpty)
+    }
+
+    /// An account payload carries **no password and nothing standing in for one** (invariant 5, defect D4), and no
+    /// security *answer* either — the server hashes the normalised form and never returns it.
+    @Test("no account payload carries a password, a mask, or an answer", arguments: [
+        Fixture.accountINR, .accountAED, .accountUnverified,
+    ])
+    func theAccountCarriesNoSecrets(_ fixture: Fixture) throws {
+        let json = String(decoding: TestBench.payload(fixture), as: UTF8.self)
+
+        // `"password"` itself is a *section* name on this screen, so what is looked for is a field that could
+        // hold one — plus the mask, which is the client's decoration and must not arrive as data.
+        for field in ["currentPassword", "newPassword", "passwordHash", "\u{2022}", "answer", "hash", "salt"] {
+            #expect(!json.contains(field), "\(fixture.rawValue) carries \(field)")
+        }
+        // What it carries instead: two questions, by id and by localised text.
+        let account = try fixture.decode(AccountScreen.self)
+        #expect(account.password.questions.allSatisfy { $0.id.hasPrefix("sq") && !$0.text.isEmpty })
+    }
+
+    /// The salary is the corpus's own \u{20B9}65,000 — the figure Home's "9% of pay" is a share of and the one
+    /// `reports-inr.json` runs its archive on until the raise. One salary, described by four payloads.
+    @Test("the account's salary is the salary the rest of the corpus is built on")
+    func theSalaryIsTheCorpusSalary() throws {
+        let account = try Fixture.accountINR.decode(AccountScreen.self)
+
+        #expect(account.personal.salary.minor == 6_500_000)
+        #expect(account.personal.salary.currency.rawValue == "INR")
+        // And the figure the field is *edited* from round-trips exactly, which is defect D16 as a corpus property.
+        let typed = TypedAmount.major(
+            account.personal.salary.minor,
+            exponent: account.personal.salary.exponent
+        )
+        #expect(TypedAmount.minor(from: typed, exponent: account.personal.salary.exponent)
+            == account.personal.salary.minor)
+    }
 }

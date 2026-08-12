@@ -1,6 +1,786 @@
 {
   "sourceLanguage": "en",
   "strings": {
+    "account.currency.blurb": {
+      "comment": "`.explain` over the currency list — the design's own sentence.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Amounts you enter and every total you see will use this currency."
+          }
+        }
+      }
+    },
+    "account.currency.search": {
+      "comment": "The currency list's search placeholder — the design's own words.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Search currency or code"
+          }
+        }
+      }
+    },
+    "account.currency.title": {
+      "comment": "The Currency page's navigation title.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Currency"
+          }
+        }
+      }
+    },
+    "account.detail.unavailable": {
+      "comment": "On a pushed settings page whose payload has gone — a write that failed offline replaced it. One sentence and the back button.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Go back and reload your account to see this."
+          }
+        }
+      }
+    },
+    "account.empty": {
+      "comment": "The account's `LoadState.empty` copy. `isEmpty` is `false` — a signed-in user always has an account — so this is only reachable if the server answers with no screen at all.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "We could not read your account details."
+          }
+        }
+      }
+    },
+    "account.export.action": {
+      "comment": "The UAE PDPL data-subject access right, as a control. Not in the design — PDPL requires it and the design's four rows are the design's own set.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Download my data"
+          }
+        }
+      }
+    },
+    "account.export.fileName": {
+      "comment": "The suggested name for the exported file. **Not dated** — the client owns no calendar (invariant 6), and the export timestamps itself inside the document.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "hisaabwise-export.json"
+          }
+        }
+      }
+    },
+    "account.export.note": {
+      "comment": "The line under the export control, saying what it produces.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A copy of everything HisaabWise holds about you, as a file you keep."
+          }
+        }
+      }
+    },
+    "account.eyebrow": {
+      "comment": "`.topbar .eyebrow` on Account.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HisaabWise"
+          }
+        }
+      }
+    },
+    "account.language.blurb": {
+      "comment": "`.explain` over the language list — the design's own sentence.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Every screen, label and report will be written in the language you pick."
+          }
+        }
+      }
+    },
+    "account.language.search": {
+      "comment": "The language list's search placeholder. Two shipped languages do not clear the twelve-row threshold, so it is not drawn — it is here because the component takes one.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Search language"
+          }
+        }
+      }
+    },
+    "account.language.title": {
+      "comment": "The Language page's navigation title.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Language"
+          }
+        }
+      }
+    },
+    "account.notice.currencyChanged": {
+      "comment": "The toast after `PUT /v1/me/currency` lands and every screen has been re-read.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Every amount now shows in your new currency."
+          }
+        }
+      }
+    },
+    "account.notice.languageChanged": {
+      "comment": "The toast after a language switch lands.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The app is now in your new language."
+          }
+        }
+      }
+    },
+    "account.notice.passwordChanged": {
+      "comment": "The toast after `POST /v1/me/password` lands. The design's own wording.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Password updated. Use it next time you sign in."
+          }
+        }
+      }
+    },
+    "account.notice.personalUpdated": {
+      "comment": "The toast after `PUT /v1/me` lands. The design's own wording.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Personal information updated."
+          }
+        }
+      }
+    },
+    "account.password.back": {
+      "comment": "VoiceOver's reading of the step bar's back affordance.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Back a step"
+          }
+        }
+      }
+    },
+    "account.password.check": {
+      "comment": "The button on step two — the design's own words.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Check my answers"
+          }
+        }
+      }
+    },
+    "account.password.continue": {
+      "comment": "The button on step one — the design's own word.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Continue"
+          }
+        }
+      }
+    },
+    "account.password.current.blurb": {
+      "comment": "`.step-p` on step one — the design's own sentence.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This stops anyone who picks up your unlocked phone from taking over the account."
+          }
+        }
+      }
+    },
+    "account.password.current.field": {
+      "comment": "The label on the current-password box.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Current password"
+          }
+        }
+      }
+    },
+    "account.password.current.heading": {
+      "comment": "`.step-h` on step one — the design's own words.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "First, enter your current password"
+          }
+        }
+      }
+    },
+    "account.password.error.answerMissing": {
+      "comment": "Under the answers when one is blank — the design's own words.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Please answer both questions."
+          }
+        }
+      }
+    },
+    "account.password.error.answersRejected": {
+      "comment": "The server's `SECURITY_ANSWERS_INVALID`. It does not say **which** answer missed, because the server does not — telling somebody which of two guesses landed is a hint to whoever is guessing.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "That does not match what you saved. Have another go."
+          }
+        }
+      }
+    },
+    "account.password.error.currentMissing": {
+      "comment": "Under the current-password box when it is blank — the design's own words.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Please enter your current password."
+          }
+        }
+      }
+    },
+    "account.password.error.currentRejected": {
+      "comment": "The server's `INVALID_CREDENTIALS`, as a sentence under the box it is about.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "That is not your current password."
+          }
+        }
+      }
+    },
+    "account.password.error.mismatch": {
+      "comment": "Under the confirmation box when the two disagree — the design's own words.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "These two don't match yet."
+          }
+        }
+      }
+    },
+    "account.password.error.tooShort": {
+      "comment": "Under the new-password box when it is under eight characters (invariant 4) — the design's own words.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Use at least 8 characters."
+          }
+        }
+      }
+    },
+    "account.password.new.blurb": {
+      "comment": "`.step-p` on step three — the design's own sentence.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pick something you don't use anywhere else. Eight characters minimum."
+          }
+        }
+      }
+    },
+    "account.password.new.confirm": {
+      "comment": "The label on the confirmation box.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Confirm new password"
+          }
+        }
+      }
+    },
+    "account.password.new.field": {
+      "comment": "The label on the new-password box.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New password"
+          }
+        }
+      }
+    },
+    "account.password.new.heading": {
+      "comment": "`.step-h` on step three — the design's own words.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Create a new password"
+          }
+        }
+      }
+    },
+    "account.password.questions.answer": {
+      "comment": "The label on each answer box. The *question* is drawn above it, because a question is server content and a field's label is a catalogue key.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your answer"
+          }
+        }
+      }
+    },
+    "account.password.questions.blurb": {
+      "comment": "`.step-p` on step two. The design's sentence, with its promise kept by the server's normalisation (§4.3) rather than by a client-side comparison (defect D4).",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "These are the two questions you chose when you set up the account. Capital letters and exact wording do not matter — just get the key words right."
+          }
+        }
+      }
+    },
+    "account.password.questions.heading": {
+      "comment": "`.step-h` on step two — the design's own words.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Answer your security questions"
+          }
+        }
+      }
+    },
+    "account.password.questions.support": {
+      "comment": "Shown after three refusals — the design's own escape route, and the only thing left that helps somebody who cannot answer their own questions.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Still stuck? Contact support and we will check who you are another way."
+          }
+        }
+      }
+    },
+    "account.password.step.one": {
+      "comment": "`.steplab` on the first step. As copy rather than two numbers joined (ADR-0011).",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Step 1 of 3"
+          }
+        }
+      }
+    },
+    "account.password.step.three": {
+      "comment": "`.steplab` on the third step.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Step 3 of 3"
+          }
+        }
+      }
+    },
+    "account.password.step.two": {
+      "comment": "`.steplab` on the second step.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Step 2 of 3"
+          }
+        }
+      }
+    },
+    "account.password.submit": {
+      "comment": "The button on step three — the design's own words.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Update password"
+          }
+        }
+      }
+    },
+    "account.password.title": {
+      "comment": "The Password page's navigation title.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Password"
+          }
+        }
+      }
+    },
+    "account.personal.card": {
+      "comment": "`.card-cap` over the four lines.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Personal information"
+          }
+        }
+      }
+    },
+    "account.personal.dialSheet.search": {
+      "comment": "The country-code sheet's search placeholder — the design's own words.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Search country or code"
+          }
+        }
+      }
+    },
+    "account.personal.dialSheet.title": {
+      "comment": "The country-code sheet's title — the design's own words.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Select country code"
+          }
+        }
+      }
+    },
+    "account.personal.done": {
+      "comment": "`.txt-done` — the same control, saying it will commit.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Done"
+          }
+        }
+      }
+    },
+    "account.personal.edit": {
+      "comment": "`.txt-edit` — the design's own word.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Edit"
+          }
+        }
+      }
+    },
+    "account.personal.email": {
+      "comment": "`.info-lab` for the locked address.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Email"
+          }
+        }
+      }
+    },
+    "account.personal.email.note": {
+      "comment": "`.info-note` under the email — the design's own sentence, which carries the reason it cannot be changed here (invariant 4).",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This is the address you registered with — it is how we check it is you, so it cannot be changed here."
+          }
+        }
+      }
+    },
+    "account.personal.email.unverified": {
+      "comment": "Beside the locked email while the address is unconfirmed. The shell carries the app-wide reminder; this one sits next to the address it is about.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This address is not confirmed yet — tap the link in the email we sent you."
+          }
+        }
+      }
+    },
+    "account.personal.error.name": {
+      "comment": "Under the username field when it is blank.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enter the name you would like to be called."
+          }
+        }
+      }
+    },
+    "account.personal.error.phone": {
+      "comment": "Under the phone field when a number is there and is not a number. The design's own words — blank is allowed, because phone is optional.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enter a valid phone number."
+          }
+        }
+      }
+    },
+    "account.personal.error.salary": {
+      "comment": "Under the salary field when it is blank or zero. The design's own words.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enter an amount greater than zero."
+          }
+        }
+      }
+    },
+    "account.personal.phone": {
+      "comment": "`.info-lab` for the phone number.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Phone"
+          }
+        }
+      }
+    },
+    "account.personal.phone.dial": {
+      "comment": "VoiceOver's reading of the `.dial` trigger — the design's own `aria-label`.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Change country code"
+          }
+        }
+      }
+    },
+    "account.personal.phone.none": {
+      "comment": "What the phone line reads when no number was given. Phone is optional at registration (ADR-0031), so \"absent\" is a real state rather than an empty field.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not given"
+          }
+        }
+      }
+    },
+    "account.personal.salary": {
+      "comment": "`.info-lab` for the monthly salary.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Salary"
+          }
+        }
+      }
+    },
+    "account.personal.salary.unit": {
+      "comment": "The small grey unit after the salary figure.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "/mo"
+          }
+        }
+      }
+    },
+    "account.personal.save": {
+      "comment": "`#save-pi` — the design's own words.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Save changes"
+          }
+        }
+      }
+    },
+    "account.personal.title": {
+      "comment": "The Personal Information page's navigation title.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Personal Information"
+          }
+        }
+      }
+    },
+    "account.personal.username": {
+      "comment": "`.info-lab` for the display name. \"Username\" is the design's word and it is a display name only — email is the identity (invariant 4).",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Username"
+          }
+        }
+      }
+    },
+    "account.refusal.needsConnection": {
+      "comment": "Beside the picker when a preference change or an export could not reach the server. Online-only by design (ADR-0003) — so this says nothing has changed, which is the reassuring half.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "That needs a connection. Nothing has changed."
+          }
+        }
+      }
+    },
+    "account.refusal.refused": {
+      "comment": "Beside the picker when the server answered and refused. Distinct from the offline message because trying again in a minute is not the remedy.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "That could not be saved. Nothing has changed."
+          }
+        }
+      }
+    },
+    "account.row.passwordMask": {
+      "comment": "The password row's `.row-val` — eight bullets, which are the design's own decoration. The server has no password to send and must never send a stand-in for one.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "••••••••"
+          }
+        }
+      }
+    },
+    "account.title": {
+      "comment": "`.topbar .h1` on Account.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Account & Settings"
+          }
+        }
+      }
+    },
+    "account.tray.caption": {
+      "comment": "`.bubble-cap` over the four settings rows.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your account"
+          }
+        }
+      }
+    },
     "article.empty": {
       "comment": "Shown when an article body arrives with no sections — a title over white space looks broken in a way the empty state does not.",
       "extractionState": "manual",

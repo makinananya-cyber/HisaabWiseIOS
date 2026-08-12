@@ -131,14 +131,14 @@ struct ExpensesViewTests {
         #expect(ExpenseCategoryView.comboError(nil) == nil)
     }
 
-    /// The two pick lists clear ``HWPickerSheet``'s twelve-row threshold, so both sheets get a search box — which
+    /// The two pick lists clear ``HWOptionList``'s twelve-row threshold, so both sheets get a search box — which
     /// is why both need a search prompt above.
     @Test("both pick lists are long enough to want a search box")
     func bothSheetsHaveSearch() throws {
         let picklists = try Fixture.picklists.decode(Picklists.self)
 
-        #expect(picklists.transport.count > HWPickerSheet.searchThreshold)
-        #expect(picklists.other.count > HWPickerSheet.searchThreshold)
+        #expect(picklists.transport.count > HWOptionList.searchThreshold)
+        #expect(picklists.other.count > HWOptionList.searchThreshold)
     }
 
     // MARK: - It renders

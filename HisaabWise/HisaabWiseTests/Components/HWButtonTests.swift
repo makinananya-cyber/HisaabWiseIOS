@@ -15,11 +15,11 @@ struct HWButtonTests {
 
     @Test("the design's variants are all present, and only those")
     func everyVariant() {
-        // `.btn` in the design carries primary · soft · ghost · quiet, and Expenses' `.addline` is the dashed
-        // fifth (#18). One invented here would be a variant with no design behind it; a missing one is a screen
-        // about to inline it.
-        #expect(HWButtonVariant.allCases.count == 5)
-        #expect(HWButtonVariant.allCases == [.primary, .soft, .ghost, .quiet, .dashed])
+        // `.btn` in the design carries primary · soft · ghost · quiet, Expenses' `.addline` is the dashed
+        // fifth (#18), and Account's `.logout` is the destructive sixth (#23). One invented here would be a
+        // variant with no design behind it; a missing one is a screen about to inline it.
+        #expect(HWButtonVariant.allCases.count == 6)
+        #expect(HWButtonVariant.allCases == [.primary, .soft, .ghost, .quiet, .dashed, .destructive])
     }
 
     /// **Exactly one variant is dashed**, which is the whole of what distinguishes `.addline` from `.btn-quiet`
@@ -67,6 +67,11 @@ struct HWButtonTests {
         #expect(appearance(.primary) != appearance(.ghost))
         #expect(appearance(.primary) != appearance(.quiet))
         #expect(appearance(.ghost) != appearance(.quiet))
+        // The destructive form shares the ghost's fill on brand and nothing else: the ink and the hairline are
+        // both the brand's *own* danger value, which is a different colour from the surface's (ADR-0021).
+        #expect(appearance(.destructive) != appearance(.ghost))
+        #expect(appearance(.destructive) != appearance(.quiet))
+        #expect(appearance(.destructive) != appearance(.primary))
     }
 
     /// The two appearances are the design's two surfaces, and **no variant looks the same on both** — which is
@@ -87,7 +92,7 @@ struct HWButtonTests {
         #expect(HWAppearance.allCases == [.surface, .brand])
     }
 
-    @Test("only primary is a gradient, and only primary and soft are raised")
+    @Test("only primary is a gradient, and only primary, soft and destructive are raised")
     func fillAndElevationFollowTheDesign() {
         func appearance(_ variant: HWButtonVariant) -> HWButtonAppearance {
             HWButtonAppearance(variant: variant, palette: .standard)
@@ -98,15 +103,16 @@ struct HWButtonTests {
         if case .gradient = appearance(.primary).fill {} else {
             Issue.record("primary is not a gradient")
         }
-        for variant in [HWButtonVariant.soft, .ghost, .quiet, .dashed] {
+        for variant in [HWButtonVariant.soft, .ghost, .quiet, .dashed, .destructive] {
             if case .gradient = appearance(variant).fill {
                 Issue.record("\(variant) is a gradient — only primary is")
             }
         }
 
-        // `--shadow-m` on primary, `--shadow-s` on soft, none on ghost or quiet.
+        // `--shadow-m` on primary, `--shadow-s` on soft and on `.logout`, none on ghost or quiet.
         #expect(appearance(.primary).elevation != nil)
         #expect(appearance(.soft).elevation != nil)
+        #expect(appearance(.destructive).elevation != nil)
         #expect(appearance(.ghost).elevation == nil)
         #expect(appearance(.quiet).elevation == nil)
         #expect(appearance(.dashed).elevation == nil)

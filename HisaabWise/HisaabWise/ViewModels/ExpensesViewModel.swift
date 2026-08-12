@@ -71,7 +71,7 @@ final class ExpensesViewModel: BaseViewModel {
     /// offline has left `state` with no payload in it, and a retry still has to know which currency the figure in
     /// the box is in. Not a figure and not a total — a currency, a symbol, and an exponent, none of which a
     /// rollover or a refusal changes.
-    private var authoring: ExpensesScreen.EntryCurrency?
+    private var authoring: AuthoringCurrency?
 
     private let client: APIClient
 

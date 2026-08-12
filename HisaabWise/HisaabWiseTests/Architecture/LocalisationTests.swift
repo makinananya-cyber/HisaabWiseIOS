@@ -378,24 +378,33 @@ struct LocalisationTests {
         // glyph inline — `systemName: isRevealed ? "eye.slash" : "eye"` — and matching only the first quote
         // left the second reading as a localisation key.
         let symbolArgument = try Regex(#"(?:systemName|systemImage|symbol)\s*[:=]\s*(?:\"[^\"]*\"|[A-Za-z_][A-Za-z0-9_.]*\s*\?\s*\"[^\"]*\"\s*:\s*\"[^\"]*\")"#)
-        let tabGlyphs = Set(AppTab.allCases.map(\.systemImage))
-            // The five article glyphs, from the one place that maps them (#17).
-            .union(HomeScreen.Icon.allCases.map(HomeView.symbol))
-            // The eleven category and bill glyphs, and the four field glyphs (#18). Two of them are dotted names
-            // — `questionmark.circle` and `arrow.down.to.line` — and would otherwise read as catalogue keys with
-            // nothing behind them. Asked of the types rather than guessed from the text, so a changed glyph does
-            // not silently stop being subtracted.
-            .union(ExpensesScreen.Icon.allCases.map(ExpensesView.symbol))
-            .union(ExpensesScreen.Field.allCases.map(ExpenseCategoryView.glyph))
-            // The sixteen lesson glyphs and the three node-state ones (#19). Nine of the nineteen are dotted names.
-            // The state table is asked of the *component* rather than of the screen, because a node on the path and
-            // a row in the guide sheet read it from there — one table, subtracted once.
-            .union(Curriculum.Unit.Icon.allCases.map(LearnView.symbol))
-            .union(HWLessonNodeState.allCases.map(HWLessonRow.glyph))
-            // And the lesson player's two hearts (#20). `heart.fill` is dotted, and the ternary that chooses it is
-            // over a *comparison* rather than an identifier — which the cut above cannot read — so the pair is a
-            // named function and is subtracted here, exactly as the four tables above are.
-            .union([true, false].map(HWRunHeader.heart))
+        // **Accumulated in statements rather than in one `.union` chain.** Eight links was past what the type
+        // checker would solve in reasonable time, which #23 discovered by adding the seventh; each `formUnion` is
+        // now its own expression and the list can keep growing with the screens.
+        var glyphs = Set(AppTab.allCases.map(\.systemImage))
+        // The five article glyphs, from the one place that maps them (#17).
+        glyphs.formUnion(HomeScreen.Icon.allCases.map(HomeView.symbol))
+        // The eleven category and bill glyphs, and the four field glyphs (#18). Two of them are dotted names —
+        // `questionmark.circle` and `arrow.down.to.line` — and would otherwise read as catalogue keys with nothing
+        // behind them. Asked of the types rather than guessed from the text, so a changed glyph does not silently
+        // stop being subtracted.
+        glyphs.formUnion(ExpensesScreen.Icon.allCases.map(ExpensesView.symbol))
+        glyphs.formUnion(ExpensesScreen.Field.allCases.map(ExpenseCategoryView.glyph))
+        // The sixteen lesson glyphs and the three node-state ones (#19). Nine of the nineteen are dotted names. The
+        // state table is asked of the *component* rather than of the screen, because a node on the path and a row in
+        // the guide sheet read it from there — one table, subtracted once.
+        glyphs.formUnion(Curriculum.Unit.Icon.allCases.map(LearnView.symbol))
+        glyphs.formUnion(HWLessonNodeState.allCases.map(HWLessonRow.glyph))
+        // And the lesson player's two hearts (#20). `heart.fill` is dotted, and the ternary that chooses it is over
+        // a *comparison* rather than an identifier — which the cut above cannot read — so the pair is a named
+        // function and is subtracted here, exactly as the tables above are.
+        glyphs.formUnion([true, false].map(HWRunHeader.heart))
+        // Account's four row glyphs, and its two refusal glyphs (#23). The refusals are here for the heart's reason:
+        // the ternary that chose them was over a comparison, so they are a named function instead.
+        glyphs.formUnion(AccountScreen.Section.allCases.map(AccountView.glyph))
+        glyphs.formUnion(AccountViewModel.Refusal.Reason.allCases.map(AccountRefusalNote.glyph))
+        let tabGlyphs = glyphs
+
         var keys: [String: String] = [:]
 
         for layer in presentationLayers {

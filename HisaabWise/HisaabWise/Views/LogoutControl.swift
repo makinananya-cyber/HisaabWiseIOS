@@ -13,10 +13,10 @@ import SwiftUI
 /// alert, and cannot be dismissed by accident. The design's *copy* is converted verbatim, which is the part
 /// that carries the decision: "Your data stays safe. You'll need your password to sign back in."
 ///
-/// **The button is `.soft` rather than destructive.** The design's `.logout` is a card-coloured control with a
-/// danger-tinted border and danger text, and that fifth button shape arrives with Account (#23) —
-/// `CONTEXT.md` records it as deliberately absent from the component vocabulary. The dialog's confirm is
-/// destructive, which is where the colour matters.
+/// **The button is `HWButtonVariant.destructive`** since #23, which is the caller that shape was waiting for: the
+/// design's `.logout` is a card-coloured control with a danger-tinted border and danger text, and it was `.soft`
+/// while the vocabulary had no destructive entry. The dialog's confirm is destructive too, and there the colour is
+/// the platform's.
 ///
 /// It reads the session from the environment rather than taking a closure: what "log out" means is not a
 /// decision a screen gets to make differently.
@@ -37,7 +37,7 @@ struct LogoutControl: View {
     var body: some View {
         HWButton(
             "shell.logout.action",
-            variant: .soft,
+            variant: .destructive,
             // `.forward`, not `.right`: the glyph mirrors with the layout and a named direction would not
             // (ADR-0011).
             systemImage: "rectangle.portrait.and.arrow.forward"

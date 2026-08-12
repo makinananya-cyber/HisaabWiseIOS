@@ -495,6 +495,89 @@ extension ArticleViewModel {
     }
 }
 
+extension AccountViewModel {
+    /// The standing default preview: the account the corpus describes, paid in rupees, with a verified address.
+    @MainActor
+    static var previewINR: AccountViewModel {
+        preview(stubbing: .response(status: 200, body: TestPayload.bytes(.accountINR)))
+    }
+
+    /// The same account with its email unverified and no phone number — the two branches the standing payload does
+    /// not draw.
+    @MainActor
+    static var previewUnverified: AccountViewModel {
+        preview(stubbing: .response(status: 200, body: TestPayload.bytes(.accountUnverified)))
+    }
+
+    /// Offline, which must not render as a failure.
+    @MainActor
+    static var previewOffline: AccountViewModel {
+        preview(stubbing: .notConnected)
+    }
+
+    /// A `501` — the state every unwritten screen endpoint answers with until the backend has one.
+    @MainActor
+    static var previewNotImplemented: AccountViewModel {
+        preview(stubbing: .response(status: 501, body: Data()))
+    }
+
+    @MainActor
+    private static func preview(stubbing outcome: FixtureTransport.Outcome) -> AccountViewModel {
+        let language = LanguageManager(selected: .english)
+        let client = APIClient(
+            baseURL: URL(string: "https://fixtures.invalid")!,
+            transport: FixtureTransport(stubs: [
+                Endpoint.screenAccount: outcome,
+                // **Every write answers with the screen again** (ADR-0020), so pressing Save or picking a currency
+                // in a preview shows what doing it does rather than a failure state. The dirham payload for the
+                // currency change, because a preview of a currency picker that repainted nothing is a preview of a
+                // dead control.
+                Endpoint.me: .response(status: 200, body: TestPayload.bytes(.accountINR)),
+                Endpoint.currency: .response(status: 200, body: TestPayload.bytes(.accountAED)),
+                Endpoint.password: .response(status: 200, body: TestPayload.bytes(.accountINR)),
+                Endpoint.export: .response(status: 200, body: TestPayload.bytes(.meExport)),
+                // The two reference lists the pickers are drawn from, served from the corpus for the reason
+                // Expenses' pick lists are: a picker with no options is a dead control.
+                Endpoint.path(for: .currencies):
+                    .response(status: 200, body: TestPayload.bytes(.referenceCurrencies)),
+                Endpoint.path(for: .countries):
+                    .response(status: 200, body: TestPayload.bytes(.referenceCountries)),
+            ]),
+            // An explicit language rather than the device's: a preview's `Accept-Language` should not depend on
+            // the Mac Xcode is running on.
+            language: language,
+            refreshTokens: InMemoryTokenStore()
+        )
+        // The graph's cycle is closed for the app and not here: a preview has no other four screens to repaint,
+        // and an unconnected view model changes the preference and repaints nothing rather than failing.
+        return AccountViewModel(
+            client: client,
+            content: ContentLoader(client: client, store: InMemoryContentStore()),
+            language: language
+        )
+    }
+}
+
+extension TabViewModels {
+    /// All five tabs over the corpus, with the repaint loop closed exactly as `AppEnvironment` closes it.
+    ///
+    /// One factory rather than the five-line literal four `RootView` previews were each carrying: a set that
+    /// gained a sixth member would otherwise be four edits, and #23 was the ticket that added the fifth.
+    @MainActor
+    static var preview: TabViewModels {
+        let account = AccountViewModel.previewINR
+        let models = TabViewModels(
+            home: .previewINRSalary,
+            expenses: .previewINR,
+            learn: .previewInProgress,
+            reports: .previewArchive,
+            account: account
+        )
+        account.connect(to: models)
+        return models
+    }
+}
+
 /// A fixture's bytes where a preview cannot throw.
 ///
 /// **It traps**, deliberately, and for the reason `TestBench.payload(_:)` does: a missing fixture file is a bundle

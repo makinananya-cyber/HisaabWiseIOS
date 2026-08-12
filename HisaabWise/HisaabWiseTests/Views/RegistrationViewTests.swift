@@ -113,11 +113,11 @@ struct RegistrationViewTests {
 
         for needle in ["971", "ae", "emirates", "United Arab"] {
             #expect(
-                !HWPickerSheet.filtered([option], matching: needle).isEmpty,
+                !HWOptionList.filtered([option], matching: needle).isEmpty,
                 "searching \"\(needle)\" does not find the UAE"
             )
         }
-        #expect(HWPickerSheet.filtered([option], matching: "france").isEmpty)
+        #expect(HWOptionList.filtered([option], matching: "france").isEmpty)
     }
 
     /// The `#cur-btn` config: the **symbol** as the chip and the code as meta, which is the way round the design
@@ -131,7 +131,7 @@ struct RegistrationViewTests {
         #expect(option.meta == "INR")
 
         for needle in ["inr", "rupee", "₹"] {
-            #expect(!HWPickerSheet.filtered([option], matching: needle).isEmpty, "\(needle)")
+            #expect(!HWOptionList.filtered([option], matching: needle).isEmpty, "\(needle)")
         }
     }
 
@@ -147,14 +147,14 @@ struct RegistrationViewTests {
         #expect(option.leading == nil)
         #expect(option.meta == nil)
         // Searchable by its words, which is the only thing a user could search a question bank by.
-        #expect(!HWPickerSheet.filtered([option], matching: "employer").isEmpty)
+        #expect(!HWOptionList.filtered([option], matching: "employer").isEmpty)
     }
 
     /// The search box appears past twelve rows, as the design's `data.length > 12` does — and the 14-question bank
     /// clears it by two, which is why the question pickers have one.
     @Test("the search threshold is the design's twelve")
     func theSearchThresholdIsTwelve() {
-        #expect(HWPickerSheet.searchThreshold == 12)
+        #expect(HWOptionList.searchThreshold == 12)
     }
 
     /// Filtering is case-folded, diacritic-insensitive, and trims — the last one matters because a search box on
@@ -166,10 +166,10 @@ struct RegistrationViewTests {
             HWPickerOption(id: "FR", name: "France"),
         ]
 
-        #expect(HWPickerSheet.filtered(options, matching: "aland").map(\.id) == ["AX"])
-        #expect(HWPickerSheet.filtered(options, matching: "  FRANCE  ").map(\.id) == ["FR"])
+        #expect(HWOptionList.filtered(options, matching: "aland").map(\.id) == ["AX"])
+        #expect(HWOptionList.filtered(options, matching: "  FRANCE  ").map(\.id) == ["FR"])
         // An empty query is not a filter — it is every row.
-        #expect(HWPickerSheet.filtered(options, matching: "   ").count == 2)
+        #expect(HWOptionList.filtered(options, matching: "   ").count == 2)
     }
 
     // MARK: - The strength meter's labels
