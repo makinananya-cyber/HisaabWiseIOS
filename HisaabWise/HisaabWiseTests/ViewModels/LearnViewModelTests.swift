@@ -327,6 +327,16 @@ struct LearnViewModelTests {
             "Models/Curriculum.swift",
             "ViewModels/LearnViewModel.swift",
             "Views/LearnView.swift",
+            // The player and the celebration (#20), where a clock would be most tempting: the design builds its
+            // week strip from `new Date().getDay()` and grows the streak by comparing a stored day key against it.
+            // Both arrive as values here — seven labels and three flags the server decided.
+            "Models/LessonRun.swift",
+            "Models/LessonCompletion.swift",
+            "ViewModels/LessonPlayerViewModel.swift",
+            "ViewModels/LessonCompletionViewModel.swift",
+            "Views/LessonPlayerView.swift",
+            "Views/LessonCompletionView.swift",
+            "Views/LessonStepPage.swift",
         ] {
             let code = try SourceTree.codeLines(of: SourceTree.appSources.appending(path: path))
             for symbol in ["Date(", "Date.now", "Calendar", "DateComponents", "timeIntervalSince", "dayKey"] {

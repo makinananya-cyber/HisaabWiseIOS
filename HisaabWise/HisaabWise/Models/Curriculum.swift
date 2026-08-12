@@ -333,9 +333,18 @@ struct Curriculum: Sendable, Hashable, Decodable {
             /// answer would therefore be a coordinated content-and-client change, which is the right price for
             /// it: the tolerance below is what makes typing `3600.0` work, not a fractional key.
             ///
-            /// The comparison itself — the strict `< 0.5` tolerance the design grades with — belongs to the
-            /// player (#20), because that is where a typed string becomes a number.
+            /// The comparison itself — the strict `< 0.5` tolerance the design grades with — is
+            /// ``LessonRun/isWithinTolerance(typed:of:)``, because that is where a typed string becomes a number.
             let answer: Int
+
+            /// The answer as the feedback footer names it after a wrong one.
+            ///
+            /// **Spelled here, where the number is**, which is the convention every interpolated catalogue key in
+            /// this app depends on (see ``Curriculum/Unit/numberText``). It carries no thousands separator and no
+            /// currency symbol, and neither is an omission: the client owns no formatter (ADR-0003), and a symbol
+            /// pushed onto the front of a string lands on the wrong side of an Arabic figure — which is why the
+            /// *input* box draws its symbol as a view beside the field rather than inside the string.
+            var answerText: String { String(answer) }
 
             /// Whether the field shows the display currency's symbol beside the box.
             ///

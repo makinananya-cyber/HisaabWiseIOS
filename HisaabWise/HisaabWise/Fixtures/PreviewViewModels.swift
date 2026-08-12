@@ -182,6 +182,181 @@ extension LearnViewModel {
     }
 }
 
+extension LessonPlayerViewModel {
+    /// A run on the first teaching page of `u1l1` — four pages of prose, then four questions.
+    @MainActor
+    static var previewTeaching: LessonPlayerViewModel {
+        preview(lessonID: "u1l1")
+    }
+
+    /// The same lesson's first question, answered **right**: the mint footer, the praise line, and the explanation.
+    @MainActor
+    static var previewAnsweredRight: LessonPlayerViewModel {
+        answered(lessonID: "u1l1", step: 4, correctly: true)
+    }
+
+    /// And answered **wrong**: a heart gone, the coral footer, and the right answer named.
+    @MainActor
+    static var previewAnsweredWrong: LessonPlayerViewModel {
+        answered(lessonID: "u1l1", step: 4, correctly: false)
+    }
+
+    /// `u1l1`'s numeric question, open — the box with the reader's own currency symbol beside it.
+    @MainActor
+    static var previewNumeric: LessonPlayerViewModel {
+        walk(preview(lessonID: "u1l1"), to: 6, correctly: true)
+    }
+
+    /// Three wrong answers, which is the out-of-hearts dialog.
+    @MainActor
+    static var previewOutOfHearts: LessonPlayerViewModel {
+        walk(preview(lessonID: "u3l3"), to: nil, correctly: false)
+    }
+
+    /// A player over the corpus's own curriculum and Learn payload, on the lesson `lessonID` names.
+    ///
+    /// **It goes through `LearnMap`**, which is where the join lives: a preview handed a lesson without its unit
+    /// would be a preview of a screen the app cannot reach.
+    @MainActor
+    private static func preview(lessonID: String) -> LessonPlayerViewModel {
+        let client = APIClient(
+            baseURL: URL(string: "https://fixtures.invalid")!,
+            transport: FixtureTransport(stubs: [
+                // Answered, so that finishing a lesson in a preview draws the celebration rather than a failure.
+                Endpoint.lessonCompletion(lessonID: lessonID):
+                    .response(status: 200, body: TestPayload.bytes(.lessonCompleted)),
+            ]),
+            language: LanguageManager(selected: .english),
+            refreshTokens: InMemoryTokenStore()
+        )
+        return LessonPlayerViewModel(
+            material: previewMaterial(lessonID: lessonID),
+            client: client,
+            onScreenUpdate: { _ in }
+        )
+    }
+
+    /// Walks to `step` and answers it, so the two feedback states are previewable without a running app.
+    @MainActor
+    private static func answered(lessonID: String, step: Int, correctly: Bool) -> LessonPlayerViewModel {
+        let player = walk(preview(lessonID: lessonID), to: step, correctly: correctly)
+        answerCurrentStep(of: player, correctly: correctly)
+        player.primaryAction()
+        return player
+    }
+
+    /// Runs the player forward — **answering each question on the way**, and stopping if a press moves nothing.
+    ///
+    /// **The guard is why this is a function.** The first version pressed the button in a `while player.run.index <
+    /// step` loop, which spins for ever the moment the walk crosses a question: an unanswered one is not
+    /// `isReadyToCheck`, so the press does nothing and the index never moves. `u1l1`'s numeric step sits behind two
+    /// single-choice ones, so "The player — a typed answer" hung Xcode rather than drawing anything. Review caught it.
+    ///
+    /// - Parameter step: where to stop, or `nil` for "as far as the run goes" — which for a wrong-answer walk is the
+    ///   third heart.
+    @MainActor
+    @discardableResult
+    private static func walk(
+        _ player: LessonPlayerViewModel,
+        to step: Int?,
+        correctly: Bool
+    ) -> LessonPlayerViewModel {
+        while player.run.index < (step ?? player.run.stepCount), !player.run.isOutOfHearts {
+            let before = player.run.index
+            answerCurrentStep(of: player, correctly: correctly)
+            player.primaryAction()
+            if player.run.index == before {
+                // A press that changed nothing means the step cannot be answered from here — stop rather than spin.
+                player.primaryAction()
+                if player.run.index == before { break }
+            }
+        }
+        return player
+    }
+
+    /// Answers whatever question the player is standing on, or does nothing on a teaching page.
+    @MainActor
+    private static func answerCurrentStep(of player: LessonPlayerViewModel, correctly: Bool) {
+        switch player.run.step {
+        case .singleChoice(let question), .multiSelect(let question):
+            let chosen = correctly
+                ? question.answers
+                : Array(question.options.indices.filter { !question.answers.contains($0) }.prefix(1))
+            for option in chosen { player.choose(option) }
+        case .numeric(let question):
+            player.type(correctly ? question.answerText : "\(question.answer + 1)")
+        case .teach, nil:
+            break
+        }
+    }
+
+    /// The unit, the lesson, and the currency token, joined out of the corpus exactly as the screen joins them.
+    ///
+    /// It **traps** on a corpus that cannot produce them, for `TestPayload.bytes(_:)`'s reason: a missing or
+    /// drifted fixture is a bundle assembled wrong rather than a preview state worth drawing.
+    @MainActor
+    static func previewMaterial(lessonID: String) -> LearnMap.Material {
+        do {
+            let map = LearnMap(
+                curriculum: try Fixture.curriculum.decode(Curriculum.self),
+                progress: try Fixture.learnInProgress.decode(LearnScreen.self)
+            )
+            guard let material = map.material(forLessonID: lessonID) else {
+                preconditionFailure("The corpus's curriculum has no lesson \(lessonID)")
+            }
+            return material
+        } catch {
+            preconditionFailure("The Learn corpus no longer decodes: \(error)")
+        }
+    }
+}
+
+extension LessonCompletionViewModel {
+    /// A first completion: 50 XP earned, 75% accuracy, and the streak grown to five days.
+    @MainActor
+    static var previewCompleted: LessonCompletionViewModel {
+        preview(stubbing: .response(status: 200, body: TestPayload.bytes(.lessonCompleted)))
+    }
+
+    /// A **replay**, which earns nothing (defect D13) — the headline says so and the XP tile reads zero.
+    @MainActor
+    static var previewRevisited: LessonCompletionViewModel {
+        preview(stubbing: .response(status: 200, body: TestPayload.bytes(.lessonRevisited)))
+    }
+
+    /// No connection: the lesson has not counted, there is nothing queued, and the retry is the reader's
+    /// (ADR-0019).
+    @MainActor
+    static var previewOffline: LessonCompletionViewModel {
+        preview(stubbing: .notConnected)
+    }
+
+    /// The server refusing the submission — a `422`, which is a definite failure rather than something to retry
+    /// differently (invariant 10).
+    @MainActor
+    static var previewRefused: LessonCompletionViewModel {
+        preview(stubbing: .response(status: 422, body: Data(#"{"error":{"code":"VALIDATION_FAILED"}}"#.utf8)))
+    }
+
+    @MainActor
+    private static func preview(stubbing outcome: FixtureTransport.Outcome) -> LessonCompletionViewModel {
+        let lessonID = "u1l3"
+        let client = APIClient(
+            baseURL: URL(string: "https://fixtures.invalid")!,
+            transport: FixtureTransport(stubs: [Endpoint.lessonCompletion(lessonID: lessonID): outcome]),
+            language: LanguageManager(selected: .english),
+            refreshTokens: InMemoryTokenStore()
+        )
+        return LessonCompletionViewModel(
+            lessonID: lessonID,
+            // Four questions, three of them right — the run the completion payload describes.
+            results: (4...7).map { LessonRun.QuestionResult(stepIndex: $0, isCorrect: $0 != 7) },
+            client: client,
+            onScreenUpdate: { _ in }
+        )
+    }
+}
+
 extension ArticleViewModel {
     /// The scams article, which carries every block the structure has.
     @MainActor

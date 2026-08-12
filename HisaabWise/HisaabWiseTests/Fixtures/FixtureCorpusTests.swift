@@ -461,6 +461,112 @@ struct FixtureCorpusTests {
         }
     }
 
+    // MARK: - The completion payloads
+
+    @Test("the completion payloads decode into the type the app decodes them into")
+    func completionPayloadsDecode() throws {
+        let completed = try Fixture.lessonCompleted.decode(LessonCompletion.self)
+        #expect(completed.isFirstCompletion)
+        #expect(completed.xpEarned.value == 50)
+        #expect(completed.xpEarned.display == "+50")
+        #expect(completed.accuracy.display == "75%")
+        #expect(completed.week.count == 7)
+        #expect(completed.week.count { $0.isToday } == 1)
+        #expect(!completed.streakLine.isEmpty)
+
+        // The screen inside it is a whole Learn screen, which is what the map re-renders from (ADR-0020).
+        #expect(completed.screen.lessons.count == 15)
+        #expect(completed.screen.nextLesson?.lessonID == "u2l1")
+    }
+
+    /// **Defect D13, as the two payloads that describe it.** A first completion earns the run's XP; a replay earns
+    /// **nothing** and leaves the total where it was.
+    ///
+    /// Asserted on `Stat.value` and against `learn-in-progress.json`'s own total, because that is what the field is
+    /// for: a headline saying "Lesson revisited!" over a total that had quietly grown is exactly the bug, and only
+    /// the numbers can tell the two apart.
+    @Test("a replay earns no XP and leaves the total where it was")
+    func aReplayEarnsNothing() throws {
+        let before = try Fixture.learnInProgress.decode(LearnScreen.self)
+        let replay = try Fixture.lessonRevisited.decode(LessonCompletion.self)
+
+        #expect(!replay.isFirstCompletion)
+        #expect(replay.xpEarned.value == 0)
+        #expect(replay.screen.xp.value == before.xp.value)
+        #expect(replay.screen.xp.display == before.xp.display)
+        // The streak has not moved either: the reader had already learned something today.
+        #expect(replay.screen.streak.value == before.streak.value)
+
+        // And the first completion does move both, or the assertion above would pass against a payload that never
+        // awards anything.
+        let first = try Fixture.lessonCompleted.decode(LessonCompletion.self)
+        #expect(first.screen.xp.value == before.xp.value + first.xpEarned.value)
+        #expect(first.screen.streak.value == before.streak.value + 1)
+    }
+
+    /// The completion carries **no date, no timestamp, and no day key**, exactly as the three Learn payloads carry
+    /// none (invariant 6) — the week strip is seven labels and three flags the *server* decided.
+    ///
+    /// `LearnViewModelTests` makes the same assertion about the screen payloads; this extends it to the one payload
+    /// that has a calendar drawn on it, which is where a timestamp would be most tempting.
+    @Test("the completion payloads carry no date, timestamp, or day key")
+    func theCompletionCarriesNoDate() throws {
+        for fixture in [Fixture.lessonCompleted, .lessonRevisited] {
+            let json = String(decoding: TestBench.payload(fixture), as: UTF8.self)
+            for field in ["date", "Date", "timestamp", "dayKey", "lastActive", "updatedAt"] {
+                #expect(!json.contains(field), "\(fixture.rawValue) carries \(field)")
+            }
+        }
+    }
+
+    /// The embedded screen is a state the unlock rule can produce, and it is the state **finishing the cursor
+    /// leaves behind**: the lesson completed with a full ring, and the next one open.
+    @Test("the completion's screen is the map after the lesson it completed")
+    func theCompletionScreenFollowsTheLesson() throws {
+        let before = try Fixture.learnInProgress.decode(LearnScreen.self)
+        let after = try Fixture.lessonCompleted.decode(LessonCompletion.self).screen
+        let finished = try #require(before.nextLesson).lessonID
+
+        let progress = try #require(after.lesson(id: finished))
+        #expect(progress.state == .completed)
+        #expect(progress.filledSegments == progress.segments, "the ring of a finished lesson is full")
+        #expect(after.nextLesson?.lessonID != finished, "the cursor stayed on the lesson that was finished")
+
+        // The rule the whole map is drawn from still holds, so the map this re-renders is one a reader could reach.
+        let curriculum = try Fixture.curriculum.decode(Curriculum.self)
+        var previousWasCompleted = true
+        for lesson in curriculum.allLessons {
+            let state = try #require(after.lesson(id: lesson.id))
+            #expect(state.isOpen == previousWasCompleted, "\(lesson.id) is \(state.state) where the rule says otherwise")
+            previousWasCompleted = state.state == .completed
+        }
+    }
+
+    /// **Every Learn payload carries the token its lesson steps need** (``CurrencyToken``, ADR-0016), and the
+    /// curriculum carries `{c}` verbatim rather than anybody's symbol.
+    ///
+    /// The two halves of that are one claim: content is cacheable and identical for everybody, so a hardcoded
+    /// symbol in the curriculum would be one reader's currency shipped to all of them — and a screen payload with
+    /// no token would leave `{c}` on screen.
+    @Test("the learn payloads carry a currency token and the curriculum carries none")
+    func theCorpusCarriesTheCurrencyToken() throws {
+        for fixture in [Fixture.learnInProgress, .learnFirstRun, .learnComplete] {
+            let screen = try fixture.decode(LearnScreen.self)
+            #expect(!screen.currencyToken.token.isEmpty, "\(fixture.rawValue) has no currency token")
+        }
+
+        // And Home's tip token is the same reader's, so a lesson and a tip cannot show two currencies.
+        let tipToken = try Fixture.homeINR.decode(HomeScreen.self).tip.currencyToken
+        let lessonToken = try Fixture.learnInProgress.decode(LearnScreen.self).currencyToken.token
+        #expect(tipToken == lessonToken)
+
+        let curriculum = String(decoding: TestBench.payload(.curriculum), as: UTF8.self)
+        #expect(curriculum.contains(CurrencyToken.placeholder), "the curriculum no longer carries {c} at all")
+        for symbol in ["₹", "AED", "د.إ", "$"] {
+            #expect(!curriculum.contains(symbol), "the curriculum hardcodes \(symbol) where {c} belongs")
+        }
+    }
+
     /// **Defect D1's anchor, in the corpus itself.** The screen payload is assembled from the budget engine, so
     /// `saved` has to be the *same* figure in both — a difference between them is the assembly having derived
     /// rather than read, which is exactly the class of mistake D1 was.

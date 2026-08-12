@@ -148,17 +148,10 @@ struct AppShell: View {
                     onContinueLearning: { selection = .learn }
                 )
             case .expenses: ExpensesView(viewModel: viewModels.expenses)
-            case .learn:
-                LearnView(
-                    viewModel: viewModels.learn,
-                    // **The lesson player is #20 and there is nowhere to send the reader yet.** The seam is here
-                    // rather than inside the screen because the destination is the shell's kind of decision — the
-                    // two Home CTAs above are the same shape — and because a `navigationDestination` for a view
-                    // that does not exist would be a fictional route in the client, which is exactly what
-                    // `UnwrittenTabRoot` avoids by making no request. The map itself is complete: the guide sheet
-                    // opens, and a locked node says why it will not.
-                    onOpenLesson: { _ in }
-                )
+            // **The lesson player is Learn's own** (#20). The closure this used to pass was a stand-in for a screen
+            // that did not exist; now that it does, the presentation belongs to the screen it covers — a lesson is a
+            // full-screen mode over the map, not a tab the shell can switch to and not a page it can push.
+            case .learn: LearnView(viewModel: viewModels.learn)
             case .reports: UnwrittenTabRoot(tab: tab, viewModel: viewModels.reports)
             // Account carries the way out, because the design puts it there. It is the only thing on any of
             // the four unwritten screens that is real, and it is here rather than on a debug affordance

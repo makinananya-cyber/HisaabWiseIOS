@@ -60,6 +60,17 @@ struct LearnScreen: Sendable, Hashable, Decodable {
     /// curriculum should not be pointed at a sixteenth lesson.
     let nextLesson: NextLesson?
 
+    /// What `{c}` becomes in the lesson steps — `₹`, or `AED ` with its space (``CurrencyToken``, ADR-0016).
+    ///
+    /// **Here rather than in the curriculum, and that is invariant 8 again.** The steps are the same 100 KB for
+    /// everybody and carry `{c}` verbatim as the content rules require; the *symbol* is this reader's. So the token
+    /// travels with the per-user half and the join is the same lookup the rest of this screen is — which is also
+    /// exactly how Home's tip works, because a cacheable tip pool cannot carry one user's currency either.
+    ///
+    /// The map draws none of it. The lesson player (#20) is what needs it, and it needs it for every teaching
+    /// paragraph, every worked example, and eleven of the fourteen numeric prompts.
+    let currencyToken: CurrencyToken
+
     /// One entry per unit in the curriculum, keyed by unit id.
     let units: [UnitProgress]
 

@@ -150,6 +150,18 @@ extension HWPalette {
             case .violet: violet
             }
         }
+
+        /// The triad a **graded answer** is drawn in — mint for right, coral for wrong (#20).
+        ///
+        /// The design's `.right` and `.wrong` are the mint and coral sets, and the lesson player asks which one in
+        /// eight places: an option's box, its fill and its border, the typed box's fill and border, the feedback
+        /// note's ink, the primary button, and the footer's wash. Each of those wants a *different value* from the
+        /// triad, which is legitimate — but re-deriving *which triad* eight times is one table written eight times,
+        /// and the eighth is the one that gets it backwards. So the pair lives here, beside ``accent(_:)``, for the
+        /// reason that one does.
+        func verdict(isCorrect: Bool) -> UnitAccent {
+            isCorrect ? mint : coral
+        }
     }
 
     /// The savings meter's gradient track, red through green (ADR-0016).

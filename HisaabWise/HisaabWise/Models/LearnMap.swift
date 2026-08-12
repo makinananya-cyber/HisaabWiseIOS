@@ -88,4 +88,32 @@ extension LearnMap {
     func unit(id: String) -> Unit? {
         units.first { $0.id == id }
     }
+
+    /// Everything the lesson player needs to open a lesson: the unit it belongs to, the lesson itself, and the
+    /// reader's currency token for the `{c}` in its steps.
+    ///
+    /// **The map is where this lookup belongs**, because the map is the join: the player draws the unit's number
+    /// and accent around the lesson's own steps, and finding a lesson's parent by walking the curriculum at the
+    /// call site is the search `LearnScreen.NextLesson.unitID` exists to avoid.
+    ///
+    /// Unlike the guide sheet, the player takes this **once and keeps it** — see ``LessonPlayerViewModel``: a run
+    /// re-read from each reload would be a run that restarted under the reader.
+    struct Material: Sendable, Hashable {
+        let unit: Unit
+        let lesson: Lesson
+
+        /// What `{c}` becomes in this lesson's steps, from the per-user half of the payload (ADR-0016).
+        let currencyToken: CurrencyToken
+    }
+
+    /// The unit and lesson one id names, or `nil` for a lesson this map does not carry — which is a lesson the
+    /// screen payload said nothing about (see ``init(curriculum:progress:)``).
+    func material(forLessonID id: String) -> Material? {
+        for unit in units {
+            if let lesson = unit.lessons.first(where: { $0.id == id }) {
+                return Material(unit: unit, lesson: lesson, currencyToken: progress.currencyToken)
+            }
+        }
+        return nil
+    }
 }

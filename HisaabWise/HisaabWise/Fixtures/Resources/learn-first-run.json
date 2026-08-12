@@ -9,6 +9,7 @@
     "display": "0",
     "accessibilityLabel": "No experience points yet"
   },
+  "currencyToken": "₹",
   "nextLesson": {
     "unitId": "u1",
     "lessonId": "u1l1",

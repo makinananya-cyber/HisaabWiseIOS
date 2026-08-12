@@ -85,6 +85,18 @@
         }
       }
     },
+    "component.lesson.close": {
+      "comment": "The close affordance in the lesson player's header. Icon-only, so this is the whole of what VoiceOver reads. The design's own aria-label.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Close lesson"
+          }
+        }
+      }
+    },
     "component.lesson.hint.locked": {
       "comment": "VoiceOver hint on a locked lesson. It is pressable and refuses with a sentence, so the hint says so before the reader presses it.",
       "extractionState": "manual",
@@ -1369,6 +1381,102 @@
         }
       }
     },
+    "learn.completion.accuracy": {
+      "comment": "Caption of the celebration's accuracy tile.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Accuracy"
+          }
+        }
+      }
+    },
+    "learn.completion.announcement %@ %@": {
+      "comment": "What VoiceOver hears when a lesson is finished, since the confetti and the badge reach it as nothing. %1$@ is the experience earned, %2$@ the accuracy, both composed server-side.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lesson complete. %1$@, %2$@."
+          }
+        }
+      }
+    },
+    "learn.completion.continue": {
+      "comment": "Leaves the celebration and goes back to the unit map.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Continue"
+          }
+        }
+      }
+    },
+    "learn.completion.empty": {
+      "comment": "Shown if the completion response arrives with nothing in it — a celebration over white space looks broken in a way the empty state does not.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "There is nothing to show for this lesson yet."
+          }
+        }
+      }
+    },
+    "learn.completion.streak": {
+      "comment": "Caption of the celebration's streak tile.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Day streak"
+          }
+        }
+      }
+    },
+    "learn.completion.title": {
+      "comment": "Headline of the celebration screen the first time a lesson is finished.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lesson complete!"
+          }
+        }
+      }
+    },
+    "learn.completion.title.again": {
+      "comment": "Headline when a lesson already finished is run again. It says so, because the XP tile beside it reads zero (defect D13).",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Lesson revisited!"
+          }
+        }
+      }
+    },
+    "learn.completion.xp": {
+      "comment": "Caption of the celebration's experience tile. The figure above it is the server's.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "XP earned"
+          }
+        }
+      }
+    },
     "learn.empty": {
       "comment": "Shown when the curriculum arrives with no units in it — a content deployment that failed, rather than a reader with nothing to do.",
       "extractionState": "manual",
@@ -1413,6 +1521,402 @@
           "stringUnit": {
             "state": "translated",
             "value": "Finish the lesson before it to unlock this one."
+          }
+        }
+      }
+    },
+    "learn.player.answer.hint": {
+      "comment": "Hint under the numeric answer box. The tolerance is what makes a typed fraction work, so a whole number is always enough.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Whole numbers are fine — no commas needed."
+          }
+        }
+      }
+    },
+    "learn.player.answer.label": {
+      "comment": "VoiceOver label for the box a numeric answer is typed into. The design's own aria-label.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your answer"
+          }
+        }
+      }
+    },
+    "learn.player.check": {
+      "comment": "The player's primary button while a question is unanswered.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Check"
+          }
+        }
+      }
+    },
+    "learn.player.combo %@": {
+      "comment": "The badge that lands on every third consecutive right answer. %@ is how many in a row. Upper-cased by the component, so a language with no case is unaffected.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Combo ×%@"
+          }
+        }
+      }
+    },
+    "learn.player.combo.announcement %@": {
+      "comment": "What VoiceOver hears when a combo lands, since neither the badge nor its reduced form reaches it. %@ is how many in a row.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Combo — %@ right in a row"
+          }
+        }
+      }
+    },
+    "learn.player.continue": {
+      "comment": "The player's primary button on a teaching page, and after a right answer.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Continue"
+          }
+        }
+      }
+    },
+    "learn.player.encourage.1": {
+      "comment": "One of four headlines shown after a wrong answer. None of the four says the learner is wrong, which is the design's decision.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not quite"
+          }
+        }
+      }
+    },
+    "learn.player.encourage.2": {
+      "comment": "One of four headlines shown after a wrong answer.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Close one"
+          }
+        }
+      }
+    },
+    "learn.player.encourage.3": {
+      "comment": "One of four headlines shown after a wrong answer.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Almost"
+          }
+        }
+      }
+    },
+    "learn.player.encourage.4": {
+      "comment": "One of four headlines shown after a wrong answer.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nearly there"
+          }
+        }
+      }
+    },
+    "learn.player.gotIt": {
+      "comment": "The player's primary button after a wrong answer — an acknowledgement rather than a continuation, which is the design's own wording.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Got it"
+          }
+        }
+      }
+    },
+    "learn.player.hearts.accessibilityLabel %@ %@": {
+      "comment": "What VoiceOver reads for the hearts — %1$@ is how many are left, %2$@ how many the run started with.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ of %2$@ hearts left"
+          }
+        }
+      }
+    },
+    "learn.player.kicker %@ %@": {
+      "comment": "The chip above a teaching page — %1$@ is the unit number, %2$@ the lesson's title. Numbered so a translation can put the title first.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Unit %1$@ · %2$@"
+          }
+        }
+      }
+    },
+    "learn.player.kind.multi": {
+      "comment": "The chip above a question with several right answers.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pick every right answer"
+          }
+        }
+      }
+    },
+    "learn.player.kind.numeric": {
+      "comment": "The chip above a question the learner types a figure into.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Type the number"
+          }
+        }
+      }
+    },
+    "learn.player.kind.single": {
+      "comment": "The chip above a question with one right answer.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose one"
+          }
+        }
+      }
+    },
+    "learn.player.option.chosen": {
+      "comment": "VoiceOver value for an answer the learner has picked and not yet checked.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Chosen"
+          }
+        }
+      }
+    },
+    "learn.player.option.right": {
+      "comment": "VoiceOver value for an option the answer key says is right, once the question has been graded.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The right answer"
+          }
+        }
+      }
+    },
+    "learn.player.option.wrong": {
+      "comment": "VoiceOver value for an option the learner picked that is wrong, once the question has been graded.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your answer, and it is wrong"
+          }
+        }
+      }
+    },
+    "learn.player.outOfHearts.leave": {
+      "comment": "Leaves the lesson and goes back to the unit map.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Back to the path"
+          }
+        }
+      }
+    },
+    "learn.player.outOfHearts.message": {
+      "comment": "Body of the out-of-hearts dialog. The design's own words — it encourages rather than scolds.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "That's alright — the tricky ones are the ones worth repeating. Run the lesson again and it will stick."
+          }
+        }
+      }
+    },
+    "learn.player.outOfHearts.retry": {
+      "comment": "Runs the same lesson again from the top, with three hearts.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Try again"
+          }
+        }
+      }
+    },
+    "learn.player.outOfHearts.title": {
+      "comment": "Title of the dialog shown when the third heart goes. The design's own words.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Out of hearts"
+          }
+        }
+      }
+    },
+    "learn.player.praise.1": {
+      "comment": "One of seven headlines shown after a right answer, rotated as the design rotates them.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nice!"
+          }
+        }
+      }
+    },
+    "learn.player.praise.2": {
+      "comment": "One of seven headlines shown after a right answer.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Exactly right!"
+          }
+        }
+      }
+    },
+    "learn.player.praise.3": {
+      "comment": "One of seven headlines shown after a right answer.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You got it!"
+          }
+        }
+      }
+    },
+    "learn.player.praise.4": {
+      "comment": "One of seven headlines shown after a right answer.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spot on!"
+          }
+        }
+      }
+    },
+    "learn.player.praise.5": {
+      "comment": "One of seven headlines shown after a right answer.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Well played!"
+          }
+        }
+      }
+    },
+    "learn.player.praise.6": {
+      "comment": "One of seven headlines shown after a right answer.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "That is it!"
+          }
+        }
+      }
+    },
+    "learn.player.praise.7": {
+      "comment": "One of seven headlines shown after a right answer.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sharp!"
+          }
+        }
+      }
+    },
+    "learn.player.progress.accessibilityLabel %@ %@": {
+      "comment": "What VoiceOver reads for the player's progress bar — %1$@ is the step, %2$@ how many there are. Numbered so a translation can order them.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Step %1$@ of %2$@"
+          }
+        }
+      }
+    },
+    "learn.player.rightAnswer": {
+      "comment": "Caption above the answer the learner should have given, shown only after a wrong one.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "The right answer:"
+          }
+        }
+      }
+    },
+    "learn.player.tip": {
+      "comment": "Caption of the dashed box at the end of a teaching page. App copy; the sentence after it is the writer's.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Remember it:"
           }
         }
       }

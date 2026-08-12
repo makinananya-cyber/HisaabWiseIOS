@@ -9,9 +9,13 @@ import Observation
 /// every cache. Neither can be folded into the other without breaking one of those rules, so `fetch()` asks for
 /// both — **concurrently**, because they are independent — and hands back the join as one ``LearnMap``.
 ///
-/// **It maps no `APIError`.** There is no write on this screen yet, so the whole taxonomy is
-/// `BaseViewModel.load()`'s, and `StateTaxonomyTests` does not name this file. Completing a lesson is #20's write
-/// and is where that changes.
+/// **It maps no `APIError`, and #20 did not change that.** The screen has two writes now — the interim
+/// `POST /v1/learn/progress` and the lesson submission — and neither adds an owner to the taxonomy
+/// (`StateTaxonomyTests`). The progress report is **best-effort and reports nothing**: the reader has already left
+/// the lesson, there is no queue (ADR-0019), and a failed save costs them the tail of one run rather than anything
+/// they earned — so a failure that replaced the map with an error would be the app breaking a screen that is fine.
+/// The submission is the *completion screen's* own load, where `BaseViewModel.load()` maps it exactly as it maps a
+/// read (``LessonCompletionViewModel``).
 ///
 /// **It owns no clock.** The streak, the XP, and every unlock arrive as values from a payload that carries no date
 /// at all (invariant 6, ``LearnScreen``) — so there is nothing here for a device-clock change to move, and
@@ -20,7 +24,8 @@ import Observation
 @Observable
 final class LearnViewModel: BaseViewModel {
     /// Not `private(set)`: ``BaseViewModel`` requires a settable `state`, and the trade-off is recorded there.
-    /// Mutation stays inside `load()` by convention.
+    /// Mutation stays inside `load()` and ``apply(_:)`` by convention — the second being a write's response
+    /// re-rendering the map, which is ADR-0020's rule rather than a patch.
     var state: LoadState<LearnMap> = .loading
 
     // MARK: - What the screen is showing
@@ -38,7 +43,24 @@ final class LearnViewModel: BaseViewModel {
     /// split `ExpensesViewModel.Notice` draws for the same reason.
     private(set) var notice: Notice?
 
+    /// The lesson being played, or `nil` when the reader is on the map. **The player is a modal over this screen**,
+    /// which is what the design's slide-up section is, so the presentation is Learn's own — the closure the shell
+    /// supplied while #20 was unwritten has gone with the screen it was standing in for (ADR-0034).
+    ///
+    /// It is the **object** rather than an id, unlike ``openGuideUnitID``, and the difference is the point: a run is
+    /// what the reader is doing, not a view of server state, so re-reading it from each reload would restart the
+    /// lesson under them (``LessonPlayerViewModel``).
+    private(set) var player: LessonPlayerViewModel?
+
     private let client: APIClient
+
+    /// The curriculum from the most recent load, **held so a write's response can be joined against it**.
+    ///
+    /// A completion answers with the updated Learn screen (ADR-0020), and the map is that screen joined to the
+    /// curriculum — so re-rendering needs the content half in hand. Reloading it instead would be a second request
+    /// for ~100 KB the client already has, and re-fetching the *screen* would be asking a question the response
+    /// already answered.
+    private var curriculum: Curriculum?
 
     /// Where the curriculum comes from — the store, the ETag, and the offline fallback all in one place
     /// (``ContentLoader``, ADR-0009).
@@ -63,7 +85,9 @@ final class LearnViewModel: BaseViewModel {
         async let curriculum = content.load(.curriculum, as: Curriculum.self)
         async let progress = client.get(Endpoint.screenLearn, as: LearnScreen.self)
 
-        return LearnMap(curriculum: try await curriculum, progress: try await progress)
+        let loaded = try await curriculum
+        self.curriculum = loaded
+        return LearnMap(curriculum: loaded, progress: try await progress)
     }
 
     /// Whether a *loaded* Learn has nothing to show.
@@ -115,6 +139,79 @@ final class LearnViewModel: BaseViewModel {
     }
 
     func dismissNotice() { notice = nil }
+
+    // MARK: - The lesson player
+
+    /// Opens a lesson — the design's `openLesson(id)`.
+    ///
+    /// **The material is looked up once and handed over** (``LearnMap/material(forLessonID:)``): the unit for its
+    /// number and accent, the lesson for its steps, and the reader's currency token for the `{c}` inside them. A
+    /// lesson this map does not carry opens nothing rather than an empty player — the same answer
+    /// ``openGuide(unitID:)`` gives an unknown unit.
+    ///
+    /// The toast is hushed for the design's own reason: the player covers the screen, so a toast left behind
+    /// reappears from under it when the reader comes back.
+    func openLesson(lessonID: String) {
+        guard let material = state.value?.material(forLessonID: lessonID) else { return }
+        notice = nil
+        closeGuide()
+        player = LessonPlayerViewModel(
+            material: material,
+            client: client,
+            onScreenUpdate: { [weak self] screen in self?.apply(screen) }
+        )
+    }
+
+    /// Closes the player and **reports where the reader got to**, so an interrupted run is not lost.
+    ///
+    /// The report is a value and the request is launched from *here* rather than from the player, which is what lets
+    /// the panel close at once: the player is released immediately, and a `Task` owned by this object — whose
+    /// lifetime is the tab's — carries the write. A player awaiting its own write before dismissing would be a
+    /// closing animation that waited for the network.
+    ///
+    /// **A finished run reports nothing**, because the completion has already said everything the progress route
+    /// would: an interim report filed after it would be an older truth landing on top of a newer one.
+    func closePlayer() {
+        guard let player else { return }
+        self.player = nil
+        // **Anything to report, rather than "past the first step"**: a reader who answered a question and closed has
+        // results worth saving even if the index has not moved, which the first version threw away (review found it).
+        guard player.completion == nil,
+              player.run.index > 0 || !player.run.results.isEmpty
+        else { return }
+
+        let report = player.progressReport
+        // `[weak self]`: a signed-out tab takes its view models with it (`TabViewModels`), and an abandoned save is
+        // the right outcome there rather than a request outliving the session it belonged to.
+        Task { [weak self] in await self?.report(report) }
+    }
+
+    /// `POST /v1/learn/progress` — **best-effort, and it reports nothing on failure.**
+    ///
+    /// The reader has left the lesson; there is no queue (ADR-0019) and nothing for them to correct. What a failure
+    /// costs is the tail of one run, and replacing a perfectly good map with an error state over it would be the
+    /// shape `ExpensesViewModel.loadPicklists()` avoids for the same reason.
+    ///
+    /// A success answers with the updated screen (ADR-0020), so a part-answered ring fills without a reload.
+    private func report(_ report: LessonProgressReport) async {
+        guard let screen = try? await client.post(
+            Endpoint.learnProgress,
+            body: report,
+            as: LearnScreen.self
+        ) else { return }
+        apply(screen)
+    }
+
+    /// Re-renders the map from a **write's own response**, rather than reloading (ADR-0020).
+    ///
+    /// The join again, and it is still a lookup: the curriculum is the one this screen already loaded and the
+    /// progress is the server's newest word on it, so nothing here works anything out. Without a curriculum in hand
+    /// — a response arriving after a sign-out, say — there is nothing to join and the map is left alone.
+    private func apply(_ screen: LearnScreen) {
+        guard let curriculum else { return }
+        let map = LearnMap(curriculum: curriculum, progress: screen)
+        state = isEmpty(map) ? .empty : .loaded(map)
+    }
 }
 
 // MARK: - The values it owns

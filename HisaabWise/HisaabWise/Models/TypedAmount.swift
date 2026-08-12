@@ -40,6 +40,23 @@ enum TypedAmount {
     /// - Returns: the minor units, or `nil` for anything that is not an unambiguous positive figure. Zero is
     ///   `nil` — every caller refuses it, and the design's own message is "Enter an amount greater than zero."
     static func minor(from text: String, exponent: Int) -> Int? {
+        // Zero is refused *here* rather than in the parse, because the two callers disagree about it and only
+        // one of them is money: every amount form in the app rejects zero ("Enter an amount greater than
+        // zero."), while a Learn question's typed `0` is a perfectly real answer that happens to be wrong.
+        guard let scaled = scaled(from: text, exponent: exponent), scaled > 0 else { return nil }
+        return scaled
+    }
+
+    /// The same reading, as an integer count of `exponent` decimal places, **zero included**.
+    ///
+    /// The separator and digit-script rules above are the whole of this function, and they are here rather than
+    /// copied because the failure mode they guard against — a factor of a hundred or a thousand — does not become
+    /// less bad when the figure is not money. ``LessonRun`` reads a typed lesson answer through it at two decimal
+    /// places, which is what makes the strict `< 0.5` tolerance expressible in integers.
+    ///
+    /// A leading `-` is not a digit and not a separator, so it is dropped rather than read as a sign: every
+    /// caller's field is a decimal pad, which has no minus key.
+    static func scaled(from text: String, exponent: Int) -> Int? {
         guard exponent >= 0 else { return nil }
 
         // The runs of digits between the separators, in order. Everything below is a question about their shape.
@@ -77,7 +94,7 @@ enum TypedAmount {
             guard !overflowed else { return nil }
             scaled = product
         }
-        return scaled > 0 ? scaled : nil
+        return scaled
     }
 
     /// Whether the runs read as a **grouped whole number** — `8,000` and `1,234,567`, but not `8000.505`.

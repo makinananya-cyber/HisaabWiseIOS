@@ -392,6 +392,10 @@ struct LocalisationTests {
             // a row in the guide sheet read it from there — one table, subtracted once.
             .union(Curriculum.Unit.Icon.allCases.map(LearnView.symbol))
             .union(HWLessonNodeState.allCases.map(HWLessonRow.glyph))
+            // And the lesson player's two hearts (#20). `heart.fill` is dotted, and the ternary that chooses it is
+            // over a *comparison* rather than an identifier — which the cut above cannot read — so the pair is a
+            // named function and is subtracted here, exactly as the four tables above are.
+            .union([true, false].map(HWRunHeader.heart))
         var keys: [String: String] = [:]
 
         for layer in presentationLayers {

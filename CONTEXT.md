@@ -174,9 +174,9 @@ so a render of the whole page came back as an empty ground and the test assertin
 See [ADR-0033](docs/adr/0033-expenses.md).
 
 **Learn** — `LearnView` plus `LearnViewModel`, the unit map (#19): five units, fifteen lessons, a segmented progress
-ring on each, sequential unlocking, and the per-unit guide sheet. The lesson player is #20; an open node calls a
-closure the shell supplies, because a `navigationDestination` for a view that does not exist would be a fictional
-route in the client.
+ring on each, sequential unlocking, and the per-unit guide sheet. An open node now opens the **lesson player** (#20)
+as a full-screen cover over the map, and the closure the shell used to supply is gone with the screen it stood in
+for — see **lesson player** below.
 
 **It is the one screen that reads two endpoints**, and that is invariant 8 deciding where the seam goes rather than an
 exception to ADR-0020. `GET /v1/curriculum` is ~100 KB of editorial content, the same bytes for everybody, stored on
@@ -223,6 +223,53 @@ nowhere to grow; above the threshold the same lessons are a column of `HWLessonR
 row and also the path's `accessibilityRepresentation` below the threshold. **The connectors are measured**, as the
 design measures them, and that is the RTL fix for nothing: a measured frame comes back already mirrored where a
 hand-computed `x` would need the direction read and negated. See [ADR-0034](docs/adr/0034-learn-unit-map.md).
+
+**lesson player** — `LessonPlayerView` plus `LessonStepPage`, `LessonPlayerViewModel`, and `LessonRun` (#20): the
+124 steps, three hearts, the combo, and the way out. A **full-screen cover over the map**, which is what the design's
+slide-up `.player` section is — so the closure the shell passed Learn while this was unwritten has gone with it. The
+player is **not a `BaseView`**, because it makes no request; the second such screen after Landing.
+
+**`LessonRun`** — one run through one lesson, as a value: the step, the hearts, the consecutive-correct count, the
+per-question results, and **the grading**. It owns no clock and no total. Two states that look alike are kept apart:
+`isFinished` means every step is behind the reader and *submits*, while `isOutOfHearts` means the run is over and
+nothing is filed — `advance()` refuses to move, so there is no step after it to draw.
+
+**client-side grading is bounded, not merely allowed** — the app's one exception to server-side calculation
+(invariant 10, ADR-0020), and three limits are what make it safe: it decides *right or wrong* and never a score;
+every result is submitted as `{stepIndex, isCorrect}` so the server recomputes the XP and can refuse an impossible
+submission; and every total the reader reads comes back in the response. The numeric tolerance is a **strict** `< 0.5`
+compared in integer hundredths — `3600.49` is right and `3600.5` is wrong — because `Models` may hold no `Double` and
+because a floating-point tolerance has a boundary that moves with the value's magnitude.
+
+**the submission *is* the screen** — `LessonCompletionViewModel` is a `BaseViewModel` whose `fetch()` is
+`POST /v1/learn/lessons/:id/complete`. That is ADR-0020's write rule rather than a stretch of the base contract, and
+three requirements fall out of it: offline becomes `LoadState.offline` with the chrome's own retry and **nothing
+queued** (ADR-0019), a `422` becomes a definite failure carrying its code, and the retry is a button the reader
+presses. So the taxonomy still has **four** owners of the `APIError` mapping and not five. One `Idempotency-Key` per
+intent, minted at `init` and reused across retries: finishing a lesson happens once.
+
+**the player keeps its own copy of the lesson** — the mirror image of the guide sheet, which holds a unit *id* and
+re-reads it so a reload writes through. A sheet is a view of server state; a run is what the reader is doing, and
+re-reading it from each reload would restart the lesson under them. The cover is presented off the **object** for the
+same reason.
+
+**the interim progress report** — `POST /v1/learn/progress`, sent by `LearnViewModel` when a part-finished player
+closes. The request is launched from the *tab's* view model over a value, so the panel closes at once rather than
+waiting for the network; a **finished** run reports nothing, because the completion has already said more; and a
+failure reports nothing at all, because the reader has left and there is no queue. It carries the results rather than
+a count of lit arcs — `filledSegments` is a figure the screen draws, so it is the server's.
+
+**`LessonCompletion`** — the celebration, fully computed, with the updated Learn screen **inside it**. `xpEarned` is
+signed server-side (`+50`), the accuracy is a percentage the server computed, `streakLine` is a server sentence
+because it is a count with a plural in it, and the seven-day `week` carries a label, two flags, and a reading per day
+— decided against the reader's stored timezone, because a client that knew which day was today could move the streak
+by moving the clock. **Defect D13 is two payloads**: a replay earns `0` and leaves the XP total byte-identical to
+`learn-in-progress.json`'s.
+
+**`CurrencyToken`** — what `{c}` becomes, as a type with one owner. Editorial content is cacheable and carries the
+token verbatim; the per-user payload carries the symbol (`LearnScreen.currencyToken`, `HomeScreen.Tip.currencyToken`),
+which is the same join Learn already is. Amounts beside it are **illustrative and never converted**.
+See [ADR-0035](docs/adr/0035-lesson-player.md), [ADR-0016](docs/adr/0016-presentation-details.md).
 
 **`EntryDraft`** — the entry being typed, and it **outlives the screen deliberately**. A write that fails offline
 replaces `state` with `LoadState.offline` (ADR-0019), so a draft living in the payload would go with it; this one
@@ -307,8 +354,9 @@ drawn and capped; at and above it — every `isAccessibilitySize` — the chart 
 layout is what the screen shows. Not shrunk: a donut at 310% type is a circle with three overlapping labels
 in it. The alternative is *also* installed as the chart's `accessibilityRepresentation`, so one argument
 serves the AX3 reader and the VoiceOver user both. The consumers are the donut, the savings meter, the wants budget bar,
-the split bar, and the week strip (#17, #18, #21, #22) — the wants bar being the one whose replacement is
-`EmptyView()`, because the figures it draws are already text above it. **Reading the size to choose a *layout* is
+the split bar, and the week strip (#17, #18, #20, #21) — the wants bar being the one whose replacement is
+`EmptyView()`, because the figures it draws are already text above it, and the week strip being the one whose
+replacement is the server's own per-day sentence as rows. **Reading the size to choose a *layout* is
 not clamping**: `HWSpendSummary`'s three chips become a column above the threshold, because a row of three broke
 `₹3,529` across three lines. Everything else — tips, articles, lesson steps, every label —
 **scales unclamped to AX5**, and `AccessibilityTests` asserts the range form of `dynamicTypeSize` appears in
@@ -327,7 +375,8 @@ the app. It exists because an announcement is the only copy no `Text` draws, so 
 not get the environment locale for free — `String(localized:)` honours the *resource's* locale, which for a
 literal created in a type initialiser is the **device's** (ADR-0011, ADR-0024). The locale is therefore
 passed in, from `@Environment(\.locale)`. `.immediate` interrupts, for feedback about what the user just did;
-`.standard` queues. Three callers: the toast, `StateView`, and Learn's combo and completion (#20).
+`.standard` queues. Four callers, and the last two are the ones ADR-0012 wrote it for: the toast, `StateView`, the
+lesson player's combo, and the completion screen — where the confetti reaches VoiceOver as nothing at all (#20).
 
 **accessibility defaults** — what a screen inherits by conforming to `BaseView` rather than by remembering:
 `ScreenChrome` makes the screen one accessibility container, `StateView` announces a placeholder replaced by
@@ -354,7 +403,9 @@ See [ADR-0020](docs/adr/0020-screen-scoped-endpoints.md).
 ordering comes from a response. The client renders; it never derives. **One deliberate
 exception:** Learn grading is client-side for responsiveness (invariant 10), submitted per
 question and recomputed server-side, and the client's answer is never authoritative. Local input
-validation is not a calculation in this sense.
+validation is not a calculation in this sense. The exception's three limits — it grades rather than
+scores, every result is submitted, and every total comes back — are in **client-side grading is
+bounded** below.
 
 **localisation scans** — the source scans in `HisaabWiseTests/Architecture/LocalisationTests.swift`, which
 carry ADR-0011 forward past the ticket that decided it. Every layer plus the app root: no `left`/`right`
@@ -811,3 +862,10 @@ Recorded here because they are commitments, not suggestions. None has been made 
 | [ADR-0034](docs/adr/0034-learn-unit-map.md) | **Answer keys ship** (invariant 10), on the responsiveness argument alone — grading is client-side and the server recomputes XP from submitted per-question results. `answers` is an **array of option indices** for both choice kinds, single-choice carrying one; `answer` on a numeric step is a **whole number**, and the grading tolerance is a strict `< 0.5` |
 | [ADR-0034](docs/adr/0034-learn-unit-map.md) | **Editorial emphasis in the curriculum is markdown**, `{c}` verbatim, and the design's `?demo` block is never extracted. `<br><br>` inside a worked example becomes a blank line in one string, because the breaks are inside a single calculation rather than between paragraphs |
 | [ADR-0034](docs/adr/0034-learn-unit-map.md) | **`/v1/curriculum` is cacheable and is deliberately not under `/v1/content`** — invariant 8's second family. The PDF (#25) and any per-unit or per-locale variant hang off the same root, and burying them under `content` would make `/v1/content/curriculum/pdf` the address of the app's headline feature |
+| [ADR-0035](docs/adr/0035-lesson-player.md) | **New endpoint** — `POST /v1/learn/lessons/{id}/complete`, taking `{results:[{stepIndex, isCorrect}]}` and **nothing else**: no XP, no accuracy, no hearts, each of which is derivable from the results and none of which the server should have to trust. It answers with the **completion payload** (below). It must **refuse** an impossible submission with a `422` — a result naming a step that is not a question, a question answered twice, more wrong answers than there are hearts, or a lesson whose predecessor is unfinished |
+| [ADR-0035](docs/adr/0035-lesson-player.md) | **`POST /v1/learn/lessons/{id}/complete`'s response**, written by the client: `{isFirstCompletion, xpEarned{value,display,accessibilityLabel}, accuracy{…}, streakLine, week:[{label, isComplete, isToday, accessibilityLabel}] ×7, screen{…}}`. `screen` is the whole updated Learn payload, so the map behind the player re-renders from server truth rather than reloading. **No date, timestamp, or day key anywhere in it** — the week strip's seven days are labelled and flagged server-side, against the user's stored timezone (invariant 6), because a client that knew which day was today could move the streak by moving the clock |
+| [ADR-0035](docs/adr/0035-lesson-player.md) | **XP is 10 a correct answer plus a 20-point completion bonus, awarded on the first completion only** (defect D13). A replay may update the accuracy and earns **nothing**: `xpEarned` is `0` and the returned total is unchanged. The client cannot assert this and must not — a client that checked the sum would be a second implementation of it |
+| [ADR-0035](docs/adr/0035-lesson-player.md) | **`xpEarned.display` is signed by the server** (`+50`), for the reason an incoming expense's is: a `+` pushed onto the front of a string by the client lands on the wrong side of an Arabic figure. `accuracy.display` carries its own `%`, whose position is a language's decision |
+| [ADR-0035](docs/adr/0035-lesson-player.md) | **`streakLine` is a server sentence**, not two catalogue strings chosen by a flag: "your streak just grew to 5 days" is a count *and* a plural, and Arabic has six plural forms (ADR-0011) |
+| [ADR-0035](docs/adr/0035-lesson-player.md) | **New endpoint** — `POST /v1/learn/progress {lessonId, stepIndex, results}`, answering with the updated Learn screen payload. It reports what happened rather than what the ring should show: `filledSegments` is a figure the screen draws, so the server decides it. The client sends this **once**, when a part-finished player closes, and ignores the outcome — there is no queue (ADR-0019) |
+| [ADR-0035](docs/adr/0035-lesson-player.md) | **`GET /v1/screens/learn` gains a `currencyToken`** — `₹`, or `AED ` with its space, exactly as Home's tip carries one. The curriculum is cacheable and ships `{c}` verbatim in all 124 steps, so the symbol has to travel with the per-user half; without it the reader sees `{c}` in every worked example |

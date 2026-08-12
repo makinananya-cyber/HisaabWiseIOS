@@ -144,14 +144,12 @@ struct HomeScreen: Sendable, Hashable, Decodable {
         /// than assembled, so the spacing rule keeps one owner (ADR-0003, ADR-0016).
         let currencyToken: String
 
-        /// The text with the token substituted. The one string operation the client performs on content, and
-        /// it is a replacement rather than a format: the amounts inside a tip are **illustrative and never
-        /// converted** (ADR-0016).
+        /// The text with the token substituted, through ``CurrencyToken`` — which is where the replacement lives
+        /// now that Learn's lesson steps are a second caller (#20). The amounts inside a tip are **illustrative
+        /// and never converted** (ADR-0016).
         var resolvedText: String {
-            text.replacingOccurrences(of: Self.currencyPlaceholder, with: currencyToken)
+            CurrencyToken(token: currencyToken).resolve(text)
         }
-
-        static let currencyPlaceholder = "{c}"
 
         /// Composed by ``HomeViewModel/tip(in:)`` when the user has asked for another one: the pool's text with
         /// **this** payload's currency token, because a cacheable pool cannot carry one user's currency.

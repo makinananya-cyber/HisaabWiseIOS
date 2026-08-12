@@ -131,6 +131,25 @@ enum Fixture: String, CaseIterable, Sendable {
     /// with its own layout has to be previewable.
     case learnComplete = "learn-complete"
 
+    /// `POST /v1/learn/lessons/u1l3/complete` — **the lesson ``learnInProgress`` points at, finished** (#20).
+    ///
+    /// The pair with ``lessonRevisited`` is defect D13 as two payloads. This one is a **first** completion: three of
+    /// `u1l3`'s four questions right, so 50 XP (three tens and the twenty-point bonus), 75% accuracy, and the
+    /// streak grown from four days to five. Its embedded screen is the one the map re-renders from — `u1l3`
+    /// completed with a full ring, `u2l1` open and named as the cursor, and the XP total moved from 120 to 170.
+    ///
+    /// The accuracy is deliberately **not** 100%: a screen drawing a figure it computed from its own results would
+    /// look right against a perfect run and wrong against this one.
+    case lessonCompleted = "lesson-completed"
+
+    /// `POST /v1/learn/lessons/u1l1/complete` for a lesson that was **already finished** — and it earns nothing.
+    ///
+    /// **Defect D13's own shape** (Product Spec §7): the design adds the XP on every run, so replaying an easy
+    /// lesson farms points. Here `xpEarned` is `0` and the embedded screen's XP total is byte-identical to
+    /// ``learnInProgress``'s — which is what makes "a replay earns no XP" a numeric assertion rather than a
+    /// reading of a headline.
+    case lessonRevisited = "lesson-revisited"
+
     /// `GET /v1/curriculum` — **5** units, **15** lessons, **124** steps (58 teach + 66 question), answer keys
     /// intact.
     ///
@@ -200,8 +219,18 @@ enum Fixture: String, CaseIterable, Sendable {
             [Endpoint.screenExpenses, Endpoint.expenses, Endpoint.fixedCosts, Endpoint.billLines]
         case .expensesFirstRun, .expensesOverBudget: []
         // Same rule as the Expenses trio: three payloads for one path, and only one may claim it (see below).
-        case .learnInProgress: [Endpoint.screenLearn]
+        //
+        // **Two paths, one set of bytes**, which is ADR-0020's write rule again: `POST /v1/learn/progress` answers
+        // with the updated Learn screen, so the read and the interim write have one shape between them. The
+        // completion write does not, and that is the one asymmetry — it answers with the *celebration* and carries
+        // the screen inside it (``LessonCompletion``).
+        case .learnInProgress: [Endpoint.screenLearn, Endpoint.learnProgress]
         case .learnFirstRun, .learnComplete: []
+        // The lesson the standing Learn payload's cursor sits on, and a replay of one already finished. Only the
+        // first claims a path, because `serving(_:)` refuses two fixtures for one route and these two are
+        // alternative answers to the same *kind* of request rather than to the same lesson.
+        case .lessonCompleted: [Endpoint.lessonCompletion(lessonID: "u1l3")]
+        case .lessonRevisited: []
         case .curriculum: [Endpoint.curriculum]
         case .tips: [Endpoint.contentTips]
         case .picklists: [Endpoint.contentPicklists]

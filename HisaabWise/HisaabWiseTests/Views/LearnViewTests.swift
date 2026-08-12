@@ -244,7 +244,7 @@ struct LearnViewTests {
     /// the note above), so what it proves is that nothing traps.
     @Test("the screen renders")
     func theScreenRenders() {
-        #expect(TestBench.render(LearnView(viewModel: .previewInProgress, onOpenLesson: { _ in })) != nil)
+        #expect(TestBench.render(LearnView(viewModel: .previewInProgress)) != nil)
     }
 
     /// **The page draws something, and this is the assertion an empty ground cannot pass.**

@@ -37,10 +37,17 @@ enum HWComponentCopy {
     /// the cursor. Review caught the comment claiming otherwise. Accessibility is a parity requirement.
     static let lessonNextHint: LocalizedStringResource = "component.lesson.hint.next"
 
+    /// The `.p-x` affordance in the lesson player's header. Icon-only, so this is the whole reading (#20).
+    ///
+    /// A component's own rather than the screen's, for ``closeSheet``'s reason: leaving a lesson is what the control
+    /// *is*, and a screen supplying the word would be a screen able to get it wrong.
+    static let closeLesson: LocalizedStringResource = "component.lesson.close"
+
     /// Every key the components render themselves.
     static let keys = [
         closeSheet.key, inFlight.key, unitGuide.key,
         lessonOpenHint.key, lessonLockedHint.key, lessonNextHint.key,
+        closeLesson.key,
     ]
 
     /// The hint for one lesson: where to start, what will happen, or why it will not.

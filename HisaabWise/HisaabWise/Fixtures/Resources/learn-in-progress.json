@@ -9,6 +9,7 @@
     "display": "120",
     "accessibilityLabel": "120 experience points"
   },
+  "currencyToken": "₹",
   "nextLesson": {
     "unitId": "u1",
     "lessonId": "u1l3",

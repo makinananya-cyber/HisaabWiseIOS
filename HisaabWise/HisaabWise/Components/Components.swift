@@ -30,6 +30,14 @@
 /// | `.unit-head` + `.unit-n` + `.unit-guide` | ``HWUnitHeader`` |
 /// | `.track` + `.links` · `.node` + `.ring` + `.face` + `.start` | ``HWLessonTrack`` |
 /// | `.guide-item` + `.gi-n` + `.gi-s` | ``HWLessonRow`` |
+/// | `.p-top` + `.p-bar` + `.p-fill` + `.p-hearts` | ``HWRunHeader`` |
+/// | `.combo` · `.kicker` | ``HWComboBadge`` · ``HWKicker`` |
+/// | `.btn-go` / `.btn-ok` / `.btn-no` | ``HWRunButton`` |
+/// | `.opt` + `.opt-box` · `.numwrap` + `.num-hint` | ``HWAnswerOption`` · ``HWAnswerField``, ``HWAnswerState`` |
+/// | `.fb` + `.fb-ico` + `.fb-h` + `.fb-p` + `.fb-ans` | ``HWFeedbackNote`` |
+/// | `.t-li` + `.t-dot` · `.eg` · `.tip` | ``HWTeachingEntry`` · ``HWWorkedExample`` · ``HWTeachingTip`` |
+/// | `.done-badge` · `.done-stats` + `.dstat` | ``HWDoneBadge`` · ``HWCompletionStats`` · ``HWCompletionStat`` |
+/// | `.week` + `.wd` · `.confetti` + `.cf` | ``HWWeekStrip`` · ``HWConfetti`` |
 ///
 /// **Components are presentational and know nothing.** They take values and closures. They do not
 /// import the networking layer, do not hold a view model, and do not fetch — `LayeringTests` asserts
@@ -55,6 +63,20 @@
 ///   being appearance-agnostic yet: two callers shape a control better than one guess.
 /// - `.tabbar`. It is the five-tab shell's, and in SwiftUI it is a `TabView` rather than a control:
 ///   converting the CSS would mean re-implementing a system container, which Rule 1 rules out.
+///
+/// **What the lesson player's fifteen entries decide** (#20, ADR-0035), because three of them are departures. A
+/// multi-select's box is `.hairline` rather than `.small`: that step is 11pt on a 24pt box, which draws a *circle* and
+/// made the two kinds of question look identical beside each other — the shape is how the design says "pick more than
+/// one", so it has to be unmistakable. `HWRunButton` is **not** a fifth `HWButtonVariant`, because its fill is a unit
+/// accent while a question is open and a verdict once it has been graded, and `HWButtonAppearance` can see neither.
+/// And a graded `HWAnswerOption` stays a `Button` rather than becoming `.disabled(true)`, which the design does: a
+/// disabled control leaves the accessibility tree, so the reader who most needs to hear "this was the right one"
+/// would hear nothing.
+///
+/// The design's `heartHit` pulse and `.wd.today` bump are **dropped rather than gated**, for the reason the `START`
+/// flag's bob is: an attention loop's only replacement is the thing itself, and the sentence beside the hearts
+/// already says how many are left. `HWConfetti` draws **nothing** under Reduce Motion, and the replacement ADR-0012
+/// names — a static badge carrying the XP figure — is `HWDoneBadge` and `HWCompletionStat`, both permanent.
 ///
 /// Two more used to be on that list and no longer are. `.mark` is drawn by ``HWMark`` now that the design's
 /// base64 logo has been extracted to the asset catalogue (ADR-0026). And the **`brand` appearance is no longer

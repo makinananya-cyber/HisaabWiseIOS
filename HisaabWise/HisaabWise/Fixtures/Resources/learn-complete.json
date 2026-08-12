@@ -9,6 +9,7 @@
     "display": "1,500",
     "accessibilityLabel": "1,500 experience points"
   },
+  "currencyToken": "₹",
   "units": [
     {
       "id": "u1",

@@ -17,19 +17,16 @@ import SwiftUI
 /// the rule, so a client that got the lock wrong would refuse a lesson the next reload offers rather than granting
 /// one nobody earned.
 ///
-/// **The lesson player is #20.** An open node calls ``onOpenLesson``, which the shell supplies; until that ticket
-/// lands there is nowhere for it to go, and inventing a route to a screen that does not exist would put a
-/// fictional destination in the client for the same reason `UnwrittenTabRoot` makes no request.
+/// **The lesson player lands here** (#20). An open node opens it as a full-screen cover, which is what the design's
+/// slide-up `.player` section is — so the closure the shell supplied while the player was unwritten has gone with the
+/// screen it was standing in for (ADR-0034's "what this leaves"). The player is Learn's because a lesson is a modal
+/// over the map rather than a tab or a pushed page.
 struct LearnView: BaseView {
     @Environment(ThemeManager.self) private var theme
 
     /// Held rather than read from `@Environment`, so a test or a preview can construct the screen over a fixture
     /// transport. The five-tab shell puts one per tab in the environment.
     let viewModel: LearnViewModel
-
-    /// What starting a lesson does. Supplied by the caller for the reason Home's two CTAs are: the destination is
-    /// not this screen's to own (#20).
-    let onOpenLesson: (String) -> Void
 
     /// Overridden because a curriculum that arrived with no units in it is `.empty`, and a screen with no empty
     /// copy would fall back to a default that says nothing about Learn.
@@ -71,6 +68,20 @@ struct LearnView: BaseView {
                 Color.clear.onAppear { viewModel.closeGuide() }
             }
         }
+        // **The lesson player covers the screen**, which is what the design's slide-up section is: a lesson is a
+        // focused mode, and a push inside the tab's stack would leave the tab bar under it. It is presented off the
+        // *object* rather than off an id — unlike the guide sheet above — because the player holds a run, and a run
+        // re-read from each reload would restart the lesson under the reader (``LessonPlayerViewModel``).
+        .fullScreenCover(
+            isPresented: Binding(
+                get: { viewModel.player != nil },
+                set: { if !$0 { viewModel.closePlayer() } }
+            )
+        ) {
+            if let player = viewModel.player {
+                LessonPlayerView(viewModel: player, onClose: viewModel.closePlayer)
+            }
+        }
         .hwToast(Self.copy(for: viewModel.notice), isPresented: viewModel.notice != nil)
         // The toast's lifetime is the screen's, not the component's (``HWToast``): it answers something the reader
         // just did, so it goes after a moment rather than waiting to be dismissed.
@@ -93,7 +104,7 @@ struct LearnView: BaseView {
         if node.state == .locked {
             viewModel.refuseLockedLesson()
         } else {
-            onOpenLesson(node.id)
+            viewModel.openLesson(lessonID: node.id)
         }
     }
 
@@ -328,34 +339,34 @@ struct LearnMapPage: View {
 
 #if DEBUG
 #Preview("Learn — two lessons done and a third part-answered") {
-    NavigationStack { LearnView(viewModel: .previewInProgress, onOpenLesson: { _ in }) }.hwTheme()
+    NavigationStack { LearnView(viewModel: .previewInProgress) }.hwTheme()
 }
 
 #Preview("Learn — a brand-new account, one lesson open") {
-    NavigationStack { LearnView(viewModel: .previewFirstRun, onOpenLesson: { _ in }) }.hwTheme()
+    NavigationStack { LearnView(viewModel: .previewFirstRun) }.hwTheme()
 }
 
 #Preview("Learn — every lesson finished, so no START badge anywhere") {
-    NavigationStack { LearnView(viewModel: .previewComplete, onOpenLesson: { _ in }) }.hwTheme()
+    NavigationStack { LearnView(viewModel: .previewComplete) }.hwTheme()
 }
 
 #Preview("Learn — offline") {
-    NavigationStack { LearnView(viewModel: .previewOffline, onOpenLesson: { _ in }) }.hwTheme()
+    NavigationStack { LearnView(viewModel: .previewOffline) }.hwTheme()
 }
 
 #Preview("Learn — the endpoint is not written yet (501)") {
-    NavigationStack { LearnView(viewModel: .previewNotImplemented, onOpenLesson: { _ in }) }.hwTheme()
+    NavigationStack { LearnView(viewModel: .previewNotImplemented) }.hwTheme()
 }
 
 #Preview("Learn — Arabic, right to left") {
-    NavigationStack { LearnView(viewModel: .previewInProgress, onOpenLesson: { _ in }) }
+    NavigationStack { LearnView(viewModel: .previewInProgress) }
         .hwTheme()
         .hwLanguage(LanguageManager(selected: .arabic))
 }
 
 /// Where the zig-zagging path stands aside and the same lessons become rows (ADR-0012).
 #Preview("Learn — AX5") {
-    NavigationStack { LearnView(viewModel: .previewInProgress, onOpenLesson: { _ in }) }
+    NavigationStack { LearnView(viewModel: .previewInProgress) }
         .hwTheme()
         .dynamicTypeSize(.accessibility5)
 }

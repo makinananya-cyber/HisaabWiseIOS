@@ -34,6 +34,39 @@ enum Endpoint {
     /// joins the two **by lesson id**, which is a lookup rather than a calculation.
     static let screenLearn = "/v1/screens/learn"
 
+    // MARK: - Learn
+
+    /// `POST /v1/learn/lessons/{id}/complete` — a finished lesson, with **one result per question** (#20).
+    ///
+    /// The client grades for responsiveness and this is what makes that safe (invariant 10): the submission
+    /// carries which step each answer belonged to and whether it was right, the server recomputes the XP from
+    /// them, and it **refuses** an impossible one — a lesson whose predecessor is unfinished, a result naming a
+    /// step that is not a question, a question answered twice. A `422` is therefore a definite failure rather
+    /// than something to retry differently.
+    ///
+    /// Answers with the **completion payload** (``LessonCompletion``), which carries the updated Learn screen
+    /// inside it (ADR-0020) — so the XP, the accuracy, and the streak the reader is shown all arrive computed and
+    /// the map behind the player re-renders from server truth rather than from a client patch.
+    static func lessonCompletion(lessonID: String) -> String {
+        "\(learnLessons)/\(pathSegment(lessonID))/complete"
+    }
+
+    /// The collection the completion route hangs off. Declared so that a parameterised route is still a path the
+    /// fixture corpus can be checked against — the same reason ``articles`` is declared.
+    static let learnLessons = "/v1/learn/lessons"
+
+    /// `POST /v1/learn/progress` — how far into a lesson the reader got, so an interrupted run is not lost.
+    ///
+    /// **The same facts as a completion, reported early**: which step they reached and how each question went. The
+    /// server decides what that means for the ring (`LessonProgress.filledSegments`), which is why the client
+    /// sends the results rather than the count — a count would be the client working out a figure the screen then
+    /// draws (ADR-0020).
+    ///
+    /// Answers with the updated Learn screen payload, and a failure is **nobody's problem**: the reader has left
+    /// the lesson, there is no queue (ADR-0019), and a partial position that did not save costs them the tail of
+    /// one run rather than anything they earned.
+    static let learnProgress = "/v1/learn/progress"
+
     // MARK: - Expenses
 
     /// `POST /v1/expenses` — one new entry in a `log` category.

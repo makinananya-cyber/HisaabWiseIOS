@@ -279,7 +279,9 @@ colour stands in — one `hwAccentGround` function now. And `HWStatChip` took `t
 
 ## What this leaves
 
-**Pressing an open lesson goes nowhere yet.** The lesson player is #20. The seam is a closure the shell supplies —
+**Pressing an open lesson goes nowhere yet** — *settled by [ADR-0035](0035-lesson-player.md), which brought the
+player and with it a `currencyToken` on this screen's payload; the closure below is gone.* The lesson player is #20.
+The seam is a closure the shell supplies —
 the shape Home's two CTAs already have — rather than a `navigationDestination` for a view that does not exist, which
 would be a fictional route in the client for the reason `UnwrittenTabRoot` makes no request. Everything else on the
 screen is real: the guide sheet opens, and a locked node refuses with the design's own sentence.
