@@ -26,8 +26,29 @@ struct HWPalette: Sendable {
     var units = Units()
     /// The savings meter's red-to-green ramp.
     var meter = Meter()
+    /// The three goal verdicts, as a wash and the ink that reads on it.
+    var verdicts = Verdicts()
 
     static let standard = HWPalette()
+}
+
+/// Which of §4.2's three goal verdicts a control is drawn in, as a **name** rather than as two colours.
+///
+/// It sits here beside ``HWUnitTint`` for the reason that one does: both a component and a screen name a
+/// verdict — the archive's badge, the trend chart's bars, the savings meter's percentage pill — and a caller
+/// that passed the resolved pair would be a caller that had already reached into ``HWPalette/Verdicts``.
+///
+/// **Three names, and the design gives them one table.** `.m-badge.hit/.near/.miss` on the archive and
+/// `.mf-r` with its `.warn` and `.low` variants on the meter are the *same three* soft/ink pairs, written twice
+/// in the CSS. Written twice here they would be the second copy of a colour table, which is the shape defect
+/// D11 took with a threshold table — so the meter's three verdicts resolve through this one.
+enum HWVerdictTint: Sendable, Hashable, CaseIterable {
+    /// `saved ≥ 100%` of goal — `.m-badge.hit`, and the meter pill's unmodified state.
+    case hit
+    /// `saved ≥ 70%` — `.m-badge.near` / `.mf-r.warn`.
+    case near
+    /// Otherwise — `.m-badge.miss` / `.mf-r.low`.
+    case miss
 }
 
 /// Which of the five Learn unit accents a view is drawn in, as a **name** rather than as three colours.
@@ -174,5 +195,49 @@ extension HWPalette {
 
         /// Ordered for a `LinearGradient`.
         var stops: [Color] { [nothing, low, half, high, reached] }
+
+        /// The stop a **verdict** is drawn in, which is the trend chart's bar colour (#21).
+        ///
+        /// The design's own `ramp()`: `p >= 100 ? --r5 : p >= 70 ? --r3 : --r1`. It lives beside the gradient
+        /// rather than in ``Verdicts`` because it *is* the gradient — three of its five stops, picked out — and
+        /// a bar that took its colour from the badge's pastel wash would be a bar nobody could see on the
+        /// galaxy card. Two treatments of one verdict, each with one owner.
+        func stop(for tint: HWVerdictTint) -> Color {
+            switch tint {
+            case .hit: reached
+            case .near: half
+            case .miss: nothing
+            }
+        }
+    }
+
+    /// One verdict's badge: the wash behind it and the ink that reads on the wash.
+    ///
+    /// A pair rather than a single tint, because the design's badges are *filled* — and the fill is a pastel
+    /// that nothing on this palette's ink roles reads on at 4.5:1. The design supplies both, so both are
+    /// transcribed; `ColorAssetTests` asserts the contrast rather than trusting the transcription.
+    struct VerdictTone: Sendable {
+        var soft: Color
+        var ink: Color
+    }
+
+    /// The three verdict badges, transcribed from `.m-badge.hit/.near/.miss`.
+    struct Verdicts: Sendable {
+        var hit = VerdictTone(soft: .hwVerdictHitSoft, ink: .hwVerdictHitInk)
+        var near = VerdictTone(soft: .hwVerdictNearSoft, ink: .hwVerdictNearInk)
+        var miss = VerdictTone(soft: .hwVerdictMissSoft, ink: .hwVerdictMissInk)
+
+        /// The pair for one verdict.
+        ///
+        /// Here rather than at the call site, for the reason ``Units/accent(_:)`` is: the badge, the trend
+        /// chart, and the savings meter each ask, and three copies of this `switch` is one table written three
+        /// times — the third being the one that gets a colour backwards (ADR-0001).
+        func tone(_ tint: HWVerdictTint) -> VerdictTone {
+            switch tint {
+            case .hit: hit
+            case .near: near
+            case .miss: miss
+            }
+        }
     }
 }

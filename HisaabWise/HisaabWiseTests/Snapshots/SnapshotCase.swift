@@ -23,13 +23,19 @@ enum SnapshotCase: String, CaseIterable, Sendable {
     /// Home over the standing rupee fixture.
     case populated = "home-populated"
 
-    /// The empty state, through ``StateView`` rather than through a screen.
+    /// **Reports' empty state** — an account whose first month has not closed yet (#21).
     ///
-    /// **Not a whole screen, and it cannot be one yet.** `LoadState.empty` is produced by
-    /// `BaseViewModel.load()` when `isEmpty(_:)` says so, and no screen that exists says so — Home's salary is
-    /// always a figure. The screens with genuine empty states are Expenses (#18) and Reports (#21); when one
-    /// lands, this case becomes that screen and the baseline is re-recorded.
-    case empty = "state-empty"
+    /// It is a real screen's empty state now rather than a generic one: `ReportsViewModel.isEmpty(_:)` says so
+    /// for an archive with no years in it, which makes this the first `LoadState.empty` the app can actually
+    /// reach. Expenses was the other candidate and turned out not to be one — its first run keeps all seven
+    /// categories and is `.loaded`.
+    ///
+    /// **Still drawn through ``StateView`` rather than as a whole screen, and that is not a shortcut.** A
+    /// `BaseView` render lands on `.loading`: the chrome supplies `.task { load() }` and `ImageRenderer` yields
+    /// to the main actor once before capturing, so photographing `ReportsView` here would photograph the spinner
+    /// — which is exactly what `SnapshotSuiteTests` uses this case to prove is *not* happening. The copy is the
+    /// screen's own, so the baseline is Reports' sentence.
+    case empty = "reports-empty"
 
     /// Home under Arabic, driven through `LanguageManager` so the snapshot exercises the injection the app
     /// runs rather than a layout direction set by hand.
@@ -62,7 +68,11 @@ enum SnapshotCase: String, CaseIterable, Sendable {
 
         case .empty:
             AnyView(
-                StateView(state: LoadState<BudgetSummary>.empty, copy: home().stateCopy, reload: {}) { _ in
+                StateView(
+                    state: LoadState<ReportsScreen>.empty,
+                    copy: ReportsView(viewModel: .previewEmpty).stateCopy,
+                    reload: {}
+                ) { _ in
                     EmptyView()
                 }
                 // The frame the chrome applies, which is what decides where a short column sits.

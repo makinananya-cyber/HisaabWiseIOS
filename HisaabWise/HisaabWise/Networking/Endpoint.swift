@@ -34,6 +34,19 @@ enum Endpoint {
     /// joins the two **by lesson id**, which is a lookup rather than a calculation.
     static let screenLearn = "/v1/screens/learn"
 
+    /// `GET /v1/screens/reports` — **the single read Reports makes** (ADR-0020, #21): the archive of closed
+    /// months already grouped by year with each year's savings total, and the trend chart's bars with their
+    /// heights, their percentages, and their verdicts.
+    ///
+    /// **The verdicts are why this route matters more than most.** Defect D11 is two threshold tables for one
+    /// pill; §4.2 settles it at 100/70, server-side, and the client's half of that settlement is having no
+    /// figure to threshold — no `saved`, no `goal`, and no percentage as a number reaches it.
+    ///
+    /// One month in full is `/v1/screens/reports/:monthKey` and belongs to #22, which is what pushes the detail.
+    /// It is not declared here yet: a path with no caller and no payload is a guessed contract sitting in the
+    /// client, which is the thing the fixture corpus's own coverage scan exists to keep out.
+    static let screenReports = "/v1/screens/reports"
+
     // MARK: - Learn
 
     /// `POST /v1/learn/lessons/{id}/complete` — a finished lesson, with **one result per question** (#20).

@@ -148,8 +148,8 @@ and a signed-out `HomeViewModel` is still holding a salary. Invariant 8's reason
 objects too — per-user data that outlives the user is a leak, not a warm start.
 
 **unwritten tab root** — `UnwrittenTabRoot` plus `UnwrittenScreenViewModel`, the stand-in for the screens that are
-other tickets. **Two of them now**: Reports (#21) and Account (#23) — Expenses retired its placeholder with #18 and
-Learn with #19, which is what "retired the moment each screen lands" means in practice. A full `BaseView` conformance, so it renders through `StateView`,
+other tickets. **One of them now**: Account (#23) — Expenses retired its placeholder with #18, Learn with #19, and
+Reports with #21, which is what "retired the moment each screen lands" means in practice. A full `BaseView` conformance, so it renders through `StateView`,
 and it **makes no request**: calling the ADR-0020 screen endpoint would put a fictional contract in the client
 and render "Something went wrong" on four of five tabs. A screen that is not built is not a screen that is
 broken. Its `footer` slot carries `LogoutControl` on Account. **Retired the moment each screen lands.**
@@ -271,6 +271,46 @@ token verbatim; the per-user payload carries the symbol (`LearnScreen.currencyTo
 which is the same join Learn already is. Amounts beside it are **illustrative and never converted**.
 See [ADR-0035](docs/adr/0035-lesson-player.md), [ADR-0016](docs/adr/0016-presentation-details.md).
 
+**Reports** — `ReportsView` plus `ReportsArchivePage` and `ReportsViewModel`, the retrospective (#21): which months
+are closed, what each cost, whether the goal was met, and the trend through all of them against a dashed goal line.
+**The shortest view model in the app, and that is structural**: an archive is a record, so there is nothing to
+choose about it and nothing to type into it — no isolated slice, no substituted tip, no draft, no run.
+
+**It is the screen defect D11 lives on**, and the client's half of the fix is *absence*. §4.2 keeps one threshold
+table — 100/70, server-side — where the prototype carried two disagreeing ones for the same pill on the same number
+(Reports 100/70, Home 80/45), and neither is converted. No `saved`, no `goal`, and no percentage as a *number*
+reaches this screen in any month or any bar; a percentage arrives as a sentence and a verdict arrives as a verdict.
+`ReportsViewModelTests` asserts that against the **wire** rather than the decoded type, because a `Decodable`
+ignores keys it does not name — a server that started sending `saved` per month would be invisible to a test that
+only read `ReportsScreen`.
+
+**`ReportsScreen.Verdict` refuses to guess where `HomeScreen.Verdict` degrades**, and the difference is what the
+value describes. Home's pill is about a month still running, so an unknown verdict reading as "on track" is a hedge
+about something that has not happened. This is about a month that has **closed and is immutable** (invariant 7): a
+fourth verdict drawn as `near` would tell a reader that a month they smashed or missed outright nearly hit its goal,
+and would keep saying so for ever. Two vocabularies — `low`/`onTrack`/`met` and `hit`/`near`/`miss` — for one rule
+is a translation, not a second rule.
+
+**Two orderings, both the server's.** The trend runs oldest to newest because time reads that way; the archive runs
+newest first because the month a reader wants is the one that just closed. The corpus asserts that every bar and its
+month row carry the same verdict and the same percentage — the same number thresholded twice inside one assembly
+would be D11 moved from the client into the server. And **there is no per-month `saved` in the payload**, which is
+why the corpus checks no arithmetic here: with nothing to sum, the per-year totals and the mean have exactly one
+owner.
+
+**The trend's two heights are one scale.** The design scales the plot to `max(125, tallest × 1.08)` so a good month
+can overshoot; a bar's height and the goal line's arrive as fractions of the plot and the y-domain is fixed at
+`0...1`, because a client computing either could draw a bar at 101% *below* a line at 100% — the chart contradicting
+the badge beside it. The chart is keyed on `monthKey` and not on the label: two Februaries in two years share a
+label and would collapse into one bar.
+
+**The month rows are inert, and that is the decision.** `HWMonthRow` takes an optional action; without one there is
+no chevron, no button trait, and no tap. The month detail is #22, and a chevron pointing at an unwritten screen is
+the same broken promise in a smaller font — so the hint copy that describes the tap arrives with the tap rather than
+sitting in the catalogue as a sentence nothing shows. Reports pushes its own detail rather than being handed a route
+by the shell: unlike Home's two destinations, which are *tabs*, a month is a page inside this tab.
+See [ADR-0036](docs/adr/0036-reports-archive.md).
+
 **`EntryDraft`** — the entry being typed, and it **outlives the screen deliberately**. A write that fails offline
 replaces `state` with `LoadState.offline` (ADR-0019), so a draft living in the payload would go with it; this one
 snapshots the field shape it needs, which is why a retry works with no payload in hand. Its **`Idempotency-Key` is
@@ -354,10 +394,19 @@ drawn and capped; at and above it — every `isAccessibilitySize` — the chart 
 layout is what the screen shows. Not shrunk: a donut at 310% type is a circle with three overlapping labels
 in it. The alternative is *also* installed as the chart's `accessibilityRepresentation`, so one argument
 serves the AX3 reader and the VoiceOver user both. The consumers are the donut, the savings meter, the wants budget bar,
-the split bar, and the week strip (#17, #18, #20, #21) — the wants bar being the one whose replacement is
-`EmptyView()`, because the figures it draws are already text above it, and the week strip being the one whose
-replacement is the server's own per-day sentence as rows. **Reading the size to choose a *layout* is
-not clamping**: `HWSpendSummary`'s three chips become a column above the threshold, because a row of three broke
+the split bar, the week strip, and the savings-goal trend (#17, #18, #20, #21, #22) — the wants bar being the one
+whose replacement is `EmptyView()`, because the figures it draws are already text above it, and the week strip being
+the one whose replacement is the server's own per-day sentence as rows. The **trend chart** is the second
+`describesItself: true` consumer after the donut, and for the same reason: its `BarMark`s publish a descriptor each,
+so a representation installed over them would be read by nothing at any size.
+
+**One visualisation is neither clamped nor replaced**, and it is a decision rather than an omission:
+`HWProportionBar`, the 7pt stripe under each archive row. The pattern exists for fixed-layout *figures* that break
+when the type grows, and this holds no text at all — no label, no axis, no legend, and no `aria-label` in the design
+either. There is nothing in it to grow and nothing to overlap, so its replacement would be itself.
+
+**Reading the size to choose a *layout* is
+not clamping**: `HWFigureChips`' three chips become a column above the threshold, because a row of three broke
 `₹3,529` across three lines. Everything else — tips, articles, lesson steps, every label —
 **scales unclamped to AX5**, and `AccessibilityTests` asserts the range form of `dynamicTypeSize` appears in
 one file. See [ADR-0012](docs/adr/0012-accessibility.md), [ADR-0025](docs/adr/0025-accessibility-plumbing.md).
@@ -618,8 +667,11 @@ is no offline read of it. So Learn is `LoadState.offline` on a second launch wit
 does not have to come down again when it comes back.
 
 **screen payload** — what one `GET /v1/screens/*` returns: everything that screen draws, fully computed
-(ADR-0020). **Three exist**: Home, Expenses, and Learn — the last being the one that is *half* of a screen, because
-the other half is cacheable content on its own ETag (see **Learn** above). Expenses is where the design's own JavaScript did the arithmetic, so
+(ADR-0020). **Four exist**: Home, Expenses, Learn, and Reports — Learn being the one that is *half* of a screen,
+because the other half is cacheable content on its own ETag (see **Learn** above). Reports' field names are a list
+of things the design's browser worked out about *history*: `Year.totalSaved` for a filter-and-reduce per header,
+`Summary.averageSpend` for a mean of six totals, `Bar.fill` and `Trend.goalPosition` for one shared scale, and
+`percentageLabel` plus `verdict` for a division followed by a threshold (defect D11). Expenses is where the design's own JavaScript did the arithmetic, so
 its field names are a list of calculations that *moved* — `Category.total` for `catTotal(id)`, `wants.allowance` for a
 50/30/20 engine re-implemented in the browser (invariant 3 violated in the source material), `Entry.dateLabel` for a
 `whenLabel()` that read the device clock (invariant 6), and `entryCountLabel` for a pluralised count. Its payload
@@ -640,8 +692,16 @@ on `sun`, `mint`, and `coral`; **no single token passes on all five**. What that
 `HWPalette.UnitAccent` — a per-accent `ink`, asserted by `ColorAssetTests` the way the six category slots are — which
 is a palette change to make on its own. The numbers are in [ADR-0034](docs/adr/0034-learn-unit-map.md).
 
+**Swift Charts does not carry the app's environment objects into axis content** — an `AxisValueLabel` that reads
+`ThemeManager` traps inside a chart that was itself rendered inside one, which `ReportsViewTests` found by
+photographing the page. `HWTrendChart` reads the manager in its `body` and re-injects it around the label, which
+keeps `hwEyebrow(_:)` the one owner of that style. Worth knowing before the next chart: the same trap waits in any
+`.chart*Axis` content using a design-system modifier. **And an unused `@Environment` of a non-optional observable
+object is not free** — `ReportsArchivePage` declared one it never read and trapped for it.
+
 **a mark the framework knows, drawn by the framework; a shape the design invented, drawn by hand** — why the
-donut is Swift Charts and the savings meter is not, from one ADR. `SectorMark` publishes a per-mark accessibility
+donut is Swift Charts and the savings meter is not, from one ADR. The trend chart is the third case and it lands on
+the framework's side without argument: a bar chart with a threshold line is two marks Swift Charts has. `SectorMark` publishes a per-mark accessibility
 descriptor per slice; a gradient track with a sliding pin and a floating pill is not a mark, and expressing it as
 one fights the framework for a shape it does not have. Both are **replaced** above the accessibility threshold by
 the same figures as rows, and the replacement doubles as the chart's `accessibilityRepresentation`.
@@ -729,6 +789,14 @@ payloads by name.
 Expenses' summary read one budget engine (invariant 3), so a difference is one of the two assemblies having summed
 something. One payload also claims **four paths**, which is ADR-0020's write rule as a fixture: the read and all
 three writes answer with the same screen.
+
+**The Reports payloads carry the two things one payload could not.** `reports-inr.json` keeps the design's own six
+closed months and its *percentages* — one of each verdict, two met in six, as §3.6 counts them — re-denominated in
+rupees, with the goal left at ₹13,000 across a salary rise, which is §4.2's rule that a raise does not move the
+target. `reports-two-years.json` spans a year boundary, because one year group proves that a header renders and
+nothing at all about the grouping. And `reports-empty.json` is what makes `SnapshotCase.empty` a real screen's empty
+state: this is the first `LoadState.empty` the app can reach — Expenses' first run keeps all seven categories and is
+`.loaded`, Home's keeps four of its five cards.
 
 **Two entries are load-bearing beyond their shape.** `budget-aed.json` carries `AED 8,000` — defect D1's own
 figure — while the rupee one stays the default preview, so a screen that has gone back to hardcoding looks
@@ -868,4 +936,10 @@ Recorded here because they are commitments, not suggestions. None has been made 
 | [ADR-0035](docs/adr/0035-lesson-player.md) | **`xpEarned.display` is signed by the server** (`+50`), for the reason an incoming expense's is: a `+` pushed onto the front of a string by the client lands on the wrong side of an Arabic figure. `accuracy.display` carries its own `%`, whose position is a language's decision |
 | [ADR-0035](docs/adr/0035-lesson-player.md) | **`streakLine` is a server sentence**, not two catalogue strings chosen by a flag: "your streak just grew to 5 days" is a count *and* a plural, and Arabic has six plural forms (ADR-0011) |
 | [ADR-0035](docs/adr/0035-lesson-player.md) | **New endpoint** — `POST /v1/learn/progress {lessonId, stepIndex, results}`, answering with the updated Learn screen payload. It reports what happened rather than what the ring should show: `filledSegments` is a figure the screen draws, so the server decides it. The client sends this **once**, when a part-finished player closes, and ignores the outcome — there is no queue (ADR-0019) |
+| [ADR-0036](docs/adr/0036-reports-archive.md) | **`GET /v1/screens/reports`'s payload**, written by the client: `{summary{goalsMetLabel, monthCount{value,display}, averageSpend, totalSaved}, trend{goalPosition, bars[{monthKey, label, fill, verdict, percentageLabel, accessibilityLabel}]}, years[{label, totalSaved, months[{monthKey, label, spent, percentageLabel, verdict, segments[{slot, share}]}]}]}`. `verdict` is `hit`/`near`/`miss` from §4.2's **one** table; `fill`, `goalPosition`, and `share` are fractions `0…1` — geometry, so a bar cannot be drawn below a goal line it clears |
+| [ADR-0036](docs/adr/0036-reports-archive.md) | **The payload must carry no per-month `saved`, `goal`, or numeric percentage.** Defect D11 is two threshold tables over one number, and the client's half of the fix is having nothing to threshold — a percentage arrives as a sentence and a verdict as a verdict. This is asserted against the wire, so adding any of those three fields breaks the client's test suite deliberately |
+| [ADR-0036](docs/adr/0036-reports-archive.md) | **The archive arrives grouped by year with each year's total, and the two orderings are both sent** — the trend oldest-first, the list newest-first. A bar and its month row must agree about the verdict and the percentage; the corpus asserts it, because the same number thresholded twice inside one assembly is D11 moved server-side |
+| [ADR-0036](docs/adr/0036-reports-archive.md) | **Every date on the screen is a label** — "February", "Feb", "2026" — computed against the user's stored timezone (invariant 6). `monthKey` is an identity, not a date: it is the address of one month's detail. There is no timestamp and no month *number* anywhere in the payload, so the client could not name a month if it wanted to |
+| [ADR-0036](docs/adr/0036-reports-archive.md) | **Each bar carries its own descriptor** — "February 2026, 91% of goal, ₹11,830 saved" — as a server sentence, because it joins a date label, a percentage, and a money figure (ADR-0011). The design puts it in a `title` attribute, which touch never surfaces |
+| [ADR-0036](docs/adr/0036-reports-archive.md) | **A `goal` of 0 yields `hit`** (§4.2 — there is nothing to miss), and a fourth verdict is a **coordinated release**: the client fails the screen rather than degrading, because an archived month is immutable and a wrong verdict about it would be wrong for ever (invariant 7) |
 | [ADR-0035](docs/adr/0035-lesson-player.md) | **`GET /v1/screens/learn` gains a `currencyToken`** — `₹`, or `AED ` with its space, exactly as Home's tip carries one. The curriculum is cacheable and ships `{c}` verbatim in all 124 steps, so the symbol has to travel with the per-user half; without it the reader sees `{c}` in every worked example |

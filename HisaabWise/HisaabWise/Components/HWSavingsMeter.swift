@@ -218,22 +218,28 @@ struct HWSavingsMeter: View {
         .accessibilityHidden(true)
     }
 
-    /// `.mf-r` and its `.warn` / `.low` variants.
+    /// `.mf-r` and its `.warn` / `.low` variants — **the same badge Reports draws**, so it is
+    /// ``HWVerdictBadge`` (#21).
+    ///
+    /// The design gives `.mf-r` and `.m-badge` the same three soft/ink pairs, written twice in the CSS. This
+    /// drew them a third way until Reports arrived — a saturated fill with milky ink, picked here rather than
+    /// transcribed — which is a colour table with two owners about one verdict, the shape defect D11 took about
+    /// a threshold table. One badge now, and ``verdictTint`` is the whole of what this view still decides.
     private var pill: some View {
-        Text(verbatim: percentageLabel)
-            .font(.hw(.caption).weight(.bold))
-            .foregroundStyle(theme.palette.brand.ink)
-            .fixedSize(horizontal: false, vertical: true)
-            .padding(.horizontal, 10)
-            .padding(.vertical, 5)
-            .hwBox(fill: pillColour, radius: .small)
+        HWVerdictBadge(verdict: verdictTint, label: percentageLabel)
     }
 
-    private var pillColour: Color {
+    /// The design's three pill classes as the palette's three verdicts: unmodified `.mf-r` is the green one,
+    /// `.warn` the amber, `.low` the red.
+    ///
+    /// A mapping rather than one shared enum, for the reason `HomeView` maps `HomeScreen.Savings.Verdict` onto
+    /// this view's own: the live month's vocabulary and the design system's are allowed to move apart, and the
+    /// place they meet is one expression a test can hand every case to.
+    private var verdictTint: HWVerdictTint {
         switch verdict {
-        case .low: theme.palette.feedback.danger
-        case .onTrack: theme.palette.accent.base
-        case .met: theme.palette.meter.reached
+        case .low: .miss
+        case .onTrack: .near
+        case .met: .hit
         }
     }
 

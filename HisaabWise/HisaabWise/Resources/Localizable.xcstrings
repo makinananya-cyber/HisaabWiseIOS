@@ -2929,6 +2929,138 @@
         }
       }
     },
+    "reports.empty": {
+      "comment": "Shown when the archive is empty. The whole screen, unlike Home's first run: an archive with no months has no hero to draw beside the sentence.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No month has closed yet. Your first report arrives when this month ends."
+          }
+        }
+      }
+    },
+    "reports.eyebrow": {
+      "comment": "Eyebrow above the Reports title, as on every other tab root.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "HisaabWise"
+          }
+        }
+      }
+    },
+    "reports.hero.averageSpend": {
+      "comment": "Caption of the chip showing the mean spend across the archive.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Avg. spend"
+          }
+        }
+      }
+    },
+    "reports.hero.caption": {
+      "comment": "Caption on the archive hero, above the savings-goal trend chart.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "How close you got to your savings goal"
+          }
+        }
+      }
+    },
+    "reports.hero.months": {
+      "comment": "Caption of the chip counting the closed months in the archive.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Months"
+          }
+        }
+      }
+    },
+    "reports.hero.subtitle %@": {
+      "comment": "The hero's sub-line. %@ is the server's own sentence about how many months met the goal — a count with a plural in it — and the clause after it explains the chart.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ · the dashed line is the goal"
+          }
+        }
+      }
+    },
+    "reports.hero.totalSaved": {
+      "comment": "Caption of the chip showing everything saved across the archive.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Total saved"
+          }
+        }
+      }
+    },
+    "reports.month.spent %@": {
+      "comment": "Second line of a month row in the archive. %@ is what the month cost, formatted server-side.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spent %@"
+          }
+        }
+      }
+    },
+    "reports.title": {
+      "comment": "Title of the Reports tab — the archive of closed months.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Past spending reports"
+          }
+        }
+      }
+    },
+    "reports.trend.accessibilityLabel": {
+      "comment": "What VoiceOver reads for the trend chart, and the heading of the list that replaces it at accessibility sizes.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Savings goal reached each month"
+          }
+        }
+      }
+    },
+    "reports.year.saved %@": {
+      "comment": "Trailing end of a year divider in the archive. %@ is that year's savings total, formatted server-side.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%@ saved"
+          }
+        }
+      }
+    },
     "shell.logout.action": {
       "comment": "The log out control on Account, and the destructive action in its confirmation dialog.",
       "extractionState": "manual",

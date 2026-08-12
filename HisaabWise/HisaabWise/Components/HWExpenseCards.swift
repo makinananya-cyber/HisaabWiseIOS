@@ -15,26 +15,12 @@ import SwiftUI
 struct HWSpendSummary<Footer: View>: View {
     @Environment(ThemeManager.self) private var theme
 
-    /// Read to decide whether the three chips are a row or a column — see ``chips``. **Not a clamp**: this reads
-    /// the size to choose a *layout*, which is what ADR-0012 asks for, and `AccessibilityTests` bans only the
-    /// range form of `dynamicTypeSize` that caps it.
-    @Environment(\.dynamicTypeSize) private var size
-
     /// One `.chip` — a figure over a caption.
-    struct Split: Sendable, Identifiable {
-        /// `.chip span` — "Fixed", "Variable", "Income". App copy: it names a rule, not a thing the server
-        /// stores.
-        let label: LocalizedStringResource
-        /// `.chip b` — the figure, server-formatted (ADR-0003).
-        let value: String
-
-        var id: String { label.key }
-
-        init(_ label: LocalizedStringResource, _ value: String) {
-            self.label = label
-            self.value = value
-        }
-    }
+    ///
+    /// The chip itself is ``HWFigureChips``, because Reports' `.hero-split` is the same three-up row of the same
+    /// class (#21) and a second private copy of it here is the duplication `Components.swift` warns about. The
+    /// name stays as an alias so a caller says `HWSpendSummary.Split` about a summary's own chips.
+    typealias Split = HWFigureChips.Split
 
     /// `.sum-cap` — "Spent this month".
     private let caption: LocalizedStringResource
@@ -77,7 +63,7 @@ struct HWSpendSummary<Footer: View>: View {
                 .accessibilityLabel(Text(caption))
                 .accessibilityValue(Text(verbatim: total))
 
-            chips
+            HWFigureChips(splits)
                 .padding(.top, 16)
 
             footer
@@ -101,62 +87,6 @@ struct HWSpendSummary<Footer: View>: View {
             startPoint: .topLeading,
             endPoint: .bottomTrailing
         )
-    }
-
-    /// `.sum-split` — the three chips, sharing the width equally, **until they cannot**.
-    ///
-    /// A row of three at accessibility sizes leaves each about 100pt, and `₹3,529` came back as three lines
-    /// reading "₹3, / 52 / 9" with `VARI / ABL / E` beside it. Found by looking at a render, and fixed the way
-    /// `HomeView.duo` fixes the same thing for its two-up grid: **the row becomes a column** above the threshold,
-    /// where each chip has the whole width and the figures read.
-    ///
-    /// Below it, a `Grid` rather than an `HStack`, so all three take the height of the tallest — "Variable" wraps
-    /// one word sooner than "Income" and an `HStack` would leave three boxes of three heights.
-    @ViewBuilder
-    private var chips: some View {
-        if size.isAccessibilitySize {
-            VStack(spacing: 10) {
-                ForEach(splits) { split in
-                    chip(split)
-                }
-            }
-            .frame(maxWidth: .infinity)
-        } else {
-            Grid(horizontalSpacing: 10, verticalSpacing: 10) {
-                GridRow {
-                    ForEach(splits) { split in
-                        chip(split)
-                    }
-                }
-            }
-            .frame(maxWidth: .infinity)
-        }
-    }
-
-    private func chip(_ split: Split) -> some View {
-        VStack(alignment: .leading, spacing: 3) {
-            Text(verbatim: split.value)
-                .font(.hw(.bodyLarge).weight(.heavy))
-                .foregroundStyle(theme.palette.brand.ink)
-                .fixedSize(horizontal: false, vertical: true)
-
-            Text(split.label)
-                .hwEyebrow(.brand)
-                .fixedSize(horizontal: false, vertical: true)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 12)
-        .padding(.vertical, 10)
-        .hwBox(
-            fill: theme.palette.brand.raised,
-            radius: .medium,
-            border: theme.palette.brand.separator
-        )
-        // "Fixed, ₹3,529" as one element rather than two swipes. The *label* is the caption and the figure is
-        // the value, so a changed figure re-announces the number (ADR-0012).
-        .accessibilityElement(children: .ignore)
-        .accessibilityLabel(Text(split.label))
-        .accessibilityValue(Text(verbatim: split.value))
     }
 }
 

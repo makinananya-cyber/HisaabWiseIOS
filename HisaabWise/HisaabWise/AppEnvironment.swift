@@ -98,6 +98,13 @@ final class AppEnvironment {
         LearnViewModel(client: client, content: content)
     }
 
+    /// Reports' view model (#21). The **only tab view model that takes nothing but the client**: the archive is
+    /// one read of per-user data, and there is no cacheable half of it to load — a closed month's figures are
+    /// nobody else's.
+    func makeReportsViewModel() -> ReportsViewModel {
+        ReportsViewModel(client: client)
+    }
+
     /// One view model per tab, made once for the shell to be handed (issue #5).
     ///
     /// **Made here and held by the composition root**, not held here: the graph is the app's lifetime and a
@@ -108,7 +115,8 @@ final class AppEnvironment {
         TabViewModels(
             home: makeHomeViewModel(),
             expenses: makeExpensesViewModel(),
-            learn: makeLearnViewModel()
+            learn: makeLearnViewModel(),
+            reports: makeReportsViewModel()
         )
     }
 

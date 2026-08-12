@@ -81,6 +81,14 @@ struct ColorAssetTests {
         ("hwMeterHalf", "F9C548", 1.0, "--r3"),
         ("hwMeterHigh", "A2CB42", 1.0, "--r4"),
         ("hwMeterReached", "1FC186", 1.0, "--r5"),
+        // the three goal-verdict badges — `.m-badge.hit/.near/.miss` on Reports, and the same three pairs
+        // spelled again as `.mf-r` / `.mf-r.warn` / `.mf-r.low` on the savings meter
+        ("hwVerdictHitSoft", "DEF6EC", 1.0, ".m-badge.hit background"),
+        ("hwVerdictHitInk", "0E6B4C", 1.0, ".m-badge.hit color"),
+        ("hwVerdictNearSoft", "FEF1D7", 1.0, ".m-badge.near background"),
+        ("hwVerdictNearInk", "875507", 1.0, ".m-badge.near color"),
+        ("hwVerdictMissSoft", "FDE7E4", 1.0, ".m-badge.miss background"),
+        ("hwVerdictMissInk", "96301F", 1.0, ".m-badge.miss color"),
     ]
 
     @Test("every semantic colour resolves from the catalogue")
@@ -147,6 +155,27 @@ struct ColorAssetTests {
             let colour = try #require(UIColor(named: category.name, in: .designSystem, compatibleWith: nil))
             let ratio = try contrastRatio(colour, card)
             #expect(ratio >= 3.0, "\(category.name) is \(String(format: "%.2f", ratio)):1 on the card")
+        }
+    }
+
+    /// The verdict badges are **filled**, so the pair that matters is the ink against its own wash rather than
+    /// against the card — and 4.5:1 is the bar the rest of this palette is held to, because the badge's text is
+    /// a percentage at caption size rather than a glyph.
+    ///
+    /// The design supplies both halves of each pair, which is why they are transcribed rather than re-picked
+    /// (issue #6). This is what says the transcription is legible: an accent's `base` used as ink is exactly the
+    /// mistake ADR-0034 found in five places, and it found it by measuring.
+    @Test("every verdict badge's ink clears 4.5:1 on its own wash")
+    func verdictInkClearsContrastOnItsWash() throws {
+        for verdict in ["Hit", "Near", "Miss"] {
+            let soft = try #require(
+                UIColor(named: "hwVerdict\(verdict)Soft", in: .designSystem, compatibleWith: nil)
+            )
+            let ink = try #require(
+                UIColor(named: "hwVerdict\(verdict)Ink", in: .designSystem, compatibleWith: nil)
+            )
+            let ratio = try contrastRatio(ink, soft)
+            #expect(ratio >= 4.5, "hwVerdict\(verdict)Ink is \(String(format: "%.2f", ratio)):1 on its wash")
         }
     }
 

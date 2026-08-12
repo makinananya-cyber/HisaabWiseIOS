@@ -18,7 +18,8 @@ struct RootViewTests {
         return TabViewModels(
             home: HomeViewModel(client: client, content: content),
             expenses: ExpensesViewModel(client: client, content: content),
-            learn: LearnViewModel(client: client, content: content)
+            learn: LearnViewModel(client: client, content: content),
+            reports: ReportsViewModel(client: client)
         )
     }
 

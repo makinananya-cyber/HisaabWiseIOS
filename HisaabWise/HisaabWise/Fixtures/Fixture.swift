@@ -150,6 +150,32 @@ enum Fixture: String, CaseIterable, Sendable {
     /// reading of a headline.
     case lessonRevisited = "lesson-revisited"
 
+    /// `GET /v1/screens/reports` — the standing archive: the design's own six closed months, in the rupees the
+    /// rest of the corpus is authored in (ADR-0020, #21).
+    ///
+    /// **It carries one of each verdict, and two of the six met their goal** — which is §3.6's own count for the
+    /// seeded months, and what makes "a hit / near / miss trio renders the server's verdict verbatim" something
+    /// a test can ask of the standing payload rather than of a special one.
+    ///
+    /// The figures are the design's *percentages* rather than its dirhams: salary ₹65,000 to April and ₹70,000
+    /// after a raise, with the goal left at ₹13,000 — §4.2's rule that a raise does not move the target, which
+    /// the design's own archive quietly breaks by lifting the goal with the salary.
+    case reportsINR = "reports-inr"
+
+    /// `GET /v1/screens/reports` across a **year boundary**: December 2025, then January and February 2026.
+    ///
+    /// Two year groups with different totals, which is the only arrangement in which "grouped by year, with
+    /// per-year savings totals" is visible at all — one group proves the header renders and nothing about the
+    /// grouping. Three months, one of each verdict, so it is also the compact trio.
+    case reportsTwoYears = "reports-two-years"
+
+    /// `GET /v1/screens/reports` for an account whose first month has not closed yet — **no years, no bars**.
+    ///
+    /// A *response*, not an absence, and the one screen in the app where an empty payload is genuinely
+    /// `LoadState.empty`: unlike Home's first run, there is no meter, no tip, and no streak left to draw beside
+    /// it. An archive with nothing in it is one sentence.
+    case reportsEmpty = "reports-empty"
+
     /// `GET /v1/curriculum` — **5** units, **15** lessons, **124** steps (58 teach + 66 question), answer keys
     /// intact.
     ///
@@ -226,6 +252,9 @@ enum Fixture: String, CaseIterable, Sendable {
         // the screen inside it (``LessonCompletion``).
         case .learnInProgress: [Endpoint.screenLearn, Endpoint.learnProgress]
         case .learnFirstRun, .learnComplete: []
+        // Same rule again: three payloads for one path, and only the standing one may claim it.
+        case .reportsINR: [Endpoint.screenReports]
+        case .reportsTwoYears, .reportsEmpty: []
         // The lesson the standing Learn payload's cursor sits on, and a replay of one already finished. Only the
         // first claims a path, because `serving(_:)` refuses two fixtures for one route and these two are
         // alternative answers to the same *kind* of request rather than to the same lesson.

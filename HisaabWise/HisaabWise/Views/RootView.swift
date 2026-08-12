@@ -125,7 +125,12 @@ private struct UnwrittenBrandScreen: View {
 #Preview("Signed out — Landing") {
     RootView(makeRegistrationViewModel: { .preview })
         .environment(SessionCoordinator.preview)
-        .environment(TabViewModels(home: .previewINRSalary, expenses: .previewINR, learn: .previewInProgress))
+        .environment(TabViewModels(
+            home: .previewINRSalary,
+            expenses: .previewINR,
+            learn: .previewInProgress,
+            reports: .previewArchive
+        ))
         .hwTheme()
 }
 
@@ -134,14 +139,24 @@ private struct UnwrittenBrandScreen: View {
 #Preview("Signed in — the shell") {
     RootView(makeRegistrationViewModel: { .preview })
         .environment(SessionCoordinator.previewSignedIn)
-        .environment(TabViewModels(home: .previewINRSalary, expenses: .previewINR, learn: .previewInProgress))
+        .environment(TabViewModels(
+            home: .previewINRSalary,
+            expenses: .previewINR,
+            learn: .previewInProgress,
+            reports: .previewArchive
+        ))
         .hwTheme()
 }
 
 #Preview("RTL") {
     RootView(makeRegistrationViewModel: { .preview })
         .environment(SessionCoordinator.preview)
-        .environment(TabViewModels(home: .previewINRSalary, expenses: .previewINR, learn: .previewInProgress))
+        .environment(TabViewModels(
+            home: .previewINRSalary,
+            expenses: .previewINR,
+            learn: .previewInProgress,
+            reports: .previewArchive
+        ))
         .hwTheme()
         .hwLanguage(LanguageManager(selected: .arabic))
 }
@@ -149,7 +164,12 @@ private struct UnwrittenBrandScreen: View {
 #Preview("AX5") {
     RootView(makeRegistrationViewModel: { .preview })
         .environment(SessionCoordinator.preview)
-        .environment(TabViewModels(home: .previewINRSalary, expenses: .previewINR, learn: .previewInProgress))
+        .environment(TabViewModels(
+            home: .previewINRSalary,
+            expenses: .previewINR,
+            learn: .previewInProgress,
+            reports: .previewArchive
+        ))
         .hwTheme()
         .dynamicTypeSize(.accessibility5)
 }

@@ -152,7 +152,10 @@ struct AppShell: View {
             // that did not exist; now that it does, the presentation belongs to the screen it covers — a lesson is a
             // full-screen mode over the map, not a tab the shell can switch to and not a page it can push.
             case .learn: LearnView(viewModel: viewModels.learn)
-            case .reports: UnwrittenTabRoot(tab: tab, viewModel: viewModels.reports)
+            // The month detail is #22's, and this is where its `onOpenMonth` closure will not go: unlike Home's
+            // two destinations, a month is a *pushed page inside this tab* rather than another tab, so the push
+            // belongs to Reports and the shell has nothing to supply (ADR-0036).
+            case .reports: ReportsView(viewModel: viewModels.reports)
             // Account carries the way out, because the design puts it there. It is the only thing on any of
             // the four unwritten screens that is real, and it is here rather than on a debug affordance
             // because "log out actually ends the session" is one of this issue's criteria.
@@ -175,7 +178,12 @@ struct AppShell: View {
 /// launches signed out, and `RootView` draws Landing.
 @MainActor
 private func previewViewModels() -> TabViewModels {
-    TabViewModels(home: .previewINRSalary, expenses: .previewINR, learn: .previewInProgress)
+    TabViewModels(
+        home: .previewINRSalary,
+        expenses: .previewINR,
+        learn: .previewInProgress,
+        reports: .previewArchive
+    )
 }
 
 #Preview("The shell — five tabs") {

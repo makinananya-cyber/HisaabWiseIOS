@@ -17,7 +17,7 @@ struct SnapshotCaseTests {
         #expect(SnapshotCase.allCases.count == 4)
         // And they are the four kinds the ADR names, not four of one kind.
         #expect(SnapshotCase.allCases.map(\.rawValue).sorted()
-            == ["home-arabic", "home-ax3", "home-populated", "state-empty"])
+            == ["home-arabic", "home-ax3", "home-populated", "reports-empty"])
     }
 
     @Test("no two cases would write to the same baseline")

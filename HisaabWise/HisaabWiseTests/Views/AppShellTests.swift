@@ -18,7 +18,8 @@ struct AppShellTests {
         return TabViewModels(
             home: HomeViewModel(client: client, content: content),
             expenses: ExpensesViewModel(client: client, content: content),
-            learn: LearnViewModel(client: client, content: content)
+            learn: LearnViewModel(client: client, content: content),
+            reports: ReportsViewModel(client: client)
         )
     }
 
@@ -114,11 +115,15 @@ struct AppShellTests {
         #expect(!AppShell.showsVerificationBanner(for: nil))
     }
 
-    /// Three tabs are still placeholders — Learn (#19), Reports (#21), and Account (#23). Expenses stopped being
-    /// one with #18, so it is asserted through its own screen below rather than here.
+    /// **One tab is still a placeholder** — Account (#23). Expenses retired its stand-in with #18, Learn with
+    /// #19, and Reports with #21, and each is asserted through its own screen instead.
+    ///
+    /// The loop still runs over every tab rather than over the one, because the placeholder takes an `AppTab` and
+    /// draws its title: what would break first is a tab whose copy went missing, and that is a property of all
+    /// five whichever of them the shell still routes here.
     @Test("every unwritten tab root renders in the state its view model starts in")
     func everyUnwrittenRootRenders() async throws {
-        for tab in AppTab.allCases where tab != .home && tab != .expenses {
+        for tab in AppTab.allCases {
             let viewModel = UnwrittenScreenViewModel()
             try await viewModel.load()
             #expect(TestBench.render(UnwrittenTabRoot(tab: tab, viewModel: viewModel)) != nil, "\(tab)")
@@ -130,7 +135,11 @@ struct AppShellTests {
     /// criterion, and a screen that dropped it would still compile.
     @Test("every tab root is a BaseView conformance")
     func everyRootIsABaseView() throws {
-        let roots = ["HomeView.swift", "ExpensesView.swift", "UnwrittenTabRoot.swift"]
+        let roots = [
+            "HomeView.swift", "ExpensesView.swift", "LearnView.swift", "ReportsView.swift",
+            // Account's screen is #23; until then the placeholder is a conformance in its own right.
+            "UnwrittenTabRoot.swift",
+        ]
 
         for name in roots {
             let source = try String(

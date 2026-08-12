@@ -22,7 +22,12 @@
 /// | `.sheet-list` / `.optlist` / `.opts` · `.srow` / `.opt` | ``HWSheetList`` · ``HWSheetRow`` |
 /// | `.topbar` · `.backbar` | ``HWTopBar`` · ``HWBackBar`` |
 /// | `.toast` | ``HWToast`` · `hwToast(_:isPresented:)` |
-/// | `.summary` + `.sum-split` + `.chip` · `.budget` | ``HWSpendSummary`` · ``HWBudgetBar`` |
+/// | `.summary` · `.budget` | ``HWSpendSummary`` · ``HWBudgetBar`` |
+/// | `.sum-split` / `.hero-split` + `.chip` | ``HWFigureChips`` · ``HWFigureChip`` |
+/// | `.hero` + `.hero-cap` + `.hero-sub` | ``HWArchiveHero`` |
+/// | `.trend` + `.tbar` + `.trend-avg` | ``HWTrendChart`` |
+/// | `.m-badge` / `.mf-r` | ``HWVerdictBadge`` |
+/// | `.yr` · `.month` + `.m-top` + `.m-chev` · `.m-bar` | ``HWYearHeader`` · ``HWMonthRow`` · ``HWProportionBar`` |
 /// | `.hero` · `.entry` · `.empty` | ``HWCategoryHero`` · ``HWEntryRow`` · ``HWEmptyNote`` |
 /// | `.line` · `.editing .line` · `.fixed-val` | ``HWBillLine`` · ``HWBillLineEditor`` · ``HWFixedAmount`` |
 /// | `.money-sym` + `.money-code` · `.amount` | ``HWMoneyField``, ``HWMoneyProminence`` |
@@ -77,6 +82,29 @@
 /// flag's bob is: an attention loop's only replacement is the thing itself, and the sentence beside the hearts
 /// already says how many are left. `HWConfetti` draws **nothing** under Reduce Motion, and the replacement ADR-0012
 /// names — a static badge carrying the XP figure — is `HWDoneBadge` and `HWCompletionStat`, both permanent.
+///
+/// **What Reports' six entries decide** (#21, ADR-0036), because three of them are departures. `.chip` was
+/// private to ``HWSpendSummary`` and is now ``HWFigureChips``, because `.hero-split` is the same three-up row of
+/// the same class and a second copy inside the second card is precisely what the rule at the top of this file
+/// forbids. `.m-badge` and `.mf-r` are **one** component: the design gives them the same three soft/ink pairs and
+/// spells them twice, and the savings meter had been drawing a *third* treatment picked rather than transcribed —
+/// two owners of a colour table about one verdict, which is the shape defect D11 took about a threshold table.
+/// And ``HWMonthRow``'s chevron and button trait are **conditional on there being an action**, because the month
+/// detail is #22: a control that looks tappable and opens nothing is worse than the plain row it replaces.
+///
+/// Three of the design's animations there are **dropped rather than gated**, on the reasoning the `START` flag's
+/// bob already carries: the trend's staggered bar growth, the goal line's delayed fade, and each proportion bar's
+/// width transition are entrances, and an entrance's only honest replacement under Reduce Motion is the thing
+/// already being there (ADR-0012). And ``HWProportionBar`` is the one visualisation in the app that is **neither
+/// clamped nor replaced**: it holds no text, so there is nothing in it to grow and nothing to overlap — the clamp
+/// pattern exists for fixed-layout *figures*, and the design gives this bar no label, no axis, and no `aria-label`
+/// either.
+///
+/// **Swift Charts does not carry the app's environment objects into `.chartXAxis` content**, which
+/// ``HWTrendChart`` found by being photographed: an `AxisValueLabel` reading `ThemeManager` traps inside a chart
+/// that was itself rendered inside one. The manager is read in the `body` and re-injected around the label, which
+/// keeps ``SwiftUI/View/hwEyebrow(_:)`` the one owner of that style rather than spelling its four attributes out
+/// a second time.
 ///
 /// Two more used to be on that list and no longer are. `.mark` is drawn by ``HWMark`` now that the design's
 /// base64 logo has been extracted to the asset catalogue (ADR-0026). And the **`brand` appearance is no longer

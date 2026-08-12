@@ -4,17 +4,18 @@ import SwiftUI
 /// where the screen goes.
 ///
 /// The shell is five tabs and four of the five screens were other tickets — Expenses (#18), Learn (#19),
-/// Reports (#21), Account (#23). **Two are left**: Reports and Account. This is what stands in until each
-/// arrives, and what it is careful to be is **honest**: it says the screen is not built, rather than fetching a
-/// route the backend has not written and showing "Something went wrong" (see ``UnwrittenScreenViewModel``).
+/// Reports (#21), Account (#23). **One is left**: Account. This is what stands in until it arrives, and what it
+/// is careful to be is **honest**: it says the screen is not built, rather than fetching a route the backend has
+/// not written and showing "Something went wrong" (see ``UnwrittenScreenViewModel``).
 ///
 /// It is a full ``BaseView`` conformance rather than a plain `View`, which is issue #5's criterion — every tab
 /// root renders its state through ``StateView`` — and it is what makes the swap cheap: each of those four
-/// issues writes a screen and deletes one `case` from ``AppShell``. Two have, and each cost exactly that.
+/// issues writes a screen and deletes one `case` from ``AppShell``. Three have, and each cost exactly that.
 ///
-/// The `footer` slot exists for Account, which carries ``LogoutControl``. A `ViewBuilder` rather than a value,
-/// for the reason ``HWTopBar`` gives for its trailing slot: it holds a *control*, and a placeholder that took
-/// one as data would be picking which control.
+/// The `footer` slot exists for Account, which carries ``LogoutControl`` — and Account is now the **only**
+/// caller, so the slot's generic form is kept for the reason it was written rather than because two screens use
+/// it. A `ViewBuilder` rather than a value, for the reason ``HWTopBar`` gives for its trailing slot: it holds a
+/// *control*, and a placeholder that took one as data would be picking which control.
 struct UnwrittenTabRoot<Footer: View>: BaseView {
     @Environment(ThemeManager.self) private var theme
 
@@ -48,7 +49,8 @@ struct UnwrittenTabRoot<Footer: View>: BaseView {
 }
 
 extension UnwrittenTabRoot where Footer == EmptyView {
-    /// A placeholder with nothing under it, which is three of the four.
+    /// A placeholder with nothing under it. Three of the four screens took this form and all three have landed,
+    /// so what still calls it is the preview and the shell's own tests.
     init(tab: AppTab, viewModel: UnwrittenScreenViewModel) {
         self.init(tab: tab, viewModel: viewModel, footer: { EmptyView() })
     }

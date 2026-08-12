@@ -182,6 +182,54 @@ extension LearnViewModel {
     }
 }
 
+extension ReportsViewModel {
+    /// The standing default preview: the design's own six closed months, in rupees — one of each verdict, and
+    /// two of the six met their goal.
+    @MainActor
+    static var previewArchive: ReportsViewModel {
+        preview(stubbing: .response(status: 200, body: TestPayload.bytes(.reportsINR)))
+    }
+
+    /// Two year groups with a total each, which is the only arrangement in which "grouped by year" is visible.
+    @MainActor
+    static var previewTwoYears: ReportsViewModel {
+        preview(stubbing: .response(status: 200, body: TestPayload.bytes(.reportsTwoYears)))
+    }
+
+    /// An account whose first month has not closed yet. **The whole screen is the empty state** here, unlike
+    /// Home's first run — so this preview draws `StateView`, which is the point of having it.
+    @MainActor
+    static var previewEmpty: ReportsViewModel {
+        preview(stubbing: .response(status: 200, body: TestPayload.bytes(.reportsEmpty)))
+    }
+
+    /// Offline, which must not render as a failure.
+    @MainActor
+    static var previewOffline: ReportsViewModel {
+        preview(stubbing: .notConnected)
+    }
+
+    /// A `501` — the state every unwritten screen endpoint answers with until the backend has one.
+    @MainActor
+    static var previewNotImplemented: ReportsViewModel {
+        preview(stubbing: .response(status: 501, body: Data()))
+    }
+
+    @MainActor
+    private static func preview(stubbing outcome: FixtureTransport.Outcome) -> ReportsViewModel {
+        ReportsViewModel(
+            client: APIClient(
+                baseURL: URL(string: "https://fixtures.invalid")!,
+                transport: FixtureTransport(stubs: [Endpoint.screenReports: outcome]),
+                // An explicit language rather than the device's: a preview's `Accept-Language` should not
+                // depend on the Mac Xcode is running on.
+                language: LanguageManager(selected: .english),
+                refreshTokens: InMemoryTokenStore()
+            )
+        )
+    }
+}
+
 extension LessonPlayerViewModel {
     /// A run on the first teaching page of `u1l1` — four pages of prose, then four questions.
     @MainActor

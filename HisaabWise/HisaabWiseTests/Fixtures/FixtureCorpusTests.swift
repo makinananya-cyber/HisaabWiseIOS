@@ -585,4 +585,129 @@ struct FixtureCorpusTests {
         #expect(homeSaved["display"] as? String == budgetSaved["display"] as? String)
         #expect(homeSaved["currency"] as? String == budgetSaved["currency"] as? String)
     }
+
+    // MARK: - The Reports payloads
+
+    @Test("the reports payloads decode into the type the app decodes them into")
+    func reportsPayloadsDecode() throws {
+        let archive = try Fixture.reportsINR.decode(ReportsScreen.self)
+        #expect(archive.allMonths.count == 6)
+        #expect(archive.years.count == 1)
+        #expect(archive.summary.totalSaved.display == "₹76,700")
+
+        // The two payloads that claim no path, each carrying a state the standing one cannot show.
+        #expect(try Fixture.reportsTwoYears.decode(ReportsScreen.self).years.count == 2)
+
+        let empty = try Fixture.reportsEmpty.decode(ReportsScreen.self)
+        #expect(empty.years.isEmpty)
+        #expect(empty.trend.bars.isEmpty)
+    }
+
+    /// **The trio the screen's own criterion asks for**, in the standing payload rather than in a special one:
+    /// one of each verdict, and §3.6's own count of two months in six that met the goal.
+    @Test("the standing archive carries a hit, a near, and a miss — and two hits in six")
+    func theArchiveCarriesEveryVerdict() throws {
+        let archive = try Fixture.reportsINR.decode(ReportsScreen.self)
+        let verdicts = archive.allMonths.map(\.verdict)
+
+        #expect(Set(verdicts) == Set(ReportsScreen.Verdict.allCases))
+        #expect(verdicts.filter { $0 == .hit }.count == 2, "§3.6 seeds two met months in six")
+        #expect(archive.summary.goalsMetLabel.contains("2 of 6"))
+    }
+
+    /// **The archive and the trend agree about every month, which is defect D11 as a property of the corpus.**
+    ///
+    /// The two arrays are two orderings of the same closed months, and each carries a verdict and a percentage.
+    /// A month whose bar said `hit` while its row said `near` would be one payload thresholding the same number
+    /// twice — the mistake D11 *is*, moved from the client into the assembly. Matched by `monthKey`, which is why
+    /// both arrays carry one.
+    @Test("every bar and its month row carry the same verdict and the same percentage")
+    func theTrendAndTheArchiveAgree() throws {
+        for fixture in [Fixture.reportsINR, .reportsTwoYears] {
+            let screen = try fixture.decode(ReportsScreen.self)
+            let months = Dictionary(uniqueKeysWithValues: screen.allMonths.map { ($0.monthKey, $0) })
+
+            #expect(screen.trend.bars.count == screen.allMonths.count, "\(fixture.rawValue)")
+            for bar in screen.trend.bars {
+                let month = try #require(months[bar.monthKey], "\(fixture.rawValue) charts a month the archive has not")
+                #expect(bar.verdict == month.verdict, "\(bar.monthKey) is \(bar.verdict) charted and \(month.verdict) listed")
+                #expect(bar.percentageLabel == month.percentageLabel, "\(bar.monthKey) reads two percentages")
+            }
+        }
+    }
+
+    /// **The grouping is the server's, and the two-year payload is what makes that checkable.**
+    ///
+    /// Every month in a group belongs to that group's year — asserted through `monthKey`, which is the one field
+    /// carrying the year as data rather than as a label — and the groups run newest first, as do the months
+    /// inside them. One group would prove that a header renders and nothing at all about the grouping.
+    @Test("the archive is grouped by year, newest first, and every month is in the right group")
+    func theArchiveIsGroupedByYear() throws {
+        let screen = try Fixture.reportsTwoYears.decode(ReportsScreen.self)
+
+        #expect(screen.years.map(\.label) == ["2026", "2025"])
+        #expect(screen.years.map { $0.months.count } == [2, 1])
+        #expect(screen.years.map { $0.totalSaved.display } == ["₹16,380", "₹13,200"])
+
+        for year in screen.years {
+            for month in year.months {
+                #expect(month.monthKey.hasPrefix(year.label), "\(month.monthKey) is filed under \(year.label)")
+            }
+            // Newest first inside the group, which the design's list is and the trend's is not.
+            #expect(year.months.map(\.monthKey) == year.months.map(\.monthKey).sorted(by: >))
+        }
+        // And the trend runs the other way — oldest to newest, as the design draws time.
+        #expect(screen.trend.bars.map(\.monthKey) == screen.trend.bars.map(\.monthKey).sorted())
+    }
+
+    /// **The hero counts the months the archive holds**, which is what `Count.value` is for: two formatted
+    /// strings can be wrong in the same way, and two numbers cannot be equal by accident.
+    @Test("the hero's month count is the number of months in the archive", arguments: [
+        Fixture.reportsINR, .reportsTwoYears, .reportsEmpty,
+    ])
+    func theHeroCountsTheArchive(_ fixture: Fixture) throws {
+        let screen = try fixture.decode(ReportsScreen.self)
+
+        #expect(screen.summary.monthCount.value == screen.allMonths.count)
+        #expect(screen.summary.monthCount.display == "\(screen.allMonths.count)")
+    }
+
+    /// The geometry stays geometry: every fraction is inside its range, and a month's stripes account for the
+    /// whole row rather than for some of it.
+    ///
+    /// **There is deliberately nothing here about the year totals or the mean**, and that absence is the point —
+    /// the payload carries no per-month `saved`, so there is no sum for the corpus to check and none for a client
+    /// to make. The assertion that they are the server's is the *shape* of the payload, which
+    /// `ReportsViewModelTests` states directly.
+    @Test("every fraction in the payload is a fraction", arguments: [Fixture.reportsINR, .reportsTwoYears])
+    func theGeometryIsInRange(_ fixture: Fixture) throws {
+        let screen = try fixture.decode(ReportsScreen.self)
+
+        #expect((0...1).contains(screen.trend.goalPosition))
+        for bar in screen.trend.bars {
+            #expect((0...1).contains(bar.fill), "\(bar.monthKey) fills \(bar.fill) of the plot")
+        }
+        for month in screen.allMonths {
+            // **One stripe per category that has something in it**, so a quiet month has fewer than six — the
+            // design's own `t > 0 ? … : ''`. Asserted as "at most six, each slot once" rather than "six", which
+            // the first version said and which would have made the design's normal case a corpus failure.
+            #expect((1...6).contains(month.segments.count), "\(month.monthKey) has \(month.segments.count) stripes")
+            #expect(Set(month.segments.map(\.slot)).count == month.segments.count, "\(month.monthKey) repeats a slot")
+            #expect(month.segments.allSatisfy { (1...6).contains($0.slot) }, "\(month.monthKey) has a slot off the palette")
+            // Whatever the count, the stripes still cover the whole row: they are shares of that month's spend.
+            let total = month.segments.map(\.share).reduce(0, +)
+            #expect(abs(total - 1) < 0.001, "\(month.monthKey)'s stripes cover \(total) of the row")
+        }
+    }
+
+    /// **A quiet month has fewer stripes**, which the two-year payload carries so the branch both the model and
+    /// `HWMonthRow` handle is a state the corpus actually contains rather than one only a preview shows.
+    @Test("a month with an untouched category has fewer than six stripes")
+    func aQuietMonthHasFewerStripes() throws {
+        let screen = try Fixture.reportsTwoYears.decode(ReportsScreen.self)
+        let quiet = try #require(screen.allMonths.first { $0.monthKey == "2025-12" })
+
+        #expect(quiet.segments.count == 4, "December 2025 is the corpus's quiet month")
+        #expect(!quiet.segments.contains { $0.slot == 5 }, "a month with no entertainment draws no violet stripe")
+    }
 }
