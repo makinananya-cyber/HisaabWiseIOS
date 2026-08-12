@@ -12,10 +12,14 @@ import SwiftUI
 /// design ships both. Neither is converted. §4.2 keeps one table, server-side, and this screen's half of that is
 /// having nothing to threshold: it never sees a `saved`, a `goal`, or a percentage as a number.
 ///
-/// **The month detail is #22.** The design's row is a `<button>` that opens the month in full; until that screen
-/// exists the rows are rows — no chevron and no tap — because a control that looks tappable and does nothing is
-/// worse than a plain row (``HWMonthRow``). What #22 adds is a closure and a `navigationDestination`, which is
-/// the shape `HomeView` already uses for an article.
+/// **The month detail arrived with #22**, and with it the affordance: the design's row is a `<button>` that opens
+/// the month in full, so the rows now carry a chevron, a button trait, and the hint copy that describes the tap —
+/// all three of which #21 deliberately withheld while there was nowhere to go (``HWMonthRowLabel``). The destination is
+/// registered here, in the shape `HomeView` already uses for an article: a route type, a `navigationDestination`,
+/// and a view model made by this screen's own (``ReportsViewModel/monthViewModel(monthKey:)``).
+///
+/// **Reports pushes its own detail** rather than being handed a route by the shell. Home's two destinations are
+/// *tabs*, whose selection the shell owns; a month is a page inside this tab.
 struct ReportsView: BaseView {
     /// Held rather than read from `@Environment` so that a test can construct the screen over a fixture
     /// transport. The five-tab shell puts one per tab in the environment.
@@ -42,6 +46,12 @@ struct ReportsView: BaseView {
                 .padding(.vertical, 14)
         }
         .scrollBounceBehavior(.basedOnSize)
+        // One destination, pushed onto the stack the shell wraps this tab in. It carries the **month key**, which
+        // is the detail's own address: the detail re-reads the month from the server rather than being handed the
+        // row's copy of it (ADR-0020, ADR-0037).
+        .navigationDestination(for: ReportsMonthRoute.self) { route in
+            ReportsMonthView(viewModel: viewModel.monthViewModel(monthKey: route.monthKey))
+        }
     }
 
     // MARK: - Mapping
@@ -116,10 +126,6 @@ struct ReportsArchivePage: View {
     // than reading nothing.
     let screen: ReportsScreen
 
-    /// What opening a month does. `nil` until #22 writes the month detail, which is what leaves the rows inert
-    /// rather than promising a screen that is not there (``HWMonthRow``).
-    var onOpenMonth: ((String) -> Void)?
-
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
             HWTopBar(eyebrow: "reports.eyebrow", title: Text("reports.title"))
@@ -158,19 +164,30 @@ struct ReportsArchivePage: View {
             )
 
             ForEach(year.months) { month in
-                HWMonthRow(
-                    name: month.label,
-                    // The year beside the month name is the **group's**, read from the header it sits under
-                    // rather than repeated in every row's payload.
-                    year: year.label,
-                    spent: Text("reports.month.spent \(month.spent.display)"),
-                    verdict: ReportsView.tint(month.verdict),
-                    percentageLabel: month.percentageLabel,
-                    segments: ReportsView.segments(month),
-                    // **No hint, because there is no action** — the two arrive together with #22, and a hint
-                    // saying "opens the month" on an inert row is copy promising a screen that is not there.
-                    action: onOpenMonth.map { open in { open(month.monthKey) } }
-                )
+                // A `NavigationLink` rather than a button plus a path append: the row *is* the destination, and
+                // the shell already wraps this tab in a stack. It carries the **month key**, which is the
+                // detail's own address (#22).
+                NavigationLink(value: ReportsMonthRoute(monthKey: month.monthKey)) {
+                    HWMonthRowLabel(
+                        name: month.label,
+                        // The year beside the month name is the **group's**, read from the header it sits under
+                        // rather than repeated in every row's payload.
+                        year: year.label,
+                        spent: Text("reports.month.spent \(month.spent.display)"),
+                        verdict: ReportsView.tint(month.verdict),
+                        percentageLabel: month.percentageLabel,
+                        segments: ReportsView.segments(month),
+                        showsChevron: true
+                    )
+                }
+                // `.month:active{transform:scale(.98)}` — the full-width cluster, which is the style's default
+                // rather than its `compact` override.
+                .buttonStyle(HWPressStyle())
+                // Read as one control: the month, the year, what it cost, and the verdict badge in one swipe —
+                // four stops for one row is the focus-order failure ADR-0012 is about. The **hint arrives with
+                // the destination**, which is what #21 withheld while there was nowhere to go.
+                .accessibilityElement(children: .combine)
+                .accessibilityHint(Text("reports.month.hint"))
             }
         }
         // One container per year, so VoiceOver's container gestures move between years rather than through

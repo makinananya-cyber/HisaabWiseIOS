@@ -142,13 +142,18 @@ struct HWYearHeader: View {
     }
 }
 
-/// The design's `.month` — one closed month: when, what it cost, how the goal went, and how it was shaped.
+/// The design's `.month` — one closed month's **contents**: when, what it cost, how the goal went, and how it was
+/// shaped.
 ///
-/// **The affordance arrives with the destination.** The design's row is a `<button>` that opens the month in
-/// full, which is #22; until then `action` is `nil` and the row is a row — no chevron, no button trait, and no
-/// tap that does nothing. A control that looks tappable and is not is worse than a plain row, and a chevron
-/// pointing at an unwritten screen is the same promise in a smaller font.
-struct HWMonthRow: View {
+/// **A label rather than a control**, which is ``HWCategoryRowLabel``'s split and here for the same reason: the
+/// month detail is a *pushed page* (#22), so the row is drawn inside a `NavigationLink` that supplies its own
+/// button — and a `Button` nested in a link is two controls for one row. The caller combines it into one
+/// accessibility element and adds the hint, exactly as `ExpensesView` does for a category.
+///
+/// **The chevron arrives with the destination**, which is why it is a parameter rather than always drawn: #21
+/// shipped this row with nowhere to go, and a chevron pointing at an unwritten screen is a promise in a smaller
+/// font. #22 wrote the page, so the flag is on and the hint copy that describes the tap arrives with the tap.
+struct HWMonthRowLabel: View {
     @Environment(ThemeManager.self) private var theme
 
     /// Read to decide where the verdict badge sits — see ``content``. **Not a clamp**: this reads the size to
@@ -170,29 +175,11 @@ struct HWMonthRow: View {
     let percentageLabel: String
     /// `.m-bar` — the month's shape. Empty for a month with nothing logged.
     let segments: [HWProportionBar.Segment]
-    /// What opening the month does, or `nil` while there is nowhere to open it (#22).
-    var action: (() -> Void)?
-    /// What VoiceOver says the row does, supplied by whoever supplies `action`.
-    var hint: LocalizedStringResource?
+
+    /// `.m-chev` — whether the row is drawn as something that opens. The control itself is whatever wraps it.
+    var showsChevron: Bool = false
 
     var body: some View {
-        if let action {
-            Button(action: action) { content }
-                // `.month:active{transform:scale(.98)}` — the full-width cluster, which is the style's default
-                // rather than its `compact` override.
-                .buttonStyle(HWPressStyle())
-                .accessibilityElement(children: .combine)
-                // An absent hint is an empty one, which is the form `HWTextField` uses for its optional error:
-                // `accessibilityHint` takes a non-optional, and a `Text("")` adds nothing to the reading.
-                .accessibilityHint(hint.map { Text($0) } ?? Text(verbatim: ""))
-        } else {
-            content
-                // One element either way, so the reading does not change when the row becomes a control.
-                .accessibilityElement(children: .combine)
-        }
-    }
-
-    private var content: some View {
         VStack(alignment: .leading, spacing: 11) {
             // **The badge moves below the month above the threshold.** Sharing one line with it left the name
             // about 130pt at AX3, and `March` came back as `Marc` / `h` — a word broken mid-way, which neither
@@ -202,7 +189,7 @@ struct HWMonthRow: View {
                 VStack(alignment: .leading, spacing: 8) {
                     HStack(alignment: .firstTextBaseline, spacing: 11) {
                         when
-                        if action != nil {
+                        if showsChevron {
                             chevron
                         }
                     }
@@ -215,7 +202,7 @@ struct HWMonthRow: View {
 
                     HWVerdictBadge(verdict: verdict, label: percentageLabel)
 
-                    if action != nil {
+                    if showsChevron {
                         chevron
                     }
                 }
@@ -235,6 +222,8 @@ struct HWMonthRow: View {
             border: theme.palette.surface.separator,
             elevation: .small
         )
+        // **The hit region.** Without it the row draws and cannot be pressed, whether the control around it is a
+        // button or a link (ADR-0032).
         .contentShape(.rect)
     }
 
@@ -266,6 +255,8 @@ struct HWMonthRow: View {
     ///
     /// `chevron.forward` rather than `chevron.right`: the glyph mirrors under RTL and the named direction would
     /// not (ADR-0011).
+    ///
+    /// Hidden from VoiceOver, because the control around the row already carries the button trait.
     private var chevron: some View {
         Image(systemName: "chevron.forward")
             .font(.hw(.caption).weight(.bold))
@@ -347,38 +338,38 @@ private let previewSegments: [HWProportionBar.Segment] = [
 ]
 
 @MainActor
-private func previewRows(action: (() -> Void)?) -> some View {
+private func previewRows(showsChevron: Bool) -> some View {
     VStack(spacing: 10) {
-        HWMonthRow(
+        HWMonthRowLabel(
             name: "July", year: "2026", spent: Text(verbatim: "Spent ₹62,030"),
             verdict: .miss, percentageLabel: "69% of goal", segments: previewSegments,
-            action: action, hint: action == nil ? nil : "Opens the month in full"
+            showsChevron: showsChevron
         )
-        HWMonthRow(
+        HWMonthRowLabel(
             name: "June", year: "2026", spent: Text(verbatim: "Spent ₹55,640"),
             verdict: .hit, percentageLabel: "172% of goal", segments: previewSegments,
-            action: action, hint: action == nil ? nil : "Opens the month in full"
+            showsChevron: showsChevron
         )
-        HWMonthRow(
+        HWMonthRowLabel(
             name: "January", year: "2026", spent: Text(verbatim: "Spent ₹0"),
             verdict: .miss, percentageLabel: "0% of goal", segments: [],
-            action: action, hint: action == nil ? nil : "Opens the month in full"
+            showsChevron: showsChevron
         )
     }
 }
 
-#Preview("Archive rows — inert, which is what #21 ships") {
+#Preview("Archive rows — as the archive draws them, inside a link") {
     VStack(spacing: 14) {
         HWYearHeader(year: "2026", saved: Text(verbatim: "₹76,700 saved"))
-        previewRows(action: nil)
+        previewRows(showsChevron: true)
     }
     .padding()
     .background(HWPreviewGround())
     .hwTheme()
 }
 
-#Preview("Archive rows — with somewhere to go, which is #22") {
-    previewRows(action: {})
+#Preview("Archive rows — without the chevron, which is what #21 shipped") {
+    previewRows(showsChevron: false)
         .padding()
         .background(HWPreviewGround())
         .hwTheme()
@@ -401,7 +392,7 @@ private func previewRows(action: (() -> Void)?) -> some View {
     ScrollView {
         VStack(spacing: 14) {
             HWYearHeader(year: "2026", saved: Text(verbatim: "₹76,700 saved"))
-            previewRows(action: {})
+            previewRows(showsChevron: true)
         }
         .padding()
     }
@@ -413,7 +404,7 @@ private func previewRows(action: (() -> Void)?) -> some View {
 #Preview("RTL — the chevron and the stripes mirror") {
     VStack(spacing: 14) {
         HWYearHeader(year: "2026", saved: Text(verbatim: "₹76,700 saved"))
-        previewRows(action: {})
+        previewRows(showsChevron: true)
     }
     .padding()
     .environment(\.layoutDirection, .rightToLeft)

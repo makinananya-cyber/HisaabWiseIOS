@@ -47,4 +47,17 @@ final class ReportsViewModel: BaseViewModel {
     /// `isFirstRun`, "no months have closed" has one meaning however the reader got there, and `isEmpty(_:)` is
     /// the base contract's own hook for exactly this question.
     func isEmpty(_ screen: ReportsScreen) -> Bool { screen.years.isEmpty }
+
+    /// A view model for one closed month, made from the row that was tapped (#22).
+    ///
+    /// Made **here** rather than at the composition root, for the reason `HomeViewModel.articleViewModel(for:)`
+    /// is: it is per-tap and holds nothing worth keeping between taps. This object has the client, and
+    /// `LayeringTests` keeps the client out of `Views/` — so a method on the view model is the only place a
+    /// screen can get one from.
+    ///
+    /// It takes the **month key** rather than the row, because the key is the detail's address and the row
+    /// carries nothing the detail's own payload does not (ADR-0037).
+    func monthViewModel(monthKey: String) -> ReportsMonthViewModel {
+        ReportsMonthViewModel(monthKey: monthKey, client: client)
+    }
 }

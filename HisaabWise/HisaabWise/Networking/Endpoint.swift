@@ -42,10 +42,24 @@ enum Endpoint {
     /// pill; §4.2 settles it at 100/70, server-side, and the client's half of that settlement is having no
     /// figure to threshold — no `saved`, no `goal`, and no percentage as a number reaches it.
     ///
-    /// One month in full is `/v1/screens/reports/:monthKey` and belongs to #22, which is what pushes the detail.
-    /// It is not declared here yet: a path with no caller and no payload is a guessed contract sitting in the
-    /// client, which is the thing the fixture corpus's own coverage scan exists to keep out.
+    /// One month in full is ``screenReportsMonth(monthKey:)``, which #22 wrote — until then it was deliberately
+    /// undeclared, because a path with no caller and no payload is a guessed contract sitting in the client.
     static let screenReports = "/v1/screens/reports"
+
+    /// `GET /v1/screens/reports/2026-02` — **one closed month in full** (ADR-0020, ADR-0037, #22): the totals,
+    /// that month's donut, the savings meter, the wants allowance, the four-segment split bar, every logged
+    /// entry, and the facts grid.
+    ///
+    /// **The invariant-7 route.** An archived month is immutable and carries the FX rate set pinned at close, so
+    /// re-reading it in another display currency converts every figure through *those* rates and changes no
+    /// verdict — which is a property of what this answers with rather than of anything the client does.
+    ///
+    /// A function under ``screenReports`` rather than its own literal, so the collection has one owner: the
+    /// month key is an identity from a payload, so it goes through ``pathSegment(_:)`` for the reason
+    /// ``expense(id:)`` does.
+    static func screenReportsMonth(monthKey: String) -> String {
+        "\(screenReports)/\(pathSegment(monthKey))"
+    }
 
     // MARK: - Learn
 

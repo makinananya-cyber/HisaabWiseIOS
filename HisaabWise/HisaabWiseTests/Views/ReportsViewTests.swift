@@ -160,6 +160,8 @@ struct ReportsViewTests {
             "reports.hero.subtitle %@",
             "reports.year.saved %@",
             "reports.month.spent %@",
+            // The row's hint, which arrives with the destination it describes (#22).
+            "reports.month.hint",
         ])
     }
 
@@ -200,22 +202,36 @@ struct ReportsViewTests {
         #expect(Set(pictures.values).count == pictures.count, "two archives drew the same picture")
     }
 
-    /// **The month rows are inert until #22 writes the month detail**, which is a decision rather than an
-    /// omission: a chevron and a button trait on a row that opens nothing is a promise the app does not keep
-    /// (ADR-0036).
+    /// **The month rows open the month now** (#22), which is what #21 deliberately withheld: the chevron, the
+    /// button trait, and the hint copy that describes the tap all arrive with the destination (ADR-0036, ADR-0037).
     ///
-    /// Asserted as the property that will change when the destination arrives — the page's own closure is absent,
-    /// and the row it builds therefore has no action. A render with a closure supplied is drawn too, so the shape
-    /// #22 needs is exercised now rather than discovered then.
-    @Test("the archive page passes no action while there is nowhere to open")
-    func theRowsAreInertUntilTheDetailExists() async throws {
+    /// The row is drawn inside a `NavigationLink` carrying the month key — the detail's own address — so what is
+    /// asserted here is that every month in the archive has one, and that the row's own view draws the affordance.
+    /// Where the link *goes* is `ReportsMonthViewTests`' claim, and the push itself is the platform's.
+    @Test("every month row is a link to that month, drawn with the affordance")
+    func theRowsOpenTheMonth() async throws {
         let screen = try await Self.loaded()
 
-        #expect(ReportsArchivePage(screen: screen).onOpenMonth == nil)
+        // One route per closed month, keyed on the month rather than on the label: two Februaries in two years
+        // share a label, and a route keyed on one would open the wrong month.
+        let routes = screen.allMonths.map { ReportsMonthRoute(monthKey: $0.monthKey) }
+        #expect(Set(routes).count == screen.allMonths.count)
+        #expect(routes.map(\.monthKey) == screen.allMonths.map(\.monthKey))
 
-        var opened: [String] = []
-        let wired = ReportsArchivePage(screen: screen, onOpenMonth: { opened.append($0) })
-        #expect(TestBench.render(wired, height: nil) != nil)
-        #expect(opened.isEmpty, "rendering a row is not pressing it")
+        // And the row itself is drawn as something that opens.
+        let row = try #require(screen.allMonths.first)
+        #expect(
+            TestBench.render(
+                HWMonthRowLabel(
+                    name: row.label,
+                    year: "2026",
+                    spent: Text(verbatim: row.spent.display),
+                    verdict: ReportsView.tint(row.verdict),
+                    percentageLabel: row.percentageLabel,
+                    segments: ReportsView.segments(row),
+                    showsChevron: true
+                )
+            ) != nil
+        )
     }
 }

@@ -220,9 +220,69 @@ extension ReportsViewModel {
         ReportsViewModel(
             client: APIClient(
                 baseURL: URL(string: "https://fixtures.invalid")!,
-                transport: FixtureTransport(stubs: [Endpoint.screenReports: outcome]),
+                transport: FixtureTransport(stubs: [
+                    Endpoint.screenReports: outcome,
+                    // February's own detail, so that opening a row in a preview draws the month rather than a
+                    // failure state (#22). Both archive fixtures list the month, and only this one has a payload.
+                    Endpoint.screenReportsMonth(monthKey: "2026-02"):
+                        .response(status: 200, body: TestPayload.bytes(.reportsMonthINR)),
+                ]),
                 // An explicit language rather than the device's: a preview's `Accept-Language` should not
                 // depend on the Mac Xcode is running on.
+                language: LanguageManager(selected: .english),
+                refreshTokens: InMemoryTokenStore()
+            )
+        )
+    }
+}
+
+extension ReportsMonthViewModel {
+    /// The standing default: February 2026, the month the archive's own first bar describes.
+    @MainActor
+    static var previewFebruary: ReportsMonthViewModel {
+        preview(monthKey: "2026-02", stubbing: .response(status: 200, body: TestPayload.bytes(.reportsMonthINR)))
+    }
+
+    /// **The same month, read in dirhams.** Every figure converted through the rates pinned at close; the verdict,
+    /// the percentage, and the meter's position untouched (invariant 7).
+    @MainActor
+    static var previewDirhams: ReportsMonthViewModel {
+        preview(monthKey: "2026-02", stubbing: .response(status: 200, body: TestPayload.bytes(.reportsMonthAED)))
+    }
+
+    /// A closed month with nothing logged in it: the empty ring, seven empty panels, and a split bar that is
+    /// mostly surplus. Kept as a preview because it is a state with its own layout.
+    @MainActor
+    static var previewQuiet: ReportsMonthViewModel {
+        preview(monthKey: "2025-11", stubbing: .response(status: 200, body: TestPayload.bytes(.reportsMonthQuiet)))
+    }
+
+    /// Offline, which must not render as a failure.
+    @MainActor
+    static var previewOffline: ReportsMonthViewModel {
+        preview(monthKey: "2026-02", stubbing: .notConnected)
+    }
+
+    /// A `501` — the state every unwritten screen endpoint answers with until the backend has one.
+    @MainActor
+    static var previewNotImplemented: ReportsMonthViewModel {
+        preview(monthKey: "2026-02", stubbing: .response(status: 501, body: Data()))
+    }
+
+    @MainActor
+    private static func preview(
+        monthKey: String,
+        stubbing outcome: FixtureTransport.Outcome
+    ) -> ReportsMonthViewModel {
+        ReportsMonthViewModel(
+            monthKey: monthKey,
+            client: APIClient(
+                baseURL: URL(string: "https://fixtures.invalid")!,
+                transport: FixtureTransport(
+                    stubs: [Endpoint.screenReportsMonth(monthKey: monthKey): outcome]
+                ),
+                // An explicit language rather than the device's: a preview's `Accept-Language` should not depend
+                // on the Mac Xcode is running on.
                 language: LanguageManager(selected: .english),
                 refreshTokens: InMemoryTokenStore()
             )

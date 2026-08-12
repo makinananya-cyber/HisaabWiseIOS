@@ -176,6 +176,44 @@ enum Fixture: String, CaseIterable, Sendable {
     /// it. An archive with nothing in it is one sentence.
     case reportsEmpty = "reports-empty"
 
+    /// `GET /v1/screens/reports/2026-02` — **February 2026 in full**, the month the standing archive's first bar
+    /// describes (ADR-0037, #22).
+    ///
+    /// It is that month down to the display string: `₹53,170` spent, `₹11,830` saved, "91% of goal", `near`, and
+    /// the same six category shares. `FixtureCorpusTests` asserts the agreement, because the archive row and the
+    /// detail are two reads of one closed month — a difference between them is one of the two assemblies having
+    /// worked something out (defect D11's shape, and the same anchor the Home/Expenses pair is).
+    ///
+    /// **Its numbers are the design's own February, re-denominated**: the six category totals keep the
+    /// prototype's proportions exactly, and `saved` is what §4.2's residual makes it — `₹65,000 − ₹47,740 −
+    /// ₹5,430`. The design stored `saved: 1450` as a literal reconciled against nothing, which is the defect the
+    /// residual replaces.
+    case reportsMonthINR = "reports-month-inr"
+
+    /// **The same month, read in dirhams** — and the invariant-7 regression test's other half.
+    ///
+    /// Converted at the month's *pinned* rate set, so every monetary figure differs and **nothing else does**:
+    /// the verdict is still `near`, the percentage is still "91% of goal", the meter still sits at `0.91`, and
+    /// every segment share is byte-identical. A currency change repaints the month and never changes the story
+    /// (Product Spec §3.6, invariant 7).
+    ///
+    /// It claims no path, because ``reportsMonthINR`` claims that one and `FixtureTransport.serving(_:)` refuses
+    /// two fixtures for one route — which is exactly right here: they are two *reads* of one address, and the
+    /// test that matters stubs them in sequence.
+    case reportsMonthAED = "reports-month-aed"
+
+    /// `GET /v1/screens/reports/2025-11` — **a closed month with nothing logged in it.**
+    ///
+    /// The state that draws every branch the populated month does not: no donut slices at all (so the empty ring
+    /// rather than a chart of one nothing), seven accordion panels each with an empty note, no biggest cost, and
+    /// a split bar whose **surplus** segment is the large one — `₹65,000` saved against a `₹13,000` goal, which
+    /// is `hit` at 500%.
+    ///
+    /// **A month no archive in the corpus lists**, and that is not an inconsistency: none of the three archive
+    /// payloads has an empty month in it, and the detail and the archive are separate reads. The corpus asserts
+    /// they agree where both describe the same month, which is February.
+    case reportsMonthQuiet = "reports-month-quiet"
+
     /// `GET /v1/curriculum` — **5** units, **15** lessons, **124** steps (58 teach + 66 question), answer keys
     /// intact.
     ///
@@ -255,6 +293,11 @@ enum Fixture: String, CaseIterable, Sendable {
         // Same rule again: three payloads for one path, and only the standing one may claim it.
         case .reportsINR: [Endpoint.screenReports]
         case .reportsTwoYears, .reportsEmpty: []
+        // Two months, two addresses — so both may claim one. The dirham payload is the *same* month as the
+        // rupee one and therefore the same route, which only one fixture may hold (see ``reportsMonthAED``).
+        case .reportsMonthINR: [Endpoint.screenReportsMonth(monthKey: "2026-02")]
+        case .reportsMonthQuiet: [Endpoint.screenReportsMonth(monthKey: "2025-11")]
+        case .reportsMonthAED: []
         // The lesson the standing Learn payload's cursor sits on, and a replay of one already finished. Only the
         // first claims a path, because `serving(_:)` refuses two fixtures for one route and these two are
         // alternative answers to the same *kind* of request rather than to the same lesson.

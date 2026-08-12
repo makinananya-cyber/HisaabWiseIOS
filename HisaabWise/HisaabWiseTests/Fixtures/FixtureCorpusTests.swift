@@ -701,7 +701,7 @@ struct FixtureCorpusTests {
     }
 
     /// **A quiet month has fewer stripes**, which the two-year payload carries so the branch both the model and
-    /// `HWMonthRow` handle is a state the corpus actually contains rather than one only a preview shows.
+    /// `HWMonthRowLabel` handle is a state the corpus actually contains rather than one only a preview shows.
     @Test("a month with an untouched category has fewer than six stripes")
     func aQuietMonthHasFewerStripes() throws {
         let screen = try Fixture.reportsTwoYears.decode(ReportsScreen.self)
@@ -709,5 +709,201 @@ struct FixtureCorpusTests {
 
         #expect(quiet.segments.count == 4, "December 2025 is the corpus's quiet month")
         #expect(!quiet.segments.contains { $0.slot == 5 }, "a month with no entertainment draws no violet stripe")
+    }
+
+    // MARK: - The month-detail payloads
+
+    @Test("the month payloads decode into the type the app decodes them into")
+    func monthPayloadsDecode() throws {
+        let february = try Fixture.reportsMonthINR.decode(ReportsMonthScreen.self)
+        #expect(february.monthKey == "2026-02")
+        #expect(february.verdict == .near)
+        #expect(february.totals.spent.display == "₹53,170")
+        #expect(february.spending.categories.count == 6)
+        #expect(february.groups.count == 7)
+        #expect(february.facts.count == 6)
+
+        // A closed month with nothing logged: no slices at all, and every panel empty.
+        let quiet = try Fixture.reportsMonthQuiet.decode(ReportsMonthScreen.self)
+        #expect(quiet.spending.categories.isEmpty)
+        #expect(quiet.groups.count == 7)
+        #expect(quiet.groups.allSatisfy { $0.entries.isEmpty })
+        #expect(quiet.verdict == .hit)
+    }
+
+    /// **The archive's row and the month's detail are two reads of one closed month**, and this is what keeps them
+    /// telling one story.
+    ///
+    /// The same shape as the Home/Expenses pair: a difference between them is one of the two assemblies having
+    /// worked something out, which is defect D11's own shape. The percentages and the verdict must match exactly;
+    /// the stripe shares match to the archive's own rounding, because the row carries three decimals and the detail
+    /// carries four.
+    @Test("the archive's February and February's own report agree")
+    func theArchiveAndTheMonthAgree() throws {
+        let archive = try Fixture.reportsINR.decode(ReportsScreen.self)
+        let month = try Fixture.reportsMonthINR.decode(ReportsMonthScreen.self)
+        let row = try #require(archive.allMonths.first { $0.monthKey == month.monthKey })
+        let bar = try #require(archive.trend.bars.first { $0.monthKey == month.monthKey })
+
+        #expect(row.spent.minor == month.totals.spent.minor)
+        #expect(row.spent.display == month.totals.spent.display)
+        #expect(row.verdict == month.verdict)
+        #expect(bar.verdict == month.verdict)
+        #expect(row.percentageLabel == month.percentageLabel)
+        #expect(bar.percentageLabel == month.percentageLabel)
+        // The bar's descriptor names what the detail says was saved — the archive carries no `saved` of its own
+        // (ADR-0036), so this sentence is the only place the two can be compared.
+        #expect(bar.accessibilityLabel.contains(month.savings.saved.display))
+
+        // One stripe per category the detail draws a slice for, in the same order and the same colour slot.
+        #expect(row.segments.map(\.slot) == month.spending.categories.map(\.slot))
+        for (stripe, category) in zip(row.segments, month.spending.categories) {
+            #expect(
+                abs(stripe.share - category.share) < 0.001,
+                "\(category.id) is \(stripe.share) of the row and \(category.share) of the month"
+            )
+        }
+    }
+
+    /// **The split bar's four segments add up to the month's income** — §4.2's arithmetic, checked on the payload
+    /// that carries it rather than left to the sentence that describes it.
+    ///
+    /// Asserted on the **minor units**, because that is where it either holds or does not: `needs + wants +
+    /// min(saved, goal) + max(0, saved − goal)` is `income` exactly, for every month, whether the goal was reached
+    /// or missed. The shares are asserted separately, since a bar whose parts summed to the income but not to the
+    /// track would still be drawn wrongly.
+    @Test("the four split segments sum to the income, and their shares to the whole bar", arguments: [
+        Fixture.reportsMonthINR, .reportsMonthAED, .reportsMonthQuiet,
+    ])
+    func theSplitSumsToIncome(_ fixture: Fixture) throws {
+        let screen = try fixture.decode(ReportsMonthScreen.self)
+        let segments = screen.split.segments
+
+        #expect(segments.map(\.portion) == [.needs, .wants, .saved, .surplus])
+        #expect(
+            segments.map { $0.amount.minor }.reduce(0, +) == screen.split.income.minor,
+            "\(fixture.rawValue): the parts do not add up to what came in"
+        )
+        let shares = segments.map(\.share).reduce(0, +)
+        #expect(abs(shares - 1) < 0.001, "\(fixture.rawValue): the parts cover \(shares) of the bar")
+        #expect(segments.allSatisfy { (0...1).contains($0.share) })
+        // The aim is absent from the surplus and present on the other three: a month has no target for doing
+        // better than its target.
+        #expect(segments.filter { $0.target == nil }.map(\.portion) == [.surplus])
+    }
+
+    /// **The design's "left unspent" segment is gone from the wire, not merely unused** (§4.2 **[FIX]**).
+    ///
+    /// Under a residual `saved` it is identically zero, so it is replaced by the surplus above goal. Asserted as an
+    /// absence of the *name*, because a server that started sending a fifth part would otherwise be invisible to a
+    /// client whose `Portion` simply failed to decode it — and this says which fifth part is meant.
+    @Test("no month payload carries a left-unspent segment", arguments: [
+        Fixture.reportsMonthINR, .reportsMonthAED, .reportsMonthQuiet,
+    ])
+    func theLeftUnspentSegmentIsGone(_ fixture: Fixture) throws {
+        let json = String(decoding: TestBench.payload(fixture), as: UTF8.self)
+
+        for name in ["leftUnspent", "left unspent", "unspent", "leftover"] {
+            #expect(!json.contains(name), "\(fixture.rawValue) still carries \(name)")
+        }
+        #expect(json.contains("surplus"), "\(fixture.rawValue) has no surplus segment at all")
+    }
+
+    /// **Invariant 7, as a property of the corpus.** The two February payloads are one immutable month read through
+    /// its pinned rates in two currencies: every monetary string differs, and everything that carries the *story*
+    /// is byte-identical.
+    ///
+    /// `ReportsMonthViewModelTests` follows the same claim through the client; this is the pair that makes it
+    /// checkable at all, so a fixture edited to disagree fails here first.
+    @Test("the two February payloads differ in every figure and in nothing else")
+    func theTwoCurrenciesTellOneStory() throws {
+        let rupees = try Fixture.reportsMonthINR.decode(ReportsMonthScreen.self)
+        let dirhams = try Fixture.reportsMonthAED.decode(ReportsMonthScreen.self)
+
+        #expect(rupees.monthKey == dirhams.monthKey)
+        #expect(rupees.title == dirhams.title)
+        #expect(rupees.verdict == dirhams.verdict)
+        #expect(rupees.percentageLabel == dirhams.percentageLabel)
+        #expect(rupees.savings.position == dirhams.savings.position)
+        #expect(rupees.savings.shareOfIncomeLabel == dirhams.savings.shareOfIncomeLabel)
+        #expect(rupees.spending.shareOfIncomeLabel == dirhams.spending.shareOfIncomeLabel)
+        #expect(rupees.spending.categoryCountLabel == dirhams.spending.categoryCountLabel)
+        #expect(rupees.wants.percentageLabel == dirhams.wants.percentageLabel)
+        #expect(rupees.groups.map(\.summaryLabel) == dirhams.groups.map(\.summaryLabel))
+        #expect(rupees.split.segments.map(\.share) == dirhams.split.segments.map(\.share))
+
+        // And every figure repainted, which is the other half: a payload that had converted nothing would satisfy
+        // every assertion above.
+        #expect(rupees.savings.saved.currency.rawValue == "INR")
+        #expect(dirhams.savings.saved.currency.rawValue == "AED")
+        #expect(rupees.totals.spent.display != dirhams.totals.spent.display)
+        #expect(rupees.savings.saved.display != dirhams.savings.saved.display)
+        #expect(rupees.savings.goal.display != dirhams.savings.goal.display)
+    }
+
+    /// The geometry stays geometry, and the **counts are the design's own February**: six categories with something
+    /// in them, seven accordion groups, and the entries the prototype logged.
+    @Test("February's own figures are the design's, re-denominated")
+    func februaryIsTheDesignsMonth() throws {
+        let month = try Fixture.reportsMonthINR.decode(ReportsMonthScreen.self)
+
+        #expect((0...1).contains(month.savings.position))
+        #expect((0...1).contains(month.wants.fill))
+        for category in month.spending.categories {
+            #expect((0...1).contains(category.share))
+        }
+        // The six category totals add up to what the month cost — the one sum the corpus can check here, and the
+        // one the archive's own payload deliberately cannot (it carries no per-month figures to add).
+        #expect(month.spending.categories.map { $0.amount.minor }.reduce(0, +) == month.totals.spent.minor)
+        // Rent, Groceries, Transport, Utilities, Entertainment, Other — and Additional Income last, the only
+        // group money comes *in* through.
+        #expect(month.groups.filter { $0.flow == .incoming }.count == 1)
+        #expect(month.groups.last?.flow == .incoming)
+        #expect(month.groups.filter { !$0.entries.isEmpty }.count == 6)
+    }
+
+    /// **And the converted read is allowed to be a fil out, which is §4.1 rather than a slip.**
+    ///
+    /// "Round at the leaves and derive totals from unrounded values, so a grand total is never the sum of rounded
+    /// parts." A month read in dirhams converts each figure from the authored rupees independently, so the six
+    /// category totals need not add up to the converted total to the last fil — and the *total* is the one that is
+    /// right, because it came from the unrounded figure rather than from six rounded ones.
+    ///
+    /// Asserted as a bound rather than as equality, and asserted at all so that a reader who notices the mismatch
+    /// finds the rule instead of "fixing" the fixture. February's own dirham read is exactly one fil out.
+    @Test("a converted read's parts may differ from its total by rounding, and only by rounding")
+    func theConvertedReadRoundsAtTheLeaves() throws {
+        let month = try Fixture.reportsMonthAED.decode(ReportsMonthScreen.self)
+        let parts = month.spending.categories.map { $0.amount.minor }.reduce(0, +)
+
+        #expect(parts != month.totals.spent.minor, "the dirham read no longer exercises leaf rounding")
+        #expect(
+            abs(parts - month.totals.spent.minor) <= month.spending.categories.count,
+            "the parts are further from the total than rounding each of them could explain"
+        )
+        // The authored currency has no rounding to do, so there it is exact — which is what
+        // `februaryIsTheDesignsMonth` asserts, and why that assertion is not parameterised over all three.
+        let authored = try Fixture.reportsMonthINR.decode(ReportsMonthScreen.self)
+        #expect(authored.spending.categories.map { $0.amount.minor }.reduce(0, +) == authored.totals.spent.minor)
+    }
+
+    /// A month payload carries **no timestamp and no month number**, which is invariant 6's stronger form: the
+    /// client could not name a month or place an entry in it if it wanted to.
+    @Test("no month payload carries a date it could compute a label from", arguments: [
+        Fixture.reportsMonthINR, .reportsMonthAED, .reportsMonthQuiet,
+    ])
+    func theMonthCarriesNoDate(_ fixture: Fixture) throws {
+        let json = String(decoding: TestBench.payload(fixture), as: UTF8.self)
+
+        for field in ["timestamp", "\"date\"", "createdAt", "loggedAt", "\"day\"", "\"month\":"] {
+            #expect(!json.contains(field), "\(fixture.rawValue) carries \(field)")
+        }
+        // What it carries instead: a label per entry, formatted server-side.
+        let month = try fixture.decode(ReportsMonthScreen.self)
+        for group in month.groups {
+            for entry in group.entries {
+                #expect(!entry.dateLabel.isEmpty, "an entry in \(group.id) has no date label")
+            }
+        }
     }
 }

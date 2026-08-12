@@ -97,7 +97,12 @@ replacement would be itself.
 ### The affordance arrives with the destination
 
 `HWMonthRow` takes an optional action. Without one it is a row: no chevron, no button trait, and no tap. #22 passes
-a closure and the row becomes the design's control. A chevron pointing at an unwritten screen is the same broken
+a closure and the row becomes the design's control.
+
+> **Amended by [ADR-0037](0037-reports-month-detail.md).** #22 passes no closure: the shell hands out no path
+> binding, so the push is a value-based `NavigationLink`, and a `Button` inside a link is two controls for one row.
+> The component became `HWMonthRowLabel` with a `showsChevron` flag — the split `HWCategoryRowLabel` already makes.
+> The decision this paragraph records is unchanged: the affordance still arrives with the destination. A chevron pointing at an unwritten screen is the same broken
 promise in a smaller font, and the hint copy that describes the tap arrives with the tap rather than sitting in the
 catalogue as a sentence nothing shows.
 
@@ -148,7 +153,8 @@ and Home's keeps four of its five cards.
 - `TabViewModels` gains its third real view model and Account is the last placeholder. `ReportsViewModel` is the
   only one that takes nothing but the client: the archive is per-user and has no cacheable half.
 - **`/v1/screens/reports/:monthKey` is deliberately not declared yet.** A path with no caller and no payload is a
-  guessed contract sitting in the client, which the corpus's coverage scan exists to keep out. It arrives with #22.
+  guessed contract sitting in the client, which the corpus's coverage scan exists to keep out. It arrives with #22 —
+  which it did: see [ADR-0037](0037-reports-month-detail.md) for the route, its payload, and its three fixtures.
 
 ## What this leaves
 

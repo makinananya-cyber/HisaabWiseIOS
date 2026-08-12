@@ -2929,6 +2929,546 @@
         }
       }
     },
+    "reports.detail.empty": {
+      "comment": "Shown when a month's report cannot be shown at all — a month key that no longer resolves. A month with nothing logged in it is not this: it still has a salary, a goal and a verdict.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "This month's report is not available."
+          }
+        }
+      }
+    },
+    "reports.detail.entries.caption": {
+      "comment": "Caption on the accordion of everything logged in a month.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Everything you logged"
+          }
+        }
+      }
+    },
+    "reports.detail.entries.collapse": {
+      "comment": "VoiceOver hint on an open accordion row.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Hides the entries"
+          }
+        }
+      }
+    },
+    "reports.detail.entries.expand": {
+      "comment": "VoiceOver hint on a closed accordion row.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Shows the entries"
+          }
+        }
+      }
+    },
+    "reports.detail.entries.hint": {
+      "comment": "The line beside the accordion's caption.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Tap to see entries"
+          }
+        }
+      }
+    },
+    "reports.detail.entries.noIncome": {
+      "comment": "Shown inside the additional-income panel when no extra money arrived that month.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "No extra income that month — salary only."
+          }
+        }
+      }
+    },
+    "reports.detail.entries.none %@": {
+      "comment": "Shown inside an accordion panel with no entries. %@ is the category's name, which is server content.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nothing was logged under %@ that month."
+          }
+        }
+      }
+    },
+    "reports.detail.eyebrow": {
+      "comment": "Eyebrow above one closed month's title.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Monthly report"
+          }
+        }
+      }
+    },
+    "reports.detail.fact.biggestCost": {
+      "comment": "Label on the biggest-cost tile in a month's facts grid. Its value is a category name rather than a figure.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Biggest cost"
+          }
+        }
+      }
+    },
+    "reports.detail.fact.goal": {
+      "comment": "Label on the savings-goal tile in a month's facts grid.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Savings goal"
+          }
+        }
+      }
+    },
+    "reports.detail.fact.leftOver": {
+      "comment": "Label on the left-over tile in a month's facts grid: income minus everything spent.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Left over"
+          }
+        }
+      }
+    },
+    "reports.detail.fact.needs": {
+      "comment": "Label on the needs tile in a month's facts grid.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Needs"
+          }
+        }
+      }
+    },
+    "reports.detail.fact.salary": {
+      "comment": "Label on the salary tile in a month's facts grid. Salary is a point-in-time value, pinned when the month closed.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Salary that month"
+          }
+        }
+      }
+    },
+    "reports.detail.fact.saved": {
+      "comment": "Label on the amount-saved tile in a month's facts grid.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Actually saved"
+          }
+        }
+      }
+    },
+    "reports.detail.facts.caption": {
+      "comment": "Caption on the grid of figures worth keeping about a closed month.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "For the record"
+          }
+        }
+      }
+    },
+    "reports.detail.note.adapted %@ %@": {
+      "comment": "The sentence under a month's totals when the budget engine's adaptive branch ran: needs outgrew half the income, so what was left was split evenly rather than 30/20. %1$@ is what needs came to and %2$@ is what came in, both formatted server-side.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Rent, bills and food came to %1$@ — more than half your %2$@ income, so the rest was split evenly between wants and savings."
+          }
+        }
+      }
+    },
+    "reports.detail.note.plain": {
+      "comment": "The sentence under a month's totals when needs fitted inside half the income and the plain 50/30/20 rule held.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your needs fitted inside half your income, so the full 50 / 30 / 20 rule applied that month."
+          }
+        }
+      }
+    },
+    "reports.detail.savings.caption": {
+      "comment": "Caption on a month's savings meter.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Savings that month"
+          }
+        }
+      }
+    },
+    "reports.detail.savings.foot.exact %@": {
+      "comment": "The sentence under a month's savings meter when the goal was met to the unit, so there is no surplus to name. The design has no third sentence and prints “and 0 over” here.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You set aside %@ — exactly the goal."
+          }
+        }
+      }
+    },
+    "reports.detail.savings.foot.over %@ %@": {
+      "comment": "The sentence under a month's savings meter when the goal was passed. %1$@ is what was set aside and %2$@ is how much of it was above the goal.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You set aside %1$@ — the whole goal, and %2$@ over."
+          }
+        }
+      }
+    },
+    "reports.detail.savings.foot.short %@ %@": {
+      "comment": "The sentence under a month's savings meter when the goal was missed. %1$@ is what was set aside and %2$@ is what was still short.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You set aside %1$@, %2$@ short of the goal."
+          }
+        }
+      }
+    },
+    "reports.detail.savings.meter.accessibilityValue %@ %@ %@": {
+      "comment": "What VoiceOver reads as the savings meter's value on a month's report. %1$@ saved, %2$@ the goal, %3$@ the percentage — all formatted server-side.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ of a %2$@ goal, %3$@"
+          }
+        }
+      }
+    },
+    "reports.detail.spending.caption": {
+      "comment": "Caption on a month's spending donut.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Where your money went"
+          }
+        }
+      }
+    },
+    "reports.detail.spending.nothingLogged": {
+      "comment": "Shown inside the donut card of a closed month that had nothing logged in it. The ring is still drawn, in the empty-track colour.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Nothing was logged that month, so there is no split to show."
+          }
+        }
+      }
+    },
+    "reports.detail.spending.readout.accessibilityValue %@ %@": {
+      "comment": "What VoiceOver reads for the donut's centre. %1$@ is the figure and %2$@ is its share — either the total and its share of income, or one category and its share of spend. Both formatted server-side.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@, %2$@"
+          }
+        }
+      }
+    },
+    "reports.detail.spending.total": {
+      "comment": "Caption at the centre of a month's donut, above the total.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Total spent"
+          }
+        }
+      }
+    },
+    "reports.detail.split.accessibilityLabel": {
+      "comment": "VoiceOver label for the four-segment split bar, and the heading of the list that replaces it at accessibility sizes.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Where the month's income went"
+          }
+        }
+      }
+    },
+    "reports.detail.split.caption": {
+      "comment": "Caption on the bar that shows where a month's income went.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "How the month's money split"
+          }
+        }
+      }
+    },
+    "reports.detail.split.needs": {
+      "comment": "Name of the split bar's first part: rent, utilities and groceries.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Needs"
+          }
+        }
+      }
+    },
+    "reports.detail.split.saved": {
+      "comment": "Name of the split bar's third part: the portion of the savings goal that was reached.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Savings"
+          }
+        }
+      }
+    },
+    "reports.detail.split.sub %@": {
+      "comment": "Beside the split caption. %@ is everything that came in that month, formatted server-side.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "of %@ in"
+          }
+        }
+      }
+    },
+    "reports.detail.split.surplus": {
+      "comment": "Name of the split bar's fourth part: what was saved beyond the goal. It replaces the prototype's “left unspent”, which a residual definition of saved makes identically zero (Product Spec §4.2 [FIX]).",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Above goal"
+          }
+        }
+      }
+    },
+    "reports.detail.split.target %@": {
+      "comment": "The aim beside one part of the split. %@ is what the budget engine allowed for it, formatted server-side.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "aim %@"
+          }
+        }
+      }
+    },
+    "reports.detail.split.wants": {
+      "comment": "Name of the split bar's second part: transport, entertainment and other.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Wants"
+          }
+        }
+      }
+    },
+    "reports.detail.summary.additionalIncome": {
+      "comment": "Caption under the additional-income figure on a month's summary card — money that arrived on top of the salary.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Extra in"
+          }
+        }
+      }
+    },
+    "reports.detail.summary.caption": {
+      "comment": "Caption on the month's headline total.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Total spent"
+          }
+        }
+      }
+    },
+    "reports.detail.summary.fixed": {
+      "comment": "Caption under the fixed-costs figure on a month's summary card.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Fixed"
+          }
+        }
+      }
+    },
+    "reports.detail.summary.variable": {
+      "comment": "Caption under the variable-spending figure on a month's summary card.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Variable"
+          }
+        }
+      }
+    },
+    "reports.detail.wants.accessibilityValue %@ %@ %@": {
+      "comment": "What VoiceOver reads as the wants track's value. %1$@ used of %2$@ allowed, %3$@ of it.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ of %2$@ allowed, %3$@"
+          }
+        }
+      }
+    },
+    "reports.detail.wants.accessibilityValue.over %@ %@ %@": {
+      "comment": "The same, when the allowance was passed — a whole sentence rather than a clause, because a translation must be able to reorder it.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "%1$@ of %2$@ allowed, %3$@ — over the allowance"
+          }
+        }
+      }
+    },
+    "reports.detail.wants.allowance %@": {
+      "comment": "Beside the figure on a month's wants card. %@ is the allowance the budget engine set, formatted server-side.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "of %@ allowed"
+          }
+        }
+      }
+    },
+    "reports.detail.wants.caption": {
+      "comment": "Caption on a month's wants-allowance card.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Spent on wants"
+          }
+        }
+      }
+    },
+    "reports.detail.wants.foot.over %@": {
+      "comment": "The sentence under a month's wants bar when the allowance was passed. %@ is how far past it the month went.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "That is %@ over the allowance for wants. Money for wants that gets spent has to come from somewhere — usually savings."
+          }
+        }
+      }
+    },
+    "reports.detail.wants.foot.within %@": {
+      "comment": "The sentence under a month's wants bar when the allowance held. %@ is what was left of it.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "That left %@ of the wants allowance unspent."
+          }
+        }
+      }
+    },
+    "reports.detail.wants.hint": {
+      "comment": "The line beside the wants caption, naming which categories count as wants.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Transport · fun · other"
+          }
+        }
+      }
+    },
     "reports.empty": {
       "comment": "Shown when the archive is empty. The whole screen, unlike Home's first run: an archive with no months has no hero to draw beside the sentence.",
       "extractionState": "manual",
@@ -3009,6 +3549,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "Total saved"
+          }
+        }
+      }
+    },
+    "reports.month.hint": {
+      "comment": "VoiceOver hint on a month row in the archive. It arrives with the destination the row opens (#22).",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Opens the month in full"
           }
         }
       }

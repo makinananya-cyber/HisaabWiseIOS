@@ -27,7 +27,11 @@
 /// | `.hero` + `.hero-cap` + `.hero-sub` | ``HWArchiveHero`` |
 /// | `.trend` + `.tbar` + `.trend-avg` | ``HWTrendChart`` |
 /// | `.m-badge` / `.mf-r` | ``HWVerdictBadge`` |
-/// | `.yr` · `.month` + `.m-top` + `.m-chev` · `.m-bar` | ``HWYearHeader`` · ``HWMonthRow`` · ``HWProportionBar`` |
+/// | `.yr` · `.month` + `.m-top` + `.m-chev` · `.m-bar` | ``HWYearHeader`` · ``HWMonthRowLabel`` · ``HWProportionBar`` |
+/// | `.sum-note` · `.bud-val` + `.bud-row` | ``HWSummaryNote`` · ``HWAllowanceBar`` |
+/// | `.split` + `.split-key` + `.sk` | ``HWSplitBar``, ``HWSplitPortion`` |
+/// | `.arow` + `.ahead` + `.abody` · `.ent` | ``HWAccordionRow``, ``HWAccordionRow/Entry`` |
+/// | `.facts` · `.fact` | ``HWFactGrid`` · ``HWFact`` |
 /// | `.hero` · `.entry` · `.empty` | ``HWCategoryHero`` · ``HWEntryRow`` · ``HWEmptyNote`` |
 /// | `.line` · `.editing .line` · `.fixed-val` | ``HWBillLine`` · ``HWBillLineEditor`` · ``HWFixedAmount`` |
 /// | `.money-sym` + `.money-code` · `.amount` | ``HWMoneyField``, ``HWMoneyProminence`` |
@@ -89,8 +93,25 @@
 /// forbids. `.m-badge` and `.mf-r` are **one** component: the design gives them the same three soft/ink pairs and
 /// spells them twice, and the savings meter had been drawing a *third* treatment picked rather than transcribed —
 /// two owners of a colour table about one verdict, which is the shape defect D11 took about a threshold table.
-/// And ``HWMonthRow``'s chevron and button trait are **conditional on there being an action**, because the month
-/// detail is #22: a control that looks tappable and opens nothing is worse than the plain row it replaces.
+/// And ``HWMonthRowLabel``'s chevron is **conditional**, because #21 shipped the row with nowhere to go: a control
+/// that looks tappable and opens nothing is worse than the plain row it replaces.
+///
+/// **What the month detail's five entries decide** (#22, ADR-0037), because four of them are departures.
+/// ``HWMonthRowLabel`` is a *label* now rather than a row with an optional action: the month detail is a pushed page
+/// and the shell hands out no path, so the control is a value-based `NavigationLink` — and a `Button` inside a link
+/// is two controls for one row, which is exactly the split ``HWCategoryRowLabel`` already makes.
+/// ``HWAllowanceBar`` is **not** ``HWBudgetBar`` with an appearance argument: the design draws the wants allowance
+/// twice, as a caption and a 7pt track inside the galaxy summary on Expenses and as a card of its own with the
+/// figure at heading size here, so two treatments become two components. ``HWAccordionRow`` takes its **entries**
+/// rather than a `ViewBuilder` slot, because the hairline-separated rows and the empty note are the panel's own
+/// layout — and its entry row is not ``HWEntryRow``, which draws a delete affordance an immutable month has no use
+/// for. And ``HWSplitBar``'s fourth colour is the one in this file that is **not transcribed**: the design paints
+/// "left unspent" a flat grey, Product Spec §4.2 **[FIX]** replaces that segment with the surplus above goal, and a
+/// surplus is savings — so it takes the neighbouring stop of the savings ombré.
+///
+/// ``HWSplitBar``'s bar is **replaced by the key already under it** above the accessibility threshold, which is the
+/// call ``HWDonut`` makes for the same reason: the design draws the key at every size. Its own entrance animation —
+/// the segments growing out from the left — is dropped rather than gated, as the trend's staggered bars are.
 ///
 /// Three of the design's animations there are **dropped rather than gated**, on the reasoning the `START` flag's
 /// bob already carries: the trend's staggered bar growth, the goal line's delayed fade, and each proportion bar's

@@ -304,12 +304,44 @@ can overshoot; a bar's height and the goal line's arrive as fractions of the plo
 the badge beside it. The chart is keyed on `monthKey` and not on the label: two Februaries in two years share a
 label and would collapse into one bar.
 
-**The month rows are inert, and that is the decision.** `HWMonthRow` takes an optional action; without one there is
-no chevron, no button trait, and no tap. The month detail is #22, and a chevron pointing at an unwritten screen is
-the same broken promise in a smaller font — so the hint copy that describes the tap arrives with the tap rather than
-sitting in the catalogue as a sentence nothing shows. Reports pushes its own detail rather than being handed a route
-by the shell: unlike Home's two destinations, which are *tabs*, a month is a page inside this tab.
-See [ADR-0036](docs/adr/0036-reports-archive.md).
+**The month rows open the month, and the affordance arrived with it.** `HWMonthRowLabel` draws the row's contents and
+takes a `showsChevron` flag; #21 shipped it with the flag off, because a chevron pointing at an unwritten screen is a
+broken promise in a smaller font, and the hint copy that describes the tap arrived with the tap rather than sitting in
+the catalogue as a sentence nothing shows. It is a **label** rather than a row with an action, for the reason
+`HWCategoryRowLabel` is one: the shell hands out no path binding, so the push is a value-based `NavigationLink`, and a
+`Button` inside a link is two controls for one row. Reports pushes its own detail rather than being handed a route by
+the shell — unlike Home's two destinations, which are *tabs*, a month is a page inside this tab.
+See [ADR-0036](docs/adr/0036-reports-archive.md), [ADR-0037](docs/adr/0037-reports-month-detail.md).
+
+**Reports, level two** — `ReportsMonthView` plus `ReportsMonthPage` and `ReportsMonthViewModel`: one closed month in
+full (#22). Seven cards over one read of `GET /v1/screens/reports/:monthKey` — the totals with the sentence that
+explains them, that month's donut, the savings meter, the wants allowance, the four-segment split bar, an accordion of
+every entry logged, and the facts grid.
+
+**This is the screen invariant 7 is about.** An archived month is immutable and carries the FX rate set pinned at
+close, so a currency change **is a re-read**: the figures come back converted through those rates and the verdict does
+not move. There is no client-side conversion to invoke and none available — the client holds no rate, `Money` has no
+arithmetic, and every figure arrives formatted. The corpus carries the same February twice, in rupees and in dirhams,
+and both `FixtureCorpusTests` and `ReportsMonthViewModelTests` assert the property: every monetary string differs, and
+the verdict, the percentages, the meter position, and every geometry fraction are identical.
+
+**It carries `saved` and `goal` where the archive carries neither**, and the difference is what each screen draws: a
+badge has nothing to do with a figure but threshold it (defect D11), while a meter needs both — which is the shape
+Home's payload already has. The protection is unchanged: no percentage arrives as a number and the verdict arrives as
+a verdict.
+
+**The split bar is where the Product Spec overrules the design.** §4.2 **[FIX]** keeps four segments — `needs /
+wants / min(saved, goal) / surplus` — because the prototype's "left unspent" is identically zero under a residual
+`saved`. They sum to the income printed beside them, whether the goal was reached or missed, and the corpus asserts
+it in minor units. `Portion` **refuses to guess** for `ReportsScreen.Verdict`'s reason and one more: a fifth part
+would be a bar that no longer adds up, about a month that cannot be corrected. A seventh **fact** is the opposite
+case and is *dropped* — the grid's labels are the app's, so an unknown kind has no words to draw itself with, and
+losing one tile is additive.
+
+**The design's month scroller is deliberately not converted**, which is the one place this screen narrows the design:
+it is a second way to reach a month the archive one back already lists, and converting it would mean this payload
+carrying the whole archive's month list beside the month it is about. If it returns it returns as a payload change.
+See [ADR-0037](docs/adr/0037-reports-month-detail.md).
 
 **`EntryDraft`** — the entry being typed, and it **outlives the screen deliberately**. A write that fails offline
 replaces `state` with `LoadState.offline` (ADR-0019), so a draft living in the payload would go with it; this one
@@ -667,11 +699,15 @@ is no offline read of it. So Learn is `LoadState.offline` on a second launch wit
 does not have to come down again when it comes back.
 
 **screen payload** — what one `GET /v1/screens/*` returns: everything that screen draws, fully computed
-(ADR-0020). **Four exist**: Home, Expenses, Learn, and Reports — Learn being the one that is *half* of a screen,
-because the other half is cacheable content on its own ETag (see **Learn** above). Reports' field names are a list
-of things the design's browser worked out about *history*: `Year.totalSaved` for a filter-and-reduce per header,
-`Summary.averageSpend` for a mean of six totals, `Bar.fill` and `Trend.goalPosition` for one shared scale, and
-`percentageLabel` plus `verdict` for a division followed by a threshold (defect D11). Expenses is where the design's own JavaScript did the arithmetic, so
+(ADR-0020). **Five exist**: Home, Expenses, Learn, Reports, and one closed month — Learn being the one that is
+*half* of a screen, because the other half is cacheable content on its own ETag (see **Learn** above), and the month
+being the only one addressed by an **identity** rather than by a name (`/v1/screens/reports/:monthKey`). Reports'
+field names are a list of things the design's browser worked out about *history*: `Year.totalSaved` for a
+filter-and-reduce per header, `Summary.averageSpend` for a mean of six totals, `Bar.fill` and `Trend.goalPosition`
+for one shared scale, and `percentageLabel` plus `verdict` for a division followed by a threshold (defect D11). The
+month's are the same list one level down, plus the four `Split.Segment`s §4.2 **[FIX]** settles and the
+`Totals.isAdapted` flag that chooses between two sentences about the budget rule — and its figures are a **pinned
+snapshot's** own strings, so a currency change is a re-read rather than a conversion (invariant 7). Expenses is where the design's own JavaScript did the arithmetic, so
 its field names are a list of calculations that *moved* — `Category.total` for `catTotal(id)`, `wants.allowance` for a
 50/30/20 engine re-implemented in the browser (invariant 3 violated in the source material), `Entry.dateLabel` for a
 `whenLabel()` that read the device clock (invariant 6), and `entryCountLabel` for a pluralised count. Its payload
@@ -797,6 +833,15 @@ target. `reports-two-years.json` spans a year boundary, because one year group p
 nothing at all about the grouping. And `reports-empty.json` is what makes `SnapshotCase.empty` a real screen's empty
 state: this is the first `LoadState.empty` the app can reach — Expenses' first run keeps all seven categories and is
 `.loaded`, Home's keeps four of its five cards.
+
+**And the three month payloads carry a pair, which is the point of them.** `reports-month-inr.json` is the archive's
+own February in full — the corpus asserts that the row, the trend bar, and the detail agree about the spend, the
+verdict, and the percentage, which is the Home/Expenses anchor one level down. `reports-month-aed.json` is the *same*
+month through the rates pinned at close, so every monetary string differs and nothing that carries the story does:
+that pair is invariant 7 as two files, and both were generated from one table of authored rupee figures so they
+cannot drift apart by hand. `reports-month-quiet.json` is a closed month with nothing logged — no slices, seven empty
+panels, and a split bar that is mostly surplus — and it is a month **no archive in the corpus lists**, because none of
+the three archives has an empty month in it.
 
 **Two entries are load-bearing beyond their shape.** `budget-aed.json` carries `AED 8,000` — defect D1's own
 figure — while the rupee one stays the default preview, so a screen that has gone back to hardcoding looks
@@ -943,3 +988,9 @@ Recorded here because they are commitments, not suggestions. None has been made 
 | [ADR-0036](docs/adr/0036-reports-archive.md) | **Each bar carries its own descriptor** — "February 2026, 91% of goal, ₹11,830 saved" — as a server sentence, because it joins a date label, a percentage, and a money figure (ADR-0011). The design puts it in a `title` attribute, which touch never surfaces |
 | [ADR-0036](docs/adr/0036-reports-archive.md) | **A `goal` of 0 yields `hit`** (§4.2 — there is nothing to miss), and a fourth verdict is a **coordinated release**: the client fails the screen rather than degrading, because an archived month is immutable and a wrong verdict about it would be wrong for ever (invariant 7) |
 | [ADR-0035](docs/adr/0035-lesson-player.md) | **`GET /v1/screens/learn` gains a `currencyToken`** — `₹`, or `AED ` with its space, exactly as Home's tip carries one. The curriculum is cacheable and ships `{c}` verbatim in all 124 steps, so the symbol has to travel with the per-user half; without it the reader sees `{c}` in every worked example |
+| [ADR-0037](docs/adr/0037-reports-month-detail.md) | **`GET /v1/screens/reports/:monthKey`'s payload**, written by the client: `{monthKey, title, verdict, percentageLabel, totals{spent, fixed, variable, additionalIncome, isAdapted}, spending{shareOfIncomeLabel, categoryCountLabel, categories[{id, name, amount, share, shareLabel, slot}]}, savings{saved, goal, zeroLabel, position, shareOfIncomeLabel, remaining?, surplus?}, wants{used, allowance, percentageLabel, fill, isOver, remaining?, excess?}, split{income, segments[{portion, amount, share, target?}]}, groups[{id, name, slot, icon, flow, total, summaryLabel, entries[{label, dateLabel, amount}]}], facts[{kind, value, note?}]}`. One slice per category that has something in it; **seven** groups always, Additional Income last |
+| [ADR-0037](docs/adr/0037-reports-month-detail.md) | **The split bar carries four segments and they sum to `income` exactly** — `needs`, `wants`, `min(saved, goal)`, `max(0, saved − goal)` (§4.2 **[FIX]**). The design's "left unspent" is identically zero under a residual `saved` and **must not be sent**: the client fails the screen on a fifth `portion`, because a bar whose parts no longer add up to the figure beside them is about a month nobody can correct (invariant 7). `target` is absent on `surplus` only |
+| [ADR-0037](docs/adr/0037-reports-month-detail.md) | **An archived month is read through the FX rates pinned at close, and a currency change is a re-read.** The same `monthKey` in another display currency must return every figure converted and **every verdict, percentage, position, fill and share byte-identical**. The client has no conversion and no arithmetic to do it with, and the corpus carries one month in two currencies so that a server which recomputed a verdict breaks a test |
+| [ADR-0037](docs/adr/0037-reports-month-detail.md) | **`isAdapted` is the engine's own flag**, not `needs > income / 2` for the client to work out: it chooses which of two sentences explains the month's split. Likewise `isOver` on the wants allowance, and the three savings optionals — `remaining` when the goal was missed, `surplus` when it was passed, **neither** when it was met to the unit, which is the third sentence the design does not have |
+| [ADR-0037](docs/adr/0037-reports-month-detail.md) | **`facts` is a closed set of six `kind`s** — `salary`, `goal`, `saved`, `biggestCost`, `needs`, `leftOver`. The label is the app's copy keyed on the kind; `value` is a string because one of the six is a category *name*; and `note` is a **server sentence**, because it joins a figure to words. A seventh kind is dropped by the client rather than failing the month, so it is additive |
+| [ADR-0037](docs/adr/0037-reports-month-detail.md) | **Every date is a label and there is no timestamp** — "14 Feb", or "Fixed each month" for a bill with no day (invariant 6). `summaryLabel` carries a count, a plural, and a percentage in one server sentence, because Arabic has six plural forms and the design wrote `n === 1 ? ' entry' : ' entries'` |
