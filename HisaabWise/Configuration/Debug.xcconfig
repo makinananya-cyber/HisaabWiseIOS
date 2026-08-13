@@ -1,8 +1,13 @@
-// Debug — local development against `wrangler dev` (ADR-0010).
+// Debug — local development against the backend's `npm run dev` (ADR-0010).
+//
+// **Port 8080, not 8787.** The backend moved from Cloudflare Workers to Node (backend ADR-0016), so it is
+// `@hono/node-server` rather than `wrangler dev`: 8080 is what container platforms expect by default, and
+// 8787 collided with an unrelated local service during setup. Getting this wrong presents as every screen
+// showing the offline state, which reads as "the server is down" rather than "the port is wrong".
 //
 // `//` opens a comment in an .xcconfig, which would swallow the rest of a URL. `$()` expands to
 // nothing and breaks the token up, which is the standard way to write a scheme separator here.
-HW_API_BASE_URL = http:/$()/localhost:8787
+HW_API_BASE_URL = http:/$()/localhost:8080
 
 // The only configuration whose Info.plist carries the App Transport Security exception, so the
 // cleartext allowance cannot reach a shipped build. It names `localhost` and nothing else, and

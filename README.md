@@ -52,7 +52,7 @@ cost bought and what it cost).
 
 There are **three configurations** — `Debug` · `Staging` · `Release` — each with an `.xcconfig` in
 `Configuration/` supplying `HW_API_BASE_URL` ([ADR-0010](docs/adr/0010-configuration-and-auth-links.md)).
-Debug points at `http://localhost:8787`. Build another with `-configuration Staging`.
+Debug points at `http://localhost:8080`, which is what the backend's `npm run dev` serves on. Build another with `-configuration Staging`.
 
 The app talks to a real server in every configuration, so a Debug build wants the backend running:
 

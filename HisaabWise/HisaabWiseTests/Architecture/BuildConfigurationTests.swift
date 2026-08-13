@@ -40,11 +40,14 @@ struct BuildConfigurationTests {
         }
     }
 
-    @Test("Debug points at wrangler dev on the loopback interface")
-    func debugPointsAtWranglerDev() throws {
+    @Test("Debug points at the local backend on the loopback interface")
+    func debugPointsAtLocalBackend() throws {
         // The exact value, not merely "a localhost URL": the port is what the backend serves on, and a
-        // parse that lost it reads as "wrangler dev is not running".
-        #expect(try Self.baseURL(in: "Debug") == "http://localhost:8787")
+        // wrong one reads as "the server is down" on every screen rather than "the port is wrong".
+        //
+        // **8080, not 8787.** The backend moved from Cloudflare Workers to Node (backend ADR-0016), so it
+        // is `@hono/node-server` under `npm run dev` rather than `wrangler dev`.
+        #expect(try Self.baseURL(in: "Debug") == "http://localhost:8080")
     }
 
     @Test("staging and production are HTTPS", arguments: Self.deployedNames)

@@ -7,11 +7,10 @@ import SwiftUI
 /// configuration through ``AppConfig``, `APIClient` takes it as an argument, and
 /// ``URLSessionTransport`` takes nothing at all.
 ///
-/// One transport, in every configuration. There is no debug branch: a Debug build points at
-/// `wrangler dev` on `localhost:8787` and talks to it over the real transport, which is the only way
-/// the client's behaviour against a real server is something anyone finds out about before staging.
-/// Fixtures still exist and are still the seam tests and previews swap — they are just no longer what
-/// the app itself runs on.
+/// One transport, in every configuration. There is no debug branch: a Debug build points at the local
+/// backend on `localhost:8080` and talks to it over the real transport, which is the only way the client's
+/// behaviour against a real server is something anyone finds out about before staging. Fixtures still exist
+/// and are still the seam tests and previews swap — they are just no longer what the app itself runs on.
 ///
 /// Everything the decision produces is handed to ``AppEnvironment``, which is the graph. The root
 /// makes one graph and one view model per screen, and injects them once.
