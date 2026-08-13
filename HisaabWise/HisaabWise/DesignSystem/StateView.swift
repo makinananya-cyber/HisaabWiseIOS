@@ -37,6 +37,21 @@ struct StateCopy: Sendable {
     var retry: LocalizedStringResource? = "state.retry"
 }
 
+extension View {
+    /// The ground a screen sits on: the surface background, filling the window and running under the status bar.
+    ///
+    /// **Two callers, which is why it is a modifier** — `ScreenChrome`, which every `BaseView` gets for free, and
+    /// Account's four **pushed** pages (#23), which are plain `View`s and so get no chrome. Without it a pushed page
+    /// takes the system's white, and the design's cards — which are `surface.raised`, also white — become invisible
+    /// outlines on it. Looking at the running app is what found that; nothing a test asserts about a render could.
+    ///
+    /// `ignoresSafeArea` on the **colour alone**: the ground runs under the status bar, the content does not.
+    func hwScreenGround(_ palette: HWPalette) -> some View {
+        frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
+            .background(palette.surface.background.ignoresSafeArea())
+    }
+}
+
 /// How one state with nothing to draw is presented, as a value.
 ///
 /// Pulled out of ``StateView``'s `body` so that "offline is visually distinct from failed" is a fact a

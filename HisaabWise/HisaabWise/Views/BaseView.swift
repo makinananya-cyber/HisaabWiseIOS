@@ -80,12 +80,10 @@ struct ScreenChrome<Model: BaseViewModel, LoadedContent: View>: View {
             reload: { await load() },
             loadedContent: loadedContent
         )
-        // Fills the screen and starts at the top. Without `maxHeight` the background paints only the
-        // band behind the content and the rest of the screen stays white.
-        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-        // `ignoresSafeArea` on the colour alone: the ground runs under the status bar, the content
-        // does not.
-        .background(theme.palette.surface.background.ignoresSafeArea())
+        // Fills the screen and starts at the top, on the ground every screen sits on. Without it the background
+        // paints only the band behind the content and the rest of the screen stays white — and Account's four
+        // **pushed** pages are the second caller, which is why it is `hwScreenGround(_:)` rather than two copies.
+        .hwScreenGround(theme.palette)
         // One container per screen — see the note above. Applied after the ground so the ground is inside
         // the container and not an element of it; a `Color` is not focusable either way, and relying on
         // that rather than saying so is how a decorative element becomes a swipe stop later.

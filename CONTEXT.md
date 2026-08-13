@@ -652,6 +652,12 @@ direction-encoding image, no Eastern Arabic-Indic digit, no sentence concatenate
 key a view renders backed by English copy, and the catalogue English-only until the Phase 5 translation
 pass.
 
+**a pushed page has no ground unless it says so** — `ScreenChrome` paints `surface.background` and a `BaseView`
+gets it for free, but Account's four detail pages are plain pushed `View`s and took the system's white instead,
+which made every `surface.raised` card an invisible outline. It is `hwScreenGround(_:)` now, with the chrome as its
+other caller. **Only the running app showed it**: `ImageRenderer` composites onto nothing, so a render of a
+white-on-white card and a render of a correct one are the same picture (#23).
+
 **a `BaseView` render lands on `.loading`** — worth knowing before writing the snapshot suite (#9). The
 chrome supplies `.task { load() }`, `load()` writes `.loading` first, and `ImageRenderer` yields to the main
 actor before it captures — so the pixels are the spinner however loaded the view model was a moment

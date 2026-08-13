@@ -219,6 +219,21 @@ struct AccountViewTests {
         #expect(options.count > HWOptionList.searchThreshold)
     }
 
+    /// **A currency symbol is text, not an SF Symbol name.** `HWSheetRowLeading` has a case called `symbol` that
+    /// carries a *glyph name* and draws `Image(systemName:)`, so passing `₹` to it drew nothing at all and 160 rows
+    /// came up chipless — which only looking at the running app found. The chip is a code chip, as registration's own
+    /// currency sheet passes.
+    @Test("every currency row's chip is its symbol as text")
+    func theCurrencyChipIsText() throws {
+        let currencies = try Fixture.referenceCurrencies.decode(CurrencyList.self).currencies
+        let options = AccountCurrencyPage.options(currencies)
+
+        for option in options {
+            let currency = try #require(currencies.first { $0.code == option.id })
+            #expect(option.leading == .code(currency.symbol), "\(option.id) draws its symbol as a glyph name")
+        }
+    }
+
     /// The dial-code rows carry the design's haystack too — "name + code + dial code".
     @Test("a country can be found by its name, its code, or its dial code")
     func theDialCodeRowsAreSearchable() throws {

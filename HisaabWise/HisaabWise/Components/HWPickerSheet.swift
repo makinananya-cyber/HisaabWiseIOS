@@ -170,17 +170,31 @@ struct HWOptionList: View {
                     // list is gone. The same reasoning `StateView` applies to the empty-handed states.
                     .onAppear { HWAnnouncement.post("component.picker.empty", in: locale) }
             } else {
-                HWSheetList {
-                    ForEach(visible) { option in
-                        HWSheetRow(
-                            name: Text(verbatim: option.name),
-                            leading: option.leading,
-                            meta: option.meta.map { Text(verbatim: $0) },
-                            isSelected: option.id == selection,
-                            appearance: appearance
-                        ) {
-                            onSelect(option.id)
+                // **It opens on the current choice**, which is the design's
+                // `sel.scrollIntoView({ block: 'center' })` and which looking at the running app is what found
+                // missing: a reader paid in rupees opened Currency and saw the Afghan Afghani, 150 rows above their
+                // own. `ScrollViewReader` sits *outside* the list because the `ScrollView` it needs is inside
+                // ``HWSheetList``.
+                ScrollViewReader { proxy in
+                    HWSheetList {
+                        ForEach(visible) { option in
+                            HWSheetRow(
+                                name: Text(verbatim: option.name),
+                                leading: option.leading,
+                                meta: option.meta.map { Text(verbatim: $0) },
+                                isSelected: option.id == selection,
+                                appearance: appearance
+                            ) {
+                                onSelect(option.id)
+                            }
+                            .id(option.id)
                         }
+                    }
+                    // **Only while nothing has been typed**, as the design gates it: jumping the list under a
+                    // reader who is searching would take them away from what they are reading.
+                    .onAppear {
+                        guard query.isEmpty, let selection else { return }
+                        proxy.scrollTo(selection, anchor: .center)
                     }
                 }
             }

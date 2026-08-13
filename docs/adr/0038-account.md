@@ -270,6 +270,15 @@ Six new, one split in two, one folded out, and three that grew a second appearan
   screen behind it (#24). No route for it has been invented here.
 - **No "resend verification" route either**, for the same reason: the criteria ask for the banner and not for
   a control, so the banner carries no action — as the shell's does not.
+- **Three defects only the running app showed**, all found by putting the screen on a simulator rather than
+  through `ImageRenderer`. A **pushed page gets no `ScreenChrome`**, so all four took the system's white and
+  the design's white cards became invisible outlines on it — the ground is now `hwScreenGround(_:)`, one
+  modifier with the chrome as its other caller. The currency rows passed `HWSheetRowLeading.symbol`, which
+  carries an **SF Symbol name** and draws `Image(systemName:)`, so `₹` and `؋` rendered as nothing and 160
+  rows came up chipless; a currency symbol is text, so it is `.code(...)`, which is what registration's own
+  sheet passes. And the option list **did not open on the current choice** — a reader paid in rupees opened
+  Currency and saw the Afghan Afghani, 150 rows above their own — which is the design's
+  `scrollIntoView({block: 'center'})`, now in `HWOptionList` and so in every picker sheet too.
 - **Two of the review's findings are regressions with tests now**: that a refused currency change can be made
   again, and that a refusal is about the control that was tried and no other. Both were behaviour, not
   wording.

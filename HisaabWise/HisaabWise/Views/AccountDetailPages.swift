@@ -32,9 +32,10 @@ struct AccountDetailUnavailable: View {
 /// words are the design's `.txt-edit` / `.txt-done` — the same control saying which state it is in, which is why
 /// it is ``HWEditButton`` and not two buttons.
 struct AccountPersonalPage: View {
-    // **No `@Environment(ThemeManager.self)`, deliberately.** Every colour on this page belongs to a component, and
-    // an unused read of a non-optional observable object is not free: SwiftUI resolves it when the view updates, so
-    // a page that declared one it never read would trap rather than read nothing (`CONTEXT.md`, ADR-0036).
+    /// Read for one thing: the **ground**. A pushed page gets no `ScreenChrome`, so without it the page takes the
+    /// system's white and the design's white cards vanish into it — which looking at the running app is what found.
+    @Environment(ThemeManager.self) private var theme
+
     let viewModel: AccountViewModel
 
     /// The country sheet, which is the one thing on this page the design draws as a sheet rather than a page.
@@ -52,6 +53,7 @@ struct AccountPersonalPage: View {
                 .padding(.vertical, 14)
         }
         .scrollBounceBehavior(.basedOnSize)
+        .hwScreenGround(theme.palette)
         .navigationTitle(Text("account.personal.title"))
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
@@ -324,6 +326,9 @@ struct HWFieldNote: View {
 /// named Arabic "Arabic" to an English reader and "الإنجليزية" to an Arabic one is a picker in which neither
 /// reader can find their own language.
 struct AccountLanguagePage: View {
+    /// Read for the ground — see the note on ``AccountPersonalPage``.
+    @Environment(ThemeManager.self) private var theme
+
     let viewModel: AccountViewModel
 
     /// Set by the row that was tapped, so the page can close itself once the switch has landed — as the design's
@@ -355,6 +360,7 @@ struct AccountLanguagePage: View {
             .disabled(viewModel.isWriting)
         }
         .padding(.vertical, 14)
+        .hwScreenGround(theme.palette)
         .navigationTitle(Text("account.language.title"))
         .navigationBarTitleDisplayMode(.inline)
     }
@@ -381,6 +387,9 @@ struct AccountLanguagePage: View {
 /// list is disabled and the explanation is above it — the tick stays where the server left it and nothing on any
 /// screen moves.
 struct AccountCurrencyPage: View {
+    /// Read for the ground — see the note on ``AccountPersonalPage``.
+    @Environment(ThemeManager.self) private var theme
+
     let viewModel: AccountViewModel
 
     @Environment(\.dismiss) private var dismiss
@@ -411,6 +420,7 @@ struct AccountCurrencyPage: View {
             .disabled(viewModel.isWriting)
         }
         .padding(.vertical, 14)
+        .hwScreenGround(theme.palette)
         .navigationTitle(Text("account.currency.title"))
         .navigationBarTitleDisplayMode(.inline)
         // The 160 currencies on demand, for the reason the dial codes are: a screen paints from one request
@@ -421,12 +431,17 @@ struct AccountCurrencyPage: View {
     /// The 160 currencies as picker rows — the symbol as the chip, the ISO code as the meta, both searchable.
     ///
     /// The design's own haystack: "name + code + symbol".
+    ///
+    /// **`.code(currency.symbol)`, not `.symbol(...)`** — which is the trap that name sets and which looking at the
+    /// running app is what caught: `HWSheetRowLeading.symbol` carries an **SF Symbol name** and draws
+    /// `Image(systemName:)`, so `₹` and `؋` rendered as nothing at all and 160 rows came up chipless. A currency
+    /// symbol is *text*, so it is a code chip — which is what registration's own currency sheet passes.
     nonisolated static func options(_ currencies: [Currency]) -> [HWPickerOption] {
         currencies.map { currency in
             HWPickerOption(
                 id: currency.code,
                 name: currency.name,
-                leading: .symbol(currency.symbol),
+                leading: .code(currency.symbol),
                 meta: currency.code,
                 searchText: "\(currency.name) \(currency.code) \(currency.symbol)"
             )
@@ -447,7 +462,9 @@ struct AccountCurrencyPage: View {
 /// answer to key words and compares them with a Levenshtein distance in the browser; §4.3 **[FIX]** normalises and
 /// compares argon2id hashes server-side, so what this screen does with an answer is send it.
 struct AccountPasswordPage: View {
-    // No theme: every colour on this page belongs to a component — see the note on ``AccountPersonalPage``.
+    /// Read for the ground — see the note on ``AccountPersonalPage``.
+    @Environment(ThemeManager.self) private var theme
+
     let viewModel: AccountViewModel
 
     @Environment(\.dismiss) private var dismiss
@@ -461,6 +478,7 @@ struct AccountPasswordPage: View {
                 .padding(.vertical, 14)
         }
         .scrollBounceBehavior(.basedOnSize)
+        .hwScreenGround(theme.palette)
         .navigationTitle(Text("account.password.title"))
         .navigationBarTitleDisplayMode(.inline)
         // Starts the flow at step one with an empty answer per question, and — because a page that is left holds
