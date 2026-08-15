@@ -135,9 +135,12 @@ struct AccountView: BaseView {
         "account.title",
         "account.tray.caption",
         "account.row.passwordMask",
-        "account.export.action",
-        "account.export.note",
-        "account.export.fileName",
+        "account.delete.action",
+        "account.delete.blurb",
+        "account.delete.confirm.title",
+        "account.delete.confirm.message",
+        "account.delete.confirm.action",
+        "account.delete.confirm.cancel",
         "account.notice.personalUpdated",
         "account.notice.currencyChanged",
         "account.notice.languageChanged",
@@ -226,9 +229,11 @@ struct AccountPage: View {
             // The design's `margin-top:auto` puts the way out at the bottom of the screen. Here it is at the
             // bottom of the *content*, which is the same place on a phone and the honest one on a page that
             // scrolls: a control pinned below a scrolling list is a control that covers the list.
-            export
-
             LogoutControl()
+
+            // **Below the way out, and last on the screen.** Deletion is the most destructive thing this app
+            // can do, so it sits after the reversible exit rather than beside it.
+            DeleteAccountControl(viewModel: viewModel)
         }
     }
 
@@ -254,70 +259,62 @@ struct AccountPage: View {
         }
     }
 
-    /// The UAE PDPL access right (Product Spec §8), as a control rather than a fifth row.
-    ///
-    /// **The design has no such control**, and a fifth row inside `.bubble` would claim to be one of the design's
-    /// four. So it sits with the other thing on this screen that is about the account rather than a setting of
-    /// it — the way out — and says in a line under itself what it does.
-    @ViewBuilder
-    private var export: some View {
+}
+
+/// Delete the account, with the question asked first.
+///
+/// **App Store 5.1.1(v).** An app that lets somebody create an account has to let them delete it from inside the
+/// app. `DELETE /v1/me` was implemented, tested and reachable by nothing — there was no control for it anywhere
+/// in this client, which is a review failure rather than a missing feature.
+///
+/// **The alert is an `alert`, not a `confirmationDialog`**, for the reason ``LogoutControl`` now is: a
+/// `confirmationDialog` can present as a popover, and SwiftUI drops `.cancel`-role buttons from a popover — which
+/// on *this* control would mean an irreversible action with no visible way to decline it.
+///
+/// **The copy says the deletion is scheduled, not done.** It is a soft delete with a 30-day grace period
+/// (ADR-0015), and a confirmation implying the data is already gone would be a lie in the direction that stops
+/// people asking for it back.
+private struct DeleteAccountControl: View {
+    @Environment(ThemeManager.self) private var theme
+
+    let viewModel: AccountViewModel
+
+    @State private var isConfirming = false
+
+    var body: some View {
         VStack(alignment: .leading, spacing: 8) {
-            if let data = viewModel.exportedData {
-                // **A share sheet rather than a file the app wrote somewhere.** The bytes are every figure, entry
-                // and address this system holds about one person; the user chooses where they go and the app keeps
-                // no second copy (ADR-0014, ADR-0038).
-                ShareLink(
-                    item: AccountExport(data: data),
-                    preview: SharePreview(Text("account.export.action"))
-                ) {
-                    HWButtonFace("account.export.action", variant: .soft, systemImage: "square.and.arrow.up")
-                }
-                .buttonStyle(HWPressStyle())
-                // Handing the bytes to the sheet is the last thing that needs them.
-                .onDisappear { viewModel.discardExport() }
-            } else {
-                HWButton(
-                    "account.export.action",
-                    variant: .soft,
-                    systemImage: "arrow.down.doc",
-                    state: viewModel.isExporting ? .inFlight : .ready
-                ) {
-                    Task { await viewModel.exportMyData() }
-                }
+            HWButton(
+                "account.delete.action",
+                variant: .destructive,
+                systemImage: "trash",
+                state: viewModel.isDeletingAccount ? .inFlight : .ready
+            ) {
+                isConfirming = true
             }
 
-            Text("account.export.note")
+            Text("account.delete.blurb")
                 .font(.hw(.micro))
                 .foregroundStyle(theme.palette.surface.inkTertiary)
                 .fixedSize(horizontal: false, vertical: true)
 
-            // **The export's own refusal, not whichever was last.** With one bare reason on the view model, a
-            // failed currency change drew its sentence under this button — which is what review found.
-            AccountRefusalNote(reason: viewModel.refusal(about: .export))
+            AccountRefusalNote(reason: viewModel.refusal(about: .deleteAccount))
+        }
+        .alert(Text("account.delete.confirm.title"), isPresented: $isConfirming) {
+            Button(role: .destructive) {
+                Task { await viewModel.deleteAccount() }
+            } label: {
+                Text("account.delete.confirm.action")
+            }
+
+            Button(role: .cancel) {} label: {
+                Text("account.delete.confirm.cancel")
+            }
+        } message: {
+            Text("account.delete.confirm.message")
         }
     }
 }
 
-/// The export, as something a share sheet can carry.
-///
-/// **A `Transferable` over the bytes rather than a file the app wrote.** `ShareLink` needs a value and a suggested
-/// name, and this gives it both without the export ever touching the file system — which for a document holding
-/// one person's entire financial history is the whole point: there is no copy left in a temporary directory for
-/// something else to find, and nothing to remember to delete (ADR-0014).
-///
-/// It lives in `Views` rather than `Models` because a transfer representation is presentation: what it decides is
-/// how the bytes leave the app, not what they are. The client never decodes them (``APIClient/bytes(at:)``).
-struct AccountExport: Transferable {
-    let data: Data
-
-    static var transferRepresentation: some TransferRepresentation {
-        DataRepresentation(exportedContentType: .json) { $0.data }
-            // Not dated, deliberately: the client owns no calendar (invariant 6), and a file named from the device
-            // clock would be a date this app is not allowed to work out. What the export contains is the server's
-            // to timestamp, inside the document.
-            .suggestedFileName(String(localized: "account.export.fileName"))
-    }
-}
 
 #if DEBUG
 #Preview("Account — the settings list") {

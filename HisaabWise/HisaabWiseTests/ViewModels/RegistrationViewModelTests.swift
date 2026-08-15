@@ -5,7 +5,7 @@ import Testing
 /// Registration: three steps in the UI, **one request at the end**.
 ///
 /// The ticket's four named tests are here — the atomic submit carries every field, an email collision returns to
-/// step 1, a date of birth under 13 blocks submission on the client, and skip is distinguishable from an explicit
+/// step 1, a date of birth under 16 blocks submission on the client, and skip is distinguishable from an explicit
 /// goal — and each is asserted **against the bytes on the wire** rather than against the view model's properties.
 /// That distinction is the whole point: a form that held every field correctly and dropped one on the way to
 /// `URLRequest.httpBody` would pass a properties test and ship a broken registration.
@@ -329,7 +329,7 @@ struct RegistrationViewModelTests {
     /// **The ticket's third named test.** A date of birth under 13 is refused by the client, and **no request
     /// leaves**: a form that collects a twelve-year-old's name, email, and phone number before the server refuses
     /// them has already collected them.
-    @Test("a date of birth under 13 blocks submission on the client")
+    @Test("a date of birth under 16 blocks submission on the client")
     func tooYoungIsBlockedLocally() async throws {
         let transport = FixtureTransport(stubs: Self.stubs(register: Self.accepted))
         let (viewModel, session) = await Self.form(transport)
@@ -339,7 +339,7 @@ struct RegistrationViewModelTests {
         await viewModel.submit()
 
         #expect(viewModel.step == .one)
-        #expect(viewModel.failure(for: .dateOfBirth) == .tooYoung(minimumAge: 13))
+        #expect(viewModel.failure(for: .dateOfBirth) == .tooYoung(minimumAge: 16))
         #expect(!session.isSignedIn)
         let writes = await transport.recordedRequests.filter { $0.path == Endpoint.register }
         #expect(writes.isEmpty, "a 12-year-old's details reached the server to be refused there")
@@ -353,12 +353,12 @@ struct RegistrationViewModelTests {
     /// historical offset change: the Gulf adopted +04:00 in 1920, so "120 years ago" comes back 119 years and 364
     /// days. Exactness matters for a birthday and not for the oldest date a picker offers, so the zone follows the
     /// input.
-    @Test("the date picker's range runs from 13 years ago to about 120")
+    @Test("the date picker's range runs from 16 years ago to about 120")
     func theDateRangeIsThirteenToOneHundredAndTwenty() {
         let now = Date()
         let range = RegistrationViewModel.dateOfBirthRange(now: now)
 
-        #expect(RegistrationViewModel.age(on: range.upperBound, now: now) == 13)
+        #expect(RegistrationViewModel.age(on: range.upperBound, now: now) == 16)
         #expect(RegistrationViewModel.age(on: range.lowerBound, now: now) >= RegistrationViewModel.maximumAge - 1)
         #expect(RegistrationViewModel.age(on: range.lowerBound, now: now) <= RegistrationViewModel.maximumAge)
         // A birthday one day later than the newest allowed is a 12-year-old, and outside the range.

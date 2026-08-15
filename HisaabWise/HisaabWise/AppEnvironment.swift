@@ -112,7 +112,7 @@ final class AppEnvironment {
     /// reference list and its dial-code sheet is the 251 countries, both cacheable content on their own ETags
     /// rather than fields in a per-user payload (ADR-0009, ADR-0020).
     func makeAccountViewModel() -> AccountViewModel {
-        AccountViewModel(client: client, content: content, language: language)
+        AccountViewModel(client: client, content: content, language: language, session: session)
     }
 
     /// One view model per tab, made once for the shell to be handed (issue #5).
@@ -148,6 +148,12 @@ final class AppEnvironment {
     /// a stored instance would keep an abandoned registration in memory for the life of the app.
     func makeRegistrationViewModel() -> RegistrationViewModel {
         RegistrationViewModel(session: session, content: content, language: language, legal: legal)
+    }
+
+    /// A password-recovery form, made fresh each time the screen is pushed, for exactly the reason above: it
+    /// holds two security answers, a date of birth, a new password, and a single-use reset ticket.
+    func makeForgotPasswordViewModel() -> ForgotPasswordViewModel {
+        ForgotPasswordViewModel(client: client)
     }
 }
 

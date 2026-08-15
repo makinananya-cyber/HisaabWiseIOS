@@ -25,10 +25,14 @@ struct ReportsView: BaseView {
     /// transport. The five-tab shell puts one per tab in the environment.
     let viewModel: ReportsViewModel
 
-    /// **The one screen in the app whose empty state is the whole screen.** Home's first run keeps four of its
-    /// five cards and puts the empty treatment inside the fifth; an archive with no closed months has no hero
-    /// worth drawing — no mean of nothing, and no trend through no points — so `StateView` draws one sentence
-    /// (``ReportsViewModel/isEmpty(_:)``).
+    /// **The empty case is drawn by the page, not by `StateView`.**
+    ///
+    /// An archive with no closed months has no hero worth drawing — no mean of nothing, and no trend through no
+    /// points — but it is still the Reports tab, and it should still say so. `StateView` replaces the whole screen,
+    /// which took the eyebrow and the title with it. So `isEmpty(_:)` is `false` and
+    /// ``ReportsArchivePage`` keeps the chrome and puts the sentence where the archive would have been.
+    ///
+    /// The copy is still declared, because the key is still rendered — by the page.
     var stateCopy: StateCopy {
         StateCopy(empty: "reports.empty")
     }
@@ -130,10 +134,18 @@ struct ReportsArchivePage: View {
         VStack(alignment: .leading, spacing: 16) {
             HWTopBar(eyebrow: "reports.eyebrow", title: Text("reports.title"))
 
-            hero
+            // **The heading stays when there is nothing to report.** This was `LoadState.empty`, so `StateView`
+            // replaced the whole screen — eyebrow, title and all — with one centred sentence, and the tab a reader
+            // had just chosen came back with no name on it. Every other screen keeps its chrome and puts the empty
+            // treatment inside the part that is empty; this now does too.
+            if screen.years.isEmpty {
+                HWEmptyNote("reports.empty")
+            } else {
+                hero
 
-            ForEach(screen.years) { year in
-                self.year(year)
+                ForEach(screen.years) { year in
+                    self.year(year)
+                }
             }
         }
     }

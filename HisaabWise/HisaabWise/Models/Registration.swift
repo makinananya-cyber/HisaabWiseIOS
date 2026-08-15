@@ -54,6 +54,28 @@ struct PhoneNumber: Sendable, Hashable, Encodable {
         try container.encode(national, forKey: .national)
         try container.encode(e164, forKey: .e164)
     }
+
+    /// The most national digits the server will take. Its `phoneSchema` is `^\d{4,15}$`, so past 15 more
+    /// typing cannot help — the box stops rather than growing a number that will be refused.
+    static let maximumNationalDigits = 15
+
+    /// `text` reduced to the ASCII digits the wire format allows.
+    ///
+    /// **One funnel for every box that takes a phone number**, because there are two — registration's field and
+    /// Account's inline row — and they disagreed. Both used `filter(\.isNumber)`, which is looser than it
+    /// reads: `isNumber` is true for "½" and "Ⅷ" as well as "٥", so it passed through characters the server's
+    /// `\d` refuses. Neither capped the length, and neither stopped a hardware keyboard, a paste, or dictation
+    /// from putting letters in the box at all — a whole alphanumeric password went into one of them.
+    ///
+    /// Non-ASCII **decimal** digits are converted rather than dropped: an Arabic-locale user typing ٥٠١ means
+    /// 501, and a box that silently swallowed their numerals would look broken rather than strict.
+    static func nationalDigits(from text: String) -> String {
+        let ascii = text.compactMap { character -> Character? in
+            guard let value = character.wholeNumberValue, (0...9).contains(value) else { return nil }
+            return Character(String(value))
+        }
+        return String(ascii.prefix(maximumNationalDigits))
+    }
 }
 
 /// One security question and its answer, on the way to the server **once**.

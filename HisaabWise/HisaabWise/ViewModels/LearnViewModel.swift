@@ -9,13 +9,14 @@ import Observation
 /// every cache. Neither can be folded into the other without breaking one of those rules, so `fetch()` asks for
 /// both — **concurrently**, because they are independent — and hands back the join as one ``LearnMap``.
 ///
-/// **It maps no `APIError`, and #20 did not change that.** The screen has two writes now — the interim
-/// `POST /v1/learn/progress` and the lesson submission — and neither adds an owner to the taxonomy
-/// (`StateTaxonomyTests`). The progress report is **best-effort and reports nothing**: the reader has already left
-/// the lesson, there is no queue (ADR-0019), and a failed save costs them the tail of one run rather than anything
-/// they earned — so a failure that replaced the map with an error would be the app breaking a screen that is fine.
-/// The submission is the *completion screen's* own load, where `BaseViewModel.load()` maps it exactly as it maps a
-/// read (``LessonCompletionViewModel``).
+/// **It maps no `APIError`.** The screen has one write — the lesson submission — and it does not add an owner to
+/// the taxonomy (`StateTaxonomyTests`): the submission is the *completion screen's* own load, where
+/// `BaseViewModel.load()` maps it exactly as it maps a read (``LessonCompletionViewModel``).
+///
+/// **A lesson counts when it is finished, and not before.** There was an interim `POST /v1/learn/progress` filed
+/// when a reader closed the player part-way; it has gone, and ``closePlayer()`` explains why. The short version is
+/// that the player always restarted at step one, so the only thing the interim report bought was a ring filled to a
+/// fraction nothing could resume from.
 ///
 /// **It owns no clock.** The streak, the XP, and every unlock arrive as values from a payload that carries no date
 /// at all (invariant 6, ``LearnScreen``) — so there is nothing here for a device-clock change to move, and
@@ -169,37 +170,21 @@ final class LearnViewModel: BaseViewModel {
     /// lifetime is the tab's — carries the write. A player awaiting its own write before dismissing would be a
     /// closing animation that waited for the network.
     ///
-    /// **A finished run reports nothing**, because the completion has already said everything the progress route
-    /// would: an interim report filed after it would be an older truth landing on top of a newer one.
+    /// **A lesson counts when it is finished, and not before.**
+    ///
+    /// Leaving part-way now reports *nothing*, so the run is simply discarded: re-entering starts at step one, the
+    /// node keeps its "START" badge, and the next lesson stays locked until this one is completed in a single
+    /// sitting. That is a product decision rather than a simplification — a lesson is fifteen minutes, and a map
+    /// that remembered half of one told the reader they had made progress they could not resume from. The player
+    /// always restarted at step one; only the ring disagreed, filling to a fraction that nothing could continue.
+    ///
+    /// A finished run also reports nothing here, and always did, because the completion has already said everything
+    /// this route would — an interim report filed afterwards would be an older truth landing on top of a newer one.
+    ///
+    /// What this gives up is per-question results for an abandoned run. They were only ever readable as a partly
+    /// filled ring, which is exactly the thing being removed.
     func closePlayer() {
-        guard let player else { return }
-        self.player = nil
-        // **Anything to report, rather than "past the first step"**: a reader who answered a question and closed has
-        // results worth saving even if the index has not moved, which the first version threw away (review found it).
-        guard player.completion == nil,
-              player.run.index > 0 || !player.run.results.isEmpty
-        else { return }
-
-        let report = player.progressReport
-        // `[weak self]`: a signed-out tab takes its view models with it (`TabViewModels`), and an abandoned save is
-        // the right outcome there rather than a request outliving the session it belonged to.
-        Task { [weak self] in await self?.report(report) }
-    }
-
-    /// `POST /v1/learn/progress` — **best-effort, and it reports nothing on failure.**
-    ///
-    /// The reader has left the lesson; there is no queue (ADR-0019) and nothing for them to correct. What a failure
-    /// costs is the tail of one run, and replacing a perfectly good map with an error state over it would be the
-    /// shape `ExpensesViewModel.loadPicklists()` avoids for the same reason.
-    ///
-    /// A success answers with the updated screen (ADR-0020), so a part-answered ring fills without a reload.
-    private func report(_ report: LessonProgressReport) async {
-        guard let screen = try? await client.post(
-            Endpoint.learnProgress,
-            body: report,
-            as: LearnScreen.self
-        ) else { return }
-        apply(screen)
+        player = nil
     }
 
     /// Re-renders the map from a **write's own response**, rather than reloading (ADR-0020).

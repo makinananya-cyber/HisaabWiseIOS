@@ -67,17 +67,11 @@ final class AccountViewModel: BaseViewModel {
     /// Whether a write is in flight, so a control can say so rather than accepting a second tap.
     private(set) var isWriting = false
 
-    // MARK: - The data-subject export
+    // MARK: - Deleting the account
 
-    /// The bytes `GET /v1/me/export` answered with, or `nil`.
-    ///
-    /// **Held rather than written to a file**, which is both simpler and the better answer for what this is: an
-    /// export is every figure, every entry and every address this system holds about one person, and a copy of it
-    /// sitting in the temporary directory is a copy nobody asked for and nothing deletes. The screen wraps these
-    /// bytes in a `Transferable` and the user chooses where they go (ADR-0038, ADR-0014).
-    private(set) var exportedData: Data?
-
-    private(set) var isExporting = false
+    /// True while `DELETE /v1/me` is in flight, so the control shows a spinner rather than accepting a second
+    /// tap on the one action here that cannot be undone by pressing it again.
+    private(set) var isDeletingAccount = false
 
     // MARK: - Cacheable content
 
@@ -107,15 +101,48 @@ final class AccountViewModel: BaseViewModel {
     /// would be a cycle. The graph closes the loop with one call, exactly as it does for the language manager.
     private weak var repaint: (any ScreenRepaint)?
 
-    init(client: APIClient, content: ContentLoader, language: LanguageManager) {
+    /// Who is signed in, so that deleting the account can end the session.
+    ///
+    /// **Held here rather than read by the control**, because `AppShellTests` keeps `signOut()` to a single caller
+    /// in the presentation layers and deletion should not become a second exit written in a view. The scan covers
+    /// `Views/`, `Components/` and `DesignSystem/`; a view model ending the session it was handed is the same
+    /// decision made in one place rather than two.
+    private let session: SessionCoordinator
+
+    init(
+        client: APIClient,
+        content: ContentLoader,
+        language: LanguageManager,
+        session: SessionCoordinator
+    ) {
         self.client = client
         self.content = content
         self.language = language
+        self.session = session
     }
 
     /// Closes the loop between this screen and the four it makes stale. Called once, by `AppEnvironment`.
     func connect(to repaint: any ScreenRepaint) {
         self.repaint = repaint
+    }
+
+    /// Re-reads the account **without blanking it first**.
+    ///
+    /// `load()` flips `state` to `.loading`, which on a page the reader is already looking at means the card
+    /// vanishes and comes back. This keeps the current payload on screen and swaps it when the new one lands, so a
+    /// page that reappears catches up quietly.
+    ///
+    /// **Why it exists.** The tab holds the payload it read when it was first opened, and the personal page reads
+    /// that same held copy — so a salary changed anywhere else left this page showing the old figure while Home
+    /// computed "% of pay" from the new one. Observed exactly that: 12,000 on the personal page and a Home reading
+    /// 24% that only makes sense against 20,000. Invariant 2 says the salary has one owner; two screens disagreeing
+    /// about it is the defect that invariant exists to prevent, even when neither figure was computed on the client.
+    ///
+    /// A failure is **silent on purpose**: the reader has a perfectly good payload on screen, and replacing it with
+    /// an error because a background re-read did not land would be a worse report than saying nothing.
+    func refreshQuietly() async {
+        guard let screen = try? await fetch() else { return }
+        state = .loaded(screen)
     }
 
     // MARK: - The single read
@@ -241,7 +268,18 @@ final class AccountViewModel: BaseViewModel {
     func editPhoneDigits(_ text: String) {
         // Digits only, as the design's `value.replace(/[^0-9]/g, '')` does — a phone number is not a place for a
         // space, a dash or a second plus, and stripping them as they are typed is kinder than refusing later.
-        personal.national = text.filter(\.isNumber)
+        //
+        // **ASCII digits specifically, and non-ASCII ones are converted rather than dropped.** `\.isNumber` accepts
+        // `٥`, and the server's `^\d{4,15}$` does not — so filtering on it alone let a number through the box that
+        // the write then refused. An Arabic-locale reader typing ٥٠١ means 501, and a box that silently swallowed
+        // their numerals would look broken. Capped at 15 because that is where the server stops caring.
+        personal.national = String(
+            text.compactMap { character -> Character? in
+                guard let value = character.wholeNumberValue, (0...9).contains(value) else { return nil }
+                return Character(String(value))
+            }
+            .prefix(15)
+        )
         personal.failures.remove(.phoneInvalid)
     }
 
@@ -403,11 +441,20 @@ final class AccountViewModel: BaseViewModel {
         password = PasswordDraft(answers: Array(repeating: "", count: securityQuestions.count))
     }
 
-    /// **Continue** — validates the step on screen and moves to the next, or submits from the last.
+    /// **Continue** — checks the step on screen and moves to the next, or submits from the last.
     ///
-    /// The three steps are the client's sequencing of **one** request (``PasswordChange``): nothing exists
-    /// server-side until the last button, so steps one and two check only that there is something to send. What
-    /// the server says about *whether it is right* arrives at the end, and names which step was wrong.
+    /// The change itself is still **one** request (``PasswordChange``) and the server still re-verifies everything,
+    /// so no state is carried between steps. What changed is *when the reader finds out*: each step now asks
+    /// `POST /v1/me/password/check` whether what they have typed is right, rather than letting them fill three
+    /// screens and learn at the end that the first box was wrong. Observed: a wrong current password walked the
+    /// whole wizard, then bounced back to step one — three steps of work for a typo.
+    ///
+    /// The trade-off that buys is written down on the endpoint: a check route is a password-guessing oracle behind
+    /// a valid session, which is why it writes nothing and counts every miss against the recovery lockout.
+    ///
+    /// **A check that cannot reach the server does not block the step.** The reader keeps moving and the final
+    /// submit — which is authoritative — reports the failure. A fail-fast that turned into a fail-always offline
+    /// would be worse than the problem it fixes.
     func advancePasswordChange() async {
         switch password.step {
         case .currentPassword:
@@ -415,15 +462,58 @@ final class AccountViewModel: BaseViewModel {
                 password.failure = .currentPasswordMissing
                 return
             }
+            guard await confirmPasswordStep(sendingAnswers: false) else { return }
             password.step = .securityQuestions
         case .securityQuestions:
             guard password.answers.allSatisfy({ !$0.trimmingCharacters(in: .whitespaces).isEmpty }) else {
                 password.failure = .answerMissing
                 return
             }
+            guard await confirmPasswordStep(sendingAnswers: true) else { return }
             password.step = .newPassword
         case .newPassword:
             await submitPasswordChange()
+        }
+    }
+
+    /// Asks the server whether what has been typed so far is right. `true` means "carry on".
+    ///
+    /// Refusals are `422`, never `401` (``ErrorCode/invalidCredentials``), so a mistyped password cannot spend the
+    /// refresh token and end the session — which is the whole reason the route exists on those terms.
+    private func confirmPasswordStep(sendingAnswers: Bool) async -> Bool {
+        guard !isWriting else { return false }
+        isWriting = true
+        defer { isWriting = false }
+
+        let answers = sendingAnswers
+            ? zip(securityQuestions, password.answers).map {
+                SecurityAnswer(questionID: $0.id, answer: $1.trimmed)
+            }
+            : nil
+
+        do {
+            _ = try await client.post(
+                Endpoint.passwordCheck,
+                body: PasswordCheck(currentPassword: password.current, securityAnswers: answers),
+                as: PasswordCheckAccepted.self
+            )
+            password.failure = nil
+            return true
+        } catch let error as APIError {
+            switch error {
+            case .offline:
+                // Not a refusal. Let them through; the submit is authoritative.
+                return true
+            case .server(_, let code):
+                guard let rejection = PasswordDraft.Failure(code) else { return true }
+                password.failure = rejection
+                password.step = rejection.step
+                return false
+            case .malformedResponse, .unauthenticated:
+                return true
+            }
+        } catch {
+            return true
         }
     }
 
@@ -469,38 +559,35 @@ final class AccountViewModel: BaseViewModel {
         }
     }
 
-    // MARK: - The data-subject export
+    // MARK: - Deleting the account
 
-    /// **`GET /v1/me/export`** — the UAE PDPL access right (Product Spec §8).
+    /// **`DELETE /v1/me`** — the account, soft-deleted with a 30-day grace period (ADR-0015).
     ///
-    /// It holds the bytes and nothing else: the screen offers them through a share sheet, so the user decides
-    /// where their own data goes and the app keeps no second copy of it (ADR-0014).
+    /// **App Store 5.1.1(v) requires this to be reachable in-app.** The route was implemented, tested, and called
+    /// by nothing: there was no control for it anywhere in this client, which fails review rather than merely
+    /// missing a feature.
     ///
-    /// A failure reports itself as a refusal beside the control rather than replacing the screen, for the reason
-    /// the pick lists' failure reports nothing: an export is an *errand* on a screen that is otherwise fine, and
-    /// blanking the account to say "that download did not work" is the wrong report.
-    func exportMyData() async {
-        guard !isExporting else { return }
-        isExporting = true
-        defer { isExporting = false }
+    /// The server revokes every family, so the only correct end to a successful deletion is a sign-out — and that
+    /// is all this does about navigation: `signOut()` flips `isSignedIn` and `RootView` swaps the shell for
+    /// Landing (ADR-0026), which is the route every exit already takes.
+    ///
+    /// A failure reports itself as a refusal beside the control rather than replacing the screen, for the same
+    /// reason a refused currency change does: the account is otherwise fine, and blanking it to say "that did not
+    /// go through" is the wrong report.
+    func deleteAccount() async {
+        guard !isDeletingAccount else { return }
+        isDeletingAccount = true
+        defer { isDeletingAccount = false }
 
         refusal = nil
         do {
-            exportedData = try await client.bytes(at: Endpoint.export)
+            _ = try await client.delete(Endpoint.deleteAccount, as: AccountDeletion.self)
+            await session.signOut()
         } catch is CancellationError {
             return
         } catch {
-            refusal = Refusal(subject: .export, reason: .init(error))
+            refusal = Refusal(subject: .deleteAccount, reason: .init(error))
         }
-    }
-
-    /// Forgets the downloaded bytes, once the share sheet has closed.
-    ///
-    /// Called by the screen rather than on a timer: holding an export in memory for the life of the tab is
-    /// holding every figure the system knows about one person, and the sheet closing is the moment it stops being
-    /// needed.
-    func discardExport() {
-        exportedData = nil
     }
 
     /// The refusal for one control, or `nil` — including when the last refusal was about something else.
@@ -759,11 +846,11 @@ extension AccountViewModel {
         let reason: Reason
 
         /// Which control the sentence goes beside. The three things on this screen whose failure leaves the screen
-        /// standing — two preferences and an errand.
+        /// standing — two preferences and the deletion request.
         enum Subject: Sendable, Equatable, CaseIterable {
             case currency
             case language
-            case export
+            case deleteAccount
         }
 
         /// What to say. Two cases, because there are two things worth saying and the difference matters: a change

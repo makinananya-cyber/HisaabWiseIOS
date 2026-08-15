@@ -166,12 +166,34 @@ struct HWDateField: View {
                 .padding(.horizontal, 16)
                 .accessibilityLabel(Text(label))
 
+            done
+                .padding(.horizontal, 16)
+                .padding(.top, 4)
+
             Spacer(minLength: 0)
         }
         .presentationBackground(theme.palette.brand.backgroundDeep)
         .presentationDetents([.medium, .large])
     }
 
+    /// **Done, and it is load-bearing rather than a courtesy.**
+    ///
+    /// `chosen` reads `date ?? range.upperBound`, so a sheet opened with nothing chosen shows the *newest
+    /// allowed* date already selected. Tapping that date in the calendar is therefore not a change, the binding's
+    /// setter never runs, and `date` stays `nil` — the field closes still saying "Choose your date of birth".
+    /// Which is exactly what was observed: the newest selectable day could not be selected, while any other day
+    /// could. Somebody whose sixteenth birthday is today was refused by a picker that displayed their birthday
+    /// as available.
+    ///
+    /// Writing `chosen.wrappedValue` through explicitly is what turns the *displayed* date into a *chosen* one,
+    /// so the boundary case commits like every other. It also gives the sheet the ordinary "I have finished"
+    /// affordance it lacked: closing was only possible through the X, which reads as cancelling.
+    private var done: some View {
+        HWButton("component.date.done", appearance: .brand, systemImage: "checkmark") {
+            date = chosen.wrappedValue
+            isChoosing = false
+        }
+    }
 }
 
 #if DEBUG

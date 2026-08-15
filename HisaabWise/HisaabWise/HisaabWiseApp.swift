@@ -50,7 +50,10 @@ struct HisaabWiseApp: App {
 
     var body: some Scene {
         WindowGroup {
-            RootView(makeRegistrationViewModel: environment.makeRegistrationViewModel)
+            RootView(
+                makeRegistrationViewModel: environment.makeRegistrationViewModel,
+                makeForgotPasswordViewModel: environment.makeForgotPasswordViewModel
+            )
                 .environment(tabViewModels)
                 // Over everything, both worlds included: Landing carries no figures, but a rule with an
                 // exception in it is a rule somebody has to remember (ADR-0014).

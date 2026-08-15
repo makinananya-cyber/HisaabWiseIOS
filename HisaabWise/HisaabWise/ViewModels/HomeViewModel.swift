@@ -45,9 +45,45 @@ final class HomeViewModel: BaseViewModel {
     /// separate ETag'd resource" are the same decision rather than an exception to it.
     private let content: ContentLoader
 
+    /// Whether the reader has waved away the savings-goal suggestion.
+    ///
+    /// **In memory, and it resets next launch**, for the same reason the substituted tip is: this is "not right
+    /// now", not a stored preference. The server will offer the suggestion again while the drift is still there,
+    /// which is the honest behaviour — the goal really is behind their pay until one of the two moves.
+    private(set) var hasDismissedGoalNudge = false
+
+    /// True while `PUT /v1/me/goal` is in flight.
+    private(set) var isRaisingGoal = false
+
     init(client: APIClient, content: ContentLoader) {
         self.client = client
         self.content = content
+    }
+
+    /// Takes the suggested savings goal — `PUT /v1/me/goal`.
+    ///
+    /// **The figure comes from the payload, not from arithmetic here.** The client is handed the amount the server
+    /// would pick and sends that same amount back; computing a fifth of the salary locally would make the client a
+    /// second owner of a rule the budget engine owns (invariant 3).
+    ///
+    /// A failure is silent and leaves the card up: nothing has changed, the suggestion is still true, and the reader
+    /// can press it again. There is no queue (ADR-0019) and nothing here worth replacing the screen over.
+    func raiseGoal(to suggested: Money) async {
+        guard !isRaisingGoal else { return }
+        isRaisingGoal = true
+        defer { isRaisingGoal = false }
+
+        let body = SavingsGoalUpdate(
+            savingsGoal: MoneyAmount(minor: suggested.minor, currency: suggested.currency.rawValue)
+        )
+        guard (try? await client.put(Endpoint.goal, body: body, as: AccountScreen.self)) != nil else { return }
+
+        // The goal is on every card that mentions it, so the screen is re-read rather than patched (ADR-0020).
+        try? await load()
+    }
+
+    func dismissGoalNudge() {
+        hasDismissedGoalNudge = true
     }
 
     /// **The single request.** No second call, no join, no `Date()`.

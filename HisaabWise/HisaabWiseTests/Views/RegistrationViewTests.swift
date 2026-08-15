@@ -270,12 +270,16 @@ struct RegistrationViewTests {
             step.contains("viewModel.password = $0") && step.contains("clearFailure(for: .confirmPassword)"),
             "the password binding does not clear the confirmation's mismatch"
         )
-        // An answer clears the answer, not the question above it.
-        #expect(money.contains("viewModel.firstAnswer = $0; viewModel.clearFailure(for: .firstAnswer)"))
-        #expect(money.contains("viewModel.secondAnswer = $0; viewModel.clearFailure(for: .secondAnswer)"))
-        // And both answer fields draw their own error rather than pushing it onto the picker.
-        #expect(money.contains("viewModel.failure(for: .firstAnswer)"))
-        #expect(money.contains("viewModel.failure(for: .secondAnswer)"))
+        // An answer clears the answer, not the question above it. Both boxes are built by one loop over
+        // `Slot`, so the rule is written once — `field` is the slot's own `.firstAnswer` / `.secondAnswer`.
+        #expect(money.contains("viewModel.firstAnswer = typed"))
+        #expect(money.contains("viewModel.secondAnswer = typed"))
+        #expect(money.contains("viewModel.clearFailure(for: field)"))
+        // And each answer field draws its own error rather than pushing it onto the picker above it.
+        #expect(money.contains("RegistrationView.copy(for: viewModel.failure(for: field))"))
+        // The two slots exist and are distinct, which is what makes one loop cover both.
+        #expect(money.contains("case first, second"))
+        #expect(money.contains(".firstAnswer : .secondAnswer"))
     }
 
     // MARK: - The date field's tap target
@@ -322,10 +326,13 @@ struct RegistrationViewTests {
         let source = try? SourceTree.codeLines(of: SourceTree.appSources.appending(path: "Views/RootView.swift"))
         let lines = source ?? []
         #expect(lines.contains { $0.contains("RegistrationView(") })
-        // And the placeholder is gone from that arm: it still serves the two screens that are genuinely unwritten.
+        // And the placeholder is gone from that arm. It now serves **one** screen: recovery has a real
+        // destination since `ForgotPasswordView` was written, so only restore is genuinely unwritten.
         let registerArm = lines.firstIndex { $0.contains("case .register:") }
-        let placeholder = lines.firstIndex { $0.contains("case .forgotPassword, .restoreAccount:") }
+        let recoveryArm = lines.firstIndex { $0.contains("case .forgotPassword:") }
+        let placeholder = lines.firstIndex { $0.contains("case .restoreAccount:") }
         #expect(registerArm != nil)
+        #expect(recoveryArm != nil, "recovery has a screen behind it and should not be a placeholder")
         #expect(placeholder != nil)
     }
 }

@@ -64,7 +64,7 @@ struct RootViewTests {
         )
         #expect(
             TestBench.render(
-                RootView(makeRegistrationViewModel: { .preview })
+                RootView(makeRegistrationViewModel: { .preview }, makeForgotPasswordViewModel: { .preview })
                     .environment(signedOut)
                     .environment(viewModels())
             ) != nil
@@ -73,7 +73,7 @@ struct RootViewTests {
         let signedIn = try await TestBench.signedInSession()
         #expect(
             TestBench.render(
-                RootView(makeRegistrationViewModel: { .preview })
+                RootView(makeRegistrationViewModel: { .preview }, makeForgotPasswordViewModel: { .preview })
                     .environment(signedIn)
                     .environment(viewModels())
             ) != nil

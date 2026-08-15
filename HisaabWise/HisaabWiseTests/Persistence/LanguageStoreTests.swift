@@ -96,10 +96,16 @@ struct LanguageStoreTests {
         // The counterpart of the Keychain assertion in `TokenStoreTests`: the store every other suite and
         // every preview uses has to be the one with no footprint, or the suite quietly configures the
         // machine it runs on.
+        // **Read before, compare after.** Asserting `nil` made this test depend on suite *order*: another
+        // suite exercising the real `UserDefaultsLanguageStore` leaves a value behind on the machine, and this
+        // one then failed for something it does not test. What it is actually about is that the in-memory
+        // store writes *nothing* — so the assertion is that the defaults are unchanged by `save`.
+        let before = UserDefaults.standard.string(forKey: UserDefaultsLanguageStore.key)
+
         let store = InMemoryLanguageStore()
         store.save(.arabic)
 
-        #expect(UserDefaults.standard.string(forKey: UserDefaultsLanguageStore.key) == nil)
+        #expect(UserDefaults.standard.string(forKey: UserDefaultsLanguageStore.key) == before)
         #expect(store.language == .arabic)
     }
 }

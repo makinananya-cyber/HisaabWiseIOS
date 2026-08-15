@@ -1,12 +1,17 @@
 import Foundation
 
-/// A language the app ships in.
+/// A language the app offers.
 ///
-/// Two of them. The design lists 87 and the picker shows the **shipped** ones only (Product Spec
-/// §3.7 **[FIX]**, ADR-0011); the other 85 are a reference list, not a promise. English is the only
-/// one with copy behind it today — Arabic arrives with the translation pass, and the point of
-/// shipping the enum now is that `ar` is a layout-direction problem discovered from the first screen
-/// rather than a Phase 5 relayout.
+/// Three of them — English, Arabic, Hindi. The design lists 87 and the picker shows only these
+/// (Product Spec §3.7 **[FIX]**, ADR-0011); the other 84 are a reference list, not a promise.
+///
+/// **English is still the only one with copy behind it**, and that is a deliberate, temporary state
+/// rather than an oversight: the backend's `PREFERENCE_LANGUAGES` accepts all three while
+/// `SHIPPED_LANGUAGES` narrows content to what exists on disk, so a Hindi reader stores Hindi as
+/// their preference and reads English words until the translation pass lands. Offering the choice
+/// early is what keeps `ar` a layout-direction problem found on the first screen rather than a
+/// Phase 5 relayout — and it is why ``isRightToLeft`` asks Foundation instead of comparing against
+/// `.arabic`.
 ///
 /// The raw value is the BCP-47 tag, because that is what goes on the wire in `Accept-Language`.
 ///
@@ -17,6 +22,7 @@ import Foundation
 enum AppLanguage: String, CaseIterable, Codable, Sendable {
     case english = "en"
     case arabic = "ar"
+    case hindi = "hi"
 
     /// The whole shipped set, in the order a picker lists it.
     ///

@@ -553,7 +553,12 @@ extension AccountViewModel {
         return AccountViewModel(
             client: client,
             content: ContentLoader(client: client, store: InMemoryContentStore()),
-            language: language
+            language: language,
+            session: SessionCoordinator(
+                client: client,
+                keptStore: InMemoryTokenStore(),
+                transientStore: InMemoryTokenStore()
+            )
         )
     }
 }

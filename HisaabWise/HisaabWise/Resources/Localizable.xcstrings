@@ -37,6 +37,78 @@
         }
       }
     },
+    "account.delete.action": {
+      "comment": "Button on the Account screen that begins account deletion. App Store 5.1.1(v) requires this to exist in-app.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete my account"
+          }
+        }
+      }
+    },
+    "account.delete.blurb": {
+      "comment": "Explains what deletion does, under the button. The grace period is 30 days (ADR-0015).",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your data is scheduled for deletion and erased after 30 days. Sign in within 30 days to restore it."
+          }
+        }
+      }
+    },
+    "account.delete.confirm.action": {
+      "comment": "Destructive confirm button in the deletion alert.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete account"
+          }
+        }
+      }
+    },
+    "account.delete.confirm.cancel": {
+      "comment": "Cancel button in the deletion alert.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Keep my account"
+          }
+        }
+      }
+    },
+    "account.delete.confirm.message": {
+      "comment": "Message of the deletion confirmation alert. States the grace period rather than implying the loss is instant.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your expenses, reports and learning progress will be scheduled for deletion. You have 30 days to change your mind by signing in again."
+          }
+        }
+      }
+    },
+    "account.delete.confirm.title": {
+      "comment": "Title of the deletion confirmation alert.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Delete your account?"
+          }
+        }
+      }
+    },
     "account.detail.unavailable": {
       "comment": "On a pushed settings page whose payload has gone — a write that failed offline replaced it. One sentence and the back button.",
       "extractionState": "manual",
@@ -57,42 +129,6 @@
           "stringUnit": {
             "state": "translated",
             "value": "We could not read your account details."
-          }
-        }
-      }
-    },
-    "account.export.action": {
-      "comment": "The UAE PDPL data-subject access right, as a control. Not in the design — PDPL requires it and the design's four rows are the design's own set.",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "Download my data"
-          }
-        }
-      }
-    },
-    "account.export.fileName": {
-      "comment": "The suggested name for the exported file. **Not dated** — the client owns no calendar (invariant 6), and the export timestamps itself inside the document.",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "hisaabwise-export.json"
-          }
-        }
-      }
-    },
-    "account.export.note": {
-      "comment": "The line under the export control, saying what it produces.",
-      "extractionState": "manual",
-      "localizations": {
-        "en": {
-          "stringUnit": {
-            "state": "translated",
-            "value": "A copy of everything HisaabWise holds about you, as a file you keep."
           }
         }
       }
@@ -849,6 +885,18 @@
           "stringUnit": {
             "state": "translated",
             "value": "Opens a list to choose from"
+          }
+        }
+      }
+    },
+    "component.date.done": {
+      "comment": "Commits the chosen date and closes the picker sheet. Load-bearing: it is what makes the newest allowed date selectable at all.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Done"
           }
         }
       }
@@ -1737,6 +1785,54 @@
           "stringUnit": {
             "state": "translated",
             "value": "Nothing to show yet."
+          }
+        }
+      }
+    },
+    "home.goalNudge.action": {
+      "comment": "Button that accepts the suggested savings goal. Kept short so it sits beside 'Not now' without wrapping in the card.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Raise goal"
+          }
+        }
+      }
+    },
+    "home.goalNudge.body %@ %@": {
+      "comment": "Suggests raising the savings goal to a fifth of the new salary. %1$@ is the suggested amount, %2$@ the current goal — both server-formatted display strings (ADR-0003).",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "A fifth of your pay is now %1$@, but your goal is still %2$@. Raising it keeps your savings growing with your salary."
+          }
+        }
+      }
+    },
+    "home.goalNudge.dismiss": {
+      "comment": "Button that leaves the savings goal alone. A goal is the reader's to choose.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Not now"
+          }
+        }
+      }
+    },
+    "home.goalNudge.title": {
+      "comment": "Title of the card suggesting a higher savings goal after a pay rise.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your pay went up"
           }
         }
       }
@@ -2737,6 +2833,366 @@
         }
       }
     },
+    "recovery.done.action": {
+      "comment": "Button that returns to the sign-in form after a reset.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Sign in"
+          }
+        }
+      }
+    },
+    "recovery.done.blurb": {
+      "comment": "Blurb once the password has been reset. Says that other devices were signed out, because a recovery revokes every session in both directions.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "You can sign in with your new password now. Any other device that was signed in has been signed out."
+          }
+        }
+      }
+    },
+    "recovery.done.heading": {
+      "comment": "Heading once the password has been reset.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Password reset"
+          }
+        }
+      }
+    },
+    "recovery.email.action": {
+      "comment": "Submit button on recovery step 1.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Continue"
+          }
+        }
+      }
+    },
+    "recovery.email.blurb": {
+      "comment": "Blurb of recovery step 1.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enter the email address you registered with. We will show you the two security questions you chose."
+          }
+        }
+      }
+    },
+    "recovery.email.heading": {
+      "comment": "Heading of recovery step 1.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "First, which account?"
+          }
+        }
+      }
+    },
+    "recovery.email.label": {
+      "comment": "Email field on recovery step 1.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Email"
+          }
+        }
+      }
+    },
+    "recovery.error.answerMissing": {
+      "comment": "Recovery step 2 with an unanswered question. Covers both boxes: the message sits under the first one only.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Answer both questions."
+          }
+        }
+      }
+    },
+    "recovery.error.dateOfBirthMissing": {
+      "comment": "Recovery step 2 with no date of birth chosen.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose your date of birth."
+          }
+        }
+      }
+    },
+    "recovery.error.emailMissing": {
+      "comment": "Recovery step 1 with an empty email box.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Enter the email address you registered with."
+          }
+        }
+      }
+    },
+    "recovery.error.identityRefused": {
+      "comment": "The server refused the identity check. Deliberately says nothing about WHICH factor missed — naming one would halve the work of guessing the other.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "That did not match what we hold for this account. Check your answers and your date of birth."
+          }
+        }
+      }
+    },
+    "recovery.error.locked": {
+      "comment": "Too many failed recovery attempts. The server's backoff is authoritative.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Too many attempts. Wait a little while and try again."
+          }
+        }
+      }
+    },
+    "recovery.error.passwordMissing": {
+      "comment": "Recovery step 3 with an empty password box.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose a new password."
+          }
+        }
+      }
+    },
+    "recovery.error.passwordTooShort": {
+      "comment": "Recovery step 3 with a password under eight characters (invariant 4).",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Use at least 8 characters."
+          }
+        }
+      }
+    },
+    "recovery.error.passwordsDiffer": {
+      "comment": "Recovery step 3 where the two boxes do not match.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Those two do not match."
+          }
+        }
+      }
+    },
+    "recovery.error.ticketExpired": {
+      "comment": "The reset ticket was spent or expired between verifying and choosing a password.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "That took too long. Answer your questions again to continue."
+          }
+        }
+      }
+    },
+    "recovery.identity.action": {
+      "comment": "Submit button on recovery step 2.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Check my answers"
+          }
+        }
+      }
+    },
+    "recovery.identity.answer.label": {
+      "comment": "Label on a security answer field during recovery.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your answer"
+          }
+        }
+      }
+    },
+    "recovery.identity.blurb": {
+      "comment": "Blurb of recovery step 2. Says plainly that all three factors are needed, because there is no OTP or email verification in this product.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Capital letters and exact wording do not matter — just get the key words right. Your date of birth is needed too."
+          }
+        }
+      }
+    },
+    "recovery.identity.dob.label": {
+      "comment": "Date-of-birth field label during recovery.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Date of birth"
+          }
+        }
+      }
+    },
+    "recovery.identity.dob.placeholder": {
+      "comment": "Placeholder inside the recovery date-of-birth field before anything is chosen.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Choose your date of birth"
+          }
+        }
+      }
+    },
+    "recovery.identity.heading": {
+      "comment": "Heading of recovery step 2.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Answer your security questions"
+          }
+        }
+      }
+    },
+    "recovery.password.action": {
+      "comment": "Submit button on recovery step 3.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reset password"
+          }
+        }
+      }
+    },
+    "recovery.password.blurb": {
+      "comment": "Blurb of recovery step 3. Eight is invariant 4.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Pick something you don't use anywhere else. Eight characters minimum."
+          }
+        }
+      }
+    },
+    "recovery.password.confirm.label": {
+      "comment": "Confirm password field during recovery.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Confirm new password"
+          }
+        }
+      }
+    },
+    "recovery.password.heading": {
+      "comment": "Heading of recovery step 3.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Create a new password"
+          }
+        }
+      }
+    },
+    "recovery.password.new.label": {
+      "comment": "New password field during recovery.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "New password"
+          }
+        }
+      }
+    },
+    "recovery.step %@ %@": {
+      "comment": "Progress through recovery's three steps. Both arguments are strings so the key matches this app's %@ convention.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Step %1$@ of %2$@"
+          }
+        }
+      }
+    },
+    "recovery.support": {
+      "comment": "Offered after three refused identity checks. The only thing left that helps somebody who cannot answer their own questions.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Still stuck? Contact support and we will help you prove the account is yours."
+          }
+        }
+      }
+    },
+    "recovery.title": {
+      "comment": "Title of the password-recovery screen.",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Reset your password"
+          }
+        }
+      }
+    },
     "registration.back.toDetails": {
       "comment": "VoiceOver label on the step-back control, from the design's own aria-label.",
       "extractionState": "manual",
@@ -3014,13 +3470,13 @@
       }
     },
     "registration.error.tooYoung": {
-      "comment": "Registration validation message. The number matches RegistrationViewModel.minimumAge, which RegistrationCopyTests asserts.",
+      "comment": "Shown when the chosen date of birth is under the minimum age. The number must match RegistrationViewModel.minimumAge and the server's MINIMUM_AGE_YEARS — a test asserts that this copy names the number the code enforces.",
       "extractionState": "manual",
       "localizations": {
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "You need to be at least 13 to open an account."
+            "value": "You need to be at least 16 to open an account."
           }
         }
       }
@@ -3457,8 +3913,20 @@
         }
       }
     },
-    "registration.two.answer.label": {
-      "comment": "Label on a security answer field. The answer is sent once and hashed server-side (invariant 5).",
+    "registration.two.answer.one.label": {
+      "comment": "Label on the first security answer field. Distinct from the second so VoiceOver can tell the two boxes apart. The answer is sent once and hashed server-side (invariant 5).",
+      "extractionState": "manual",
+      "localizations": {
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Your answer"
+          }
+        }
+      }
+    },
+    "registration.two.answer.two.label": {
+      "comment": "Label on the second security answer field. Distinct from the first so VoiceOver can tell the two boxes apart. The answer is sent once and hashed server-side (invariant 5).",
       "extractionState": "manual",
       "localizations": {
         "en": {

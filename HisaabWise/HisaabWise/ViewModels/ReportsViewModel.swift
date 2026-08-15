@@ -46,7 +46,12 @@ final class ReportsViewModel: BaseViewModel {
     /// Reading `years.isEmpty` is not the client inferring a state the server should have sent: unlike Home's
     /// `isFirstRun`, "no months have closed" has one meaning however the reader got there, and `isEmpty(_:)` is
     /// the base contract's own hook for exactly this question.
-    func isEmpty(_ screen: ReportsScreen) -> Bool { screen.years.isEmpty }
+    /// **`false`, always** — see ``ReportsView/stateCopy``.
+    ///
+    /// "No month has closed yet" is a true thing about the archive, not a reason to replace the screen: the tab
+    /// keeps its heading and the page draws the sentence where the months would be. The emptiness is still read,
+    /// one layer up, from the same `screen.years` this used to test.
+    func isEmpty(_ screen: ReportsScreen) -> Bool { false }
 
     /// A view model for one closed month, made from the row that was tapped (#22).
     ///

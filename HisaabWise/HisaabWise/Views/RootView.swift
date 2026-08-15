@@ -33,7 +33,25 @@ struct RootView: View {
     /// could fetch.
     let makeRegistrationViewModel: () -> RegistrationViewModel
 
+    /// How a password-recovery form is built — per visit, for the same reason registration's is: it holds two
+    /// security answers, a date of birth and a new password, and popping the screen is what frees them.
+    let makeForgotPasswordViewModel: () -> ForgotPasswordViewModel
+
     var body: some View {
+        world
+            // **Outside the branch, and that placement is the whole fix.** This was attached to the
+            // `NavigationStack` inside the `.landing` case, where it is only installed while signed *out* — so
+            // it never saw the flip that mattered. Signing in pushed `.signIn` onto the path, the branch
+            // switched to `.shell` and took the observer with it, and the eventual sign-out came back to
+            // Landing with sign-in still stacked on top, back chevron and all. Observed exactly that: the
+            // first log-out of a session restored at launch reached Landing, the second — after signing in
+            // through the form — reached Sign In. Out here the observer is always installed, so both
+            // directions are seen and "log out returns to Landing" holds however the session began.
+            .onChange(of: session.isSignedIn) { _, _ in preAuth.removeAll() }
+    }
+
+    @ViewBuilder
+    private var world: some View {
         switch Self.world(isSignedIn: session.isSignedIn) {
         case .shell:
             AppShell()
@@ -55,17 +73,19 @@ struct RootView: View {
                                 // copy of it pushed on top, which is what appending `.signIn` would do.
                                 preAuth.removeAll { $0 == .register }
                             }
-                        // The two screens sign-in leads to that are still one ticket away each. A placeholder
-                        // rather than a dead link, for the reason Get Started got a destination in #13.
-                        case .forgotPassword, .restoreAccount:
+                        case .forgotPassword:
+                            ForgotPasswordView(viewModel: makeForgotPasswordViewModel()) {
+                                // Done: back to sign-in, which is already underneath, so the reader lands on
+                                // the form they came from with their new password in hand.
+                                preAuth.removeAll { $0 == .forgotPassword }
+                            }
+                        // Still one ticket away. A placeholder rather than a dead link, for the reason Get
+                        // Started got a destination in #13.
+                        case .restoreAccount:
                             UnwrittenBrandScreen()
                         }
                     }
             }
-            // **Emptied whenever the session changes.** `@State` belongs to `RootView`, whose identity survives
-            // the branch, so without this a sign-out would come back to Landing with sign-in still pushed on
-            // top of it — and "the only exit is log out" would land the user somewhere they did not choose.
-            .onChange(of: session.isSignedIn) { _, _ in preAuth.removeAll() }
         }
     }
 
@@ -123,7 +143,7 @@ private struct UnwrittenBrandScreen: View {
 
 #if DEBUG
 #Preview("Signed out — Landing") {
-    RootView(makeRegistrationViewModel: { .preview })
+    RootView(makeRegistrationViewModel: { .preview }, makeForgotPasswordViewModel: { .preview })
         .environment(SessionCoordinator.preview)
         .environment(TabViewModels.preview)
         .hwTheme()
@@ -132,14 +152,14 @@ private struct UnwrittenBrandScreen: View {
 /// Signed in, which in a preview means a coordinator that has actually been through `signIn` — there is no way
 /// to set `isSignedIn` from outside, deliberately (ADR-0007).
 #Preview("Signed in — the shell") {
-    RootView(makeRegistrationViewModel: { .preview })
+    RootView(makeRegistrationViewModel: { .preview }, makeForgotPasswordViewModel: { .preview })
         .environment(SessionCoordinator.previewSignedIn)
         .environment(TabViewModels.preview)
         .hwTheme()
 }
 
 #Preview("RTL") {
-    RootView(makeRegistrationViewModel: { .preview })
+    RootView(makeRegistrationViewModel: { .preview }, makeForgotPasswordViewModel: { .preview })
         .environment(SessionCoordinator.preview)
         .environment(TabViewModels.preview)
         .hwTheme()
@@ -147,7 +167,7 @@ private struct UnwrittenBrandScreen: View {
 }
 
 #Preview("AX5") {
-    RootView(makeRegistrationViewModel: { .preview })
+    RootView(makeRegistrationViewModel: { .preview }, makeForgotPasswordViewModel: { .preview })
         .environment(SessionCoordinator.preview)
         .environment(TabViewModels.preview)
         .hwTheme()

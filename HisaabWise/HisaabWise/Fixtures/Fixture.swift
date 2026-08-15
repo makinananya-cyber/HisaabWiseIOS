@@ -253,6 +253,28 @@ enum Fixture: String, CaseIterable, Sendable {
     /// "everything" was rejected there.
     case meExport = "me-export"
 
+    /// `POST /v1/me/password/check` accepting — the wizard's fail-fast step.
+    ///
+    /// **The body carries nothing worth reading**: the status is the answer, and a refusal arrives as an
+    /// `APIError`. It exists as a fixture because the route exists, and an endpoint with no payload behind it is
+    /// one a suite writes inline (ADR-0013).
+    case passwordCheckOK = "password-check-ok"
+
+    /// `POST /v1/auth/forgot-password/questions` — the two questions an account was set up with.
+    ///
+    /// The same shape an *unknown* address gets, which is the point of the route: it answers with plausible
+    /// decoys rather than an error, so it cannot be asked "does this person have an account".
+    case recoveryQuestions = "recovery-questions"
+
+    /// `POST /v1/auth/forgot-password/verify` — the single-use ticket the three factors buy.
+    case recoveryTicket = "recovery-ticket"
+
+    /// `POST /v1/auth/reset-password` — a token pair the client deliberately discards.
+    ///
+    /// A recovery revokes **every** family, so signing this device straight back in would be the one exception
+    /// to that rule. The reader goes to the form and uses the password they just chose.
+    case recoveryReset = "recovery-reset"
+
     /// `GET /v1/screens/account` for an account that has **not verified its email and has given no phone
     /// number**.
     ///
@@ -354,8 +376,15 @@ enum Fixture: String, CaseIterable, Sendable {
         // too and is **not** here — `Endpoint.me` is one path with two verbs, only one fixture may claim a path,
         // and the identity read holds it (``meVerified``). The personal write is stubbed explicitly by whichever
         // test or preview exercises it, exactly as the second Reports month is.
-        case .accountINR: [Endpoint.screenAccount, Endpoint.currency, Endpoint.password]
+        // `goal` joins the list for the ADR-0020 reason the other writes are here: it answers with the
+        // account screen payload, so one set of bytes serves the read and every write that returns it.
+        case .accountINR:
+            [Endpoint.screenAccount, Endpoint.currency, Endpoint.password, Endpoint.goal]
         case .meExport: [Endpoint.export]
+        case .passwordCheckOK: [Endpoint.passwordCheck]
+        case .recoveryQuestions: [Endpoint.forgotPasswordQuestions]
+        case .recoveryTicket: [Endpoint.forgotPasswordVerify]
+        case .recoveryReset: [Endpoint.resetPassword]
         // Same rule as the Expenses trio: three payloads for one path, and only the standing one may claim it.
         case .accountAED, .accountUnverified: []
         case .lessonCompleted: [Endpoint.lessonCompletion(lessonID: "u1l3")]

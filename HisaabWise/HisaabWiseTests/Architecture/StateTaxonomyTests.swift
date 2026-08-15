@@ -86,6 +86,10 @@ struct StateTaxonomyTests {
                 "ViewModels/RegistrationViewModel.swift",
                 "ViewModels/ExpensesViewModel.swift",
                 "ViewModels/AccountViewModel.swift",
+                // Recovery is a form, and it owns its own mapping for the reason sign-in does: "offline"
+                // under a security answer is not an offline screen, and the refusal must not name which
+                // of the three factors missed.
+                "ViewModels/ForgotPasswordViewModel.swift",
             ],
             skippingLayers: ["Networking"],
             because: """

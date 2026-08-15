@@ -66,15 +66,6 @@ final class LessonPlayerViewModel {
     /// illustrative and are never converted — only the symbol follows the account.
     func resolved(_ text: String) -> String { material.currencyToken.resolve(text) }
 
-    /// What an interrupted run has to report — `POST /v1/learn/progress`'s body.
-    ///
-    /// A **value**, so that the write can outlive this object: the reader closing the player is the moment the
-    /// report is worth sending, and by then nothing should be holding the run open (see
-    /// ``LearnViewModel/closePlayer()``).
-    var progressReport: LessonProgressReport {
-        LessonProgressReport(lessonID: run.lessonID, stepIndex: run.index, results: run.results)
-    }
-
     // MARK: - What the reader does
 
     /// Picks an option — replacing on a single-choice question, toggling on a multi-select. The run knows which.

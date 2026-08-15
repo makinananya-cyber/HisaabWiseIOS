@@ -46,6 +46,19 @@ struct HWPhoneField: View {
 
     private var isInvalid: Bool { error != nil }
 
+    /// The binding the box actually writes through — **digits only, enforced on the value**.
+    ///
+    /// `.keyboardType(.phonePad)` chooses which keys are *drawn*. It does not stop a hardware keyboard, a
+    /// paste, or dictation, and this box accepted a whole alphanumeric password when one was typed into it.
+    /// The server refuses that, but only after the user has filled the rest of the form, so the box refuses it
+    /// here — through ``PhoneNumber/nationalDigits(from:)``, which is the same funnel Account's row uses.
+    private var entry: Binding<String> {
+        Binding(
+            get: { digits },
+            set: { digits = PhoneNumber.nationalDigits(from: $0) }
+        )
+    }
+
     var body: some View {
         VStack(alignment: .leading, spacing: 7) {
             Text(label)
@@ -78,7 +91,16 @@ struct HWPhoneField: View {
                 .padding(.vertical, 12)
                 .accessibilityHidden(true)
 
-            TextField(text: $digits) { Text(label) }
+            TextField(text: entry) { Text(label) }
+                // **The filter needs this to reach the screen.** A `Binding` whose setter cleans the value stores
+                // the clean one, but a focused `TextField` keeps drawing its own editing buffer — so typing
+                // `50abc123` left the digits stored correctly and the letters visible in the box, which reads as
+                // the filter not working at all. Writing through on `onChange` is what makes the field re-read.
+                // The `!=` guard is what stops it looping on its own write.
+                .onChange(of: digits) { _, typed in
+                    let cleaned = PhoneNumber.nationalDigits(from: typed)
+                    if cleaned != typed { digits = cleaned }
+                }
                 .textFieldStyle(.plain)
                 .font(.hw(.bodyLarge).weight(.regular))
                 .foregroundStyle(theme.palette.brand.ink)

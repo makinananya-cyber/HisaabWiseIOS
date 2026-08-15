@@ -25,7 +25,12 @@ struct AccountViewTests {
         let viewModel = AccountViewModel(
             client: client,
             content: ContentLoader(client: client, store: InMemoryContentStore()),
-            language: LanguageManager(selected: .english)
+            language: LanguageManager(selected: .english),
+            session: SessionCoordinator(
+                client: client,
+                keptStore: InMemoryTokenStore(),
+                transientStore: InMemoryTokenStore()
+            )
         )
         try await viewModel.load()
         return (viewModel, try #require(viewModel.state.value))
@@ -193,12 +198,15 @@ struct AccountViewTests {
 
     /// The language rows are the **two shipped languages**, each named in its own tongue — never the design's 87
     /// (Product Spec §3.7 **[FIX]**).
-    @Test("the language rows are the shipped pair, each named in itself")
+    @Test("the language rows are the offered set, each named in itself")
     func theLanguageRowsAreEndonyms() {
         let options = AccountLanguagePage.options(AppLanguage.shipped)
 
-        #expect(options.map(\.id) == ["en", "ar"])
-        #expect(options.map(\.name) == [AppLanguage.english.endonym, AppLanguage.arabic.endonym])
+        #expect(options.map(\.id) == ["en", "ar", "hi"])
+        #expect(
+            options.map(\.name)
+                == [AppLanguage.english.endonym, AppLanguage.arabic.endonym, AppLanguage.hindi.endonym]
+        )
         // The whole point of an endonym: an Arabic reader can find Arabic in an English app.
         #expect(AppLanguage.arabic.endonym != "Arabic")
         #expect(options.allSatisfy { !$0.name.isEmpty })

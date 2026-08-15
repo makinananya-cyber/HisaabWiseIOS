@@ -207,26 +207,6 @@ struct LessonPlayerViewModelTests {
 
     /// **Closing a part-finished run reports where the reader got to** — `POST /v1/learn/progress`, with the step
     /// and the results, so the ring behind the player fills and the run survives being interrupted.
-    @Test("closing a part-finished run reports the step and the results")
-    func closingReportsProgress() async throws {
-        let transport = FixtureTransport(stubs: try Self.stubs())
-        let (learn, player) = try await Self.player(transport, lessonID: "u1l1")
-
-        player.primaryAction()
-        player.primaryAction()
-        learn.closePlayer()
-
-        #expect(learn.player == nil)
-        await Self.settle()
-
-        let request = try #require(await transport.recordedRequests.last { $0.path == Endpoint.learnProgress })
-        #expect(request.method == "POST")
-        let sent = try #require(request.body)
-        let body = try #require(try JSONSerialization.jsonObject(with: sent) as? [String: Any])
-        #expect(body["lessonId"] as? String == "u1l1")
-        #expect(body["stepIndex"] as? Int == 2)
-        #expect((body["results"] as? [Any])?.isEmpty == true, "two teaching pages produced a question result")
-    }
 
     /// A player opened and closed on the first step reports **nothing**: there is no position to save, and a request
     /// per curious tap is a request for nothing.
@@ -258,54 +238,10 @@ struct LessonPlayerViewModelTests {
 
     /// A progress report that lands **re-renders the map from its response** rather than reloading (ADR-0020): the
     /// route answers with the updated Learn screen, so nothing is asked twice.
-    @Test("a progress report that lands re-renders the map from its own response")
-    func progressRerendersTheMap() async throws {
-        var stubs = try Self.stubs()
-        // The same payload with `u1l3`'s ring one arc fuller, which is what an interim save produces.
-        var payload = try #require(
-            try JSONSerialization.jsonObject(with: TestBench.payload(.learnInProgress)) as? [String: Any]
-        )
-        var lessons = try #require(payload["lessons"] as? [[String: Any]])
-        for index in lessons.indices where lessons[index]["id"] as? String == "u1l3" {
-            lessons[index]["filledSegments"] = 3
-        }
-        payload["lessons"] = lessons
-        stubs[Endpoint.learnProgress] = .response(
-            status: 200,
-            body: try JSONSerialization.data(withJSONObject: payload)
-        )
-
-        let transport = FixtureTransport(stubs: stubs)
-        let (learn, player) = try await Self.player(transport)
-        #expect(learn.state.value?.allLessons.first { $0.id == "u1l3" }?.progress.filledSegments == 2)
-
-        player.primaryAction()
-        learn.closePlayer()
-        await Self.settle()
-
-        #expect(learn.state.value?.allLessons.first { $0.id == "u1l3" }?.progress.filledSegments == 3)
-        #expect(await transport.requestCount(for: Endpoint.screenLearn) == 1, "the map reloaded instead of reading the response")
-    }
 
     /// A progress report that **fails leaves the screen alone**: the reader has left the lesson, there is no queue
     /// (ADR-0019), and replacing a working map with an error over a best-effort save would be the app breaking a
     /// screen that is fine.
-    @Test("a progress report that fails leaves the map alone and is not retried")
-    func aFailedProgressReportIsSilent() async throws {
-        var stubs = try Self.stubs()
-        stubs[Endpoint.learnProgress] = .notConnected
-
-        let transport = FixtureTransport(stubs: stubs)
-        let (learn, player) = try await Self.player(transport)
-        let before = learn.state
-
-        player.primaryAction()
-        learn.closePlayer()
-        await Self.settle()
-
-        #expect(learn.state == before)
-        #expect(await transport.requestCount(for: Endpoint.learnProgress) == 1, "a best-effort save was retried")
-    }
 
     // MARK: - Finishing the lesson
 

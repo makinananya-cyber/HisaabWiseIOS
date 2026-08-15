@@ -82,6 +82,10 @@ enum TestBench {
         switch language {
         case .english: payload(.languageEnglish)
         case .arabic: payload(.languageArabic)
+        // Hindi is offered as a preference before it has copy behind it (``AppLanguage``), and there is no
+        // corpus fixture for it. The Arabic body is the right stand-in: what these suites assert about is the
+        // *disagreement* between what was asked for and what came back, not which language it names.
+        case .hindi: payload(.languageArabic)
         }
     }
 
@@ -113,7 +117,12 @@ enum TestBench {
         let account = AccountViewModel(
             client: client,
             content: content,
-            language: LanguageManager(selected: .english)
+            language: LanguageManager(selected: .english),
+            session: SessionCoordinator(
+                client: client,
+                keptStore: InMemoryTokenStore(),
+                transientStore: InMemoryTokenStore()
+            )
         )
         let models = TabViewModels(
             home: HomeViewModel(client: client, content: content),

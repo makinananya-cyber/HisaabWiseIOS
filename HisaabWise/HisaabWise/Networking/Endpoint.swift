@@ -170,6 +170,31 @@ enum Endpoint {
     /// answers with a token pair: a new account is signed in.
     static let register = "/v1/auth/register"
 
+    // MARK: - Recovery by security question
+
+    /// `POST /v1/auth/forgot-password/questions` — which two questions this account was set up with.
+    ///
+    /// Unauthenticated, because the reader cannot sign in; that is the whole situation. **An unknown address
+    /// gets two plausible questions too**, derived deterministically from the address, so this cannot be used
+    /// to ask "does this person have an account" — which means the client must not treat an answer here as
+    /// proof the account exists, and does not.
+    static let forgotPasswordQuestions = "/v1/auth/forgot-password/questions"
+
+    /// `POST /v1/auth/forgot-password/verify` — email, date of birth and both answers in, a single-use
+    /// ticket out.
+    ///
+    /// **Three factors, not two.** The date of birth is required alongside the answers because two
+    /// low-entropy answers are otherwise the whole of takeover defence on an app holding salary and spending
+    /// data, and the email address is not verified, so there is no channel to warn the real owner. It never
+    /// says which factor missed.
+    static let forgotPasswordVerify = "/v1/auth/forgot-password/verify"
+
+    /// `POST /v1/auth/reset-password` — spend the ticket, set the password.
+    ///
+    /// Revokes **every** family, unlike the in-app change which keeps the requesting one: whoever recovers an
+    /// account signs out everybody who was in it, in both directions.
+    static let resetPassword = "/v1/auth/reset-password"
+
     /// The identity revalidation ADR-0008 performs on foreground. Not a screen endpoint (ADR-0020): it
     /// carries who the user is, not what any screen draws.
     ///
@@ -199,9 +224,37 @@ enum Endpoint {
     /// which is exactly right here: a change that reached the server and lost its response must not be applied
     /// twice against a `currentPassword` that is no longer current.
     ///
-    /// **Why one request and not three**, and why there is deliberately no route that verifies a password on
-    /// its own: see ``PasswordChange``.
+    /// **Why one request and not three**: see ``PasswordChange``. The change is still atomic — but the wizard
+    /// now checks each step as it is reached, through ``passwordCheck``.
     static let password = "/v1/me/password"
+
+    /// `POST /v1/me/password/check` — is what has been typed so far right?
+    ///
+    /// **Advisory only.** It writes nothing, and ``password`` re-verifies everything, so the server stays the
+    /// authority and no state is carried between the two. It exists because the wizard was collecting a current
+    /// password, two security answers and a new password before telling the reader that the *first* field was
+    /// wrong — three steps of work thrown away on a typo.
+    ///
+    /// Refusals are `422`, never `401`: on this client a `401` spends the refresh token, so a mistyped password
+    /// would have ended the session.
+    static let passwordCheck = "/v1/me/password/check"
+
+    /// `PUT /v1/me/goal` — the savings goal.
+    ///
+    /// The goal was authored at registration and then had no route at all, so a reader whose pay rose could not
+    /// move it and watched "% of goal" drift. Home suggests a new figure when a raise leaves the goal behind;
+    /// this is what lets the reader take the suggestion.
+    static let goal = "/v1/me/goal"
+
+    /// `DELETE /v1/me` — the account, soft-deleted with a 30-day grace period (ADR-0015).
+    ///
+    /// **App Store 5.1.1(v)**: an app that lets somebody create an account has to let them delete it from
+    /// inside the app. The route existed and had no control anywhere in this client, which is the kind of gap
+    /// that fails review rather than a feature request.
+    ///
+    /// The email stays reserved for the grace period, so the address cannot be re-registered while the old
+    /// account could still be restored.
+    static let deleteAccount = "/v1/me"
 
     /// `GET /v1/me/export` — the UAE PDPL data-subject access right (Product Spec §8, Technical Spec §5).
     ///

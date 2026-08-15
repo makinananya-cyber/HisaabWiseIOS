@@ -88,16 +88,19 @@ struct ReportsViewModelTests {
     /// An archive with no closed months has no hero worth drawing — no mean of nothing, no trend through no
     /// points — so the whole screen is one sentence. Unlike Home's first run, which keeps four of its five cards
     /// and puts the empty treatment inside the fifth.
-    @Test("an archive with no closed months is empty rather than loaded")
-    func anEmptyArchiveIsEmpty() async throws {
-        let viewModel = Self.makeViewModel(
-            FixtureTransport(stubs: [Endpoint.screenReports: try .ok(.reportsEmpty)])
-        )
+    @Test("an archive with no closed months stays loaded, and the page says it is empty")
+    func anArchiveWithNoClosedMonthsStaysLoaded() async throws {
+        // **Not `LoadState.empty`.** `StateView` replaces the whole screen, which took the eyebrow and the title
+        // with it — the tab a reader had just chosen came back with no name on it. `ReportsArchivePage` keeps the
+        // chrome and draws the sentence where the months would be, so the emptiness is read one layer up from
+        // the same `years` this used to test (``ReportsView/stateCopy``).
+        let transport = FixtureTransport(stubs: [Endpoint.screenReports: try .ok(.reportsEmpty)])
+        let viewModel = ReportsViewModel(client: TestBench.client(transport))
 
         try await viewModel.load()
 
-        #expect(viewModel.state == .empty)
-        #expect(viewModel.state.value == nil, "an empty state carries no screen to draw")
+        #expect(viewModel.state.value?.years.isEmpty == true)
+        #expect(viewModel.isEmpty(try #require(viewModel.state.value)) == false)
     }
 
     /// And a populated one is not, which is the half that would go silently wrong if `isEmpty` were inverted or

@@ -53,6 +53,11 @@ struct AccountPersonalPage: View {
                 .padding(.vertical, 14)
         }
         .scrollBounceBehavior(.basedOnSize)
+        // **Catches up on every appearance.** This page draws the salary, and it drew whatever the tab read when it
+        // was first opened — so a salary changed elsewhere left this page and Home disagreeing about the one figure
+        // that has a single owner (invariant 2). Quiet by design: the card stays on screen while the re-read is in
+        // flight, and a re-read that fails says nothing rather than replacing a good payload with an error.
+        .task { await viewModel.refreshQuietly() }
         .hwScreenGround(theme.palette)
         .navigationTitle(Text("account.personal.title"))
         .navigationBarTitleDisplayMode(.inline)

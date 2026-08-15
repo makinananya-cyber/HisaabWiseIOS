@@ -229,12 +229,64 @@ struct HomeView: BaseView {
                 // Three whole sentences in the catalogue rather than one assembled from a verdict and a number:
                 // the prototype built it with string concatenation and `<b>` tags, which no translation can
                 // reorder (ADR-0011).
+                if let nudge = screen.savings.goalNudge {
+                    goalNudgeNote(nudge)
+                }
+
                 Text(Self.footLine(screen.savings))
                     .font(.hw(.caption))
                     .foregroundStyle(theme.palette.surface.inkSecondary)
                     .fixedSize(horizontal: false, vertical: true)
                     .frame(maxWidth: .infinity, alignment: .leading)
             }
+        }
+    }
+
+    /// The nudge that appears when a rise in pay has left the savings goal behind.
+    ///
+    /// **A suggestion with a way to take it, and a way not to.** The goal is the reader's to choose — somebody
+    /// deliberately saving less than a fifth of their pay is not making a mistake — so this offers the figure the
+    /// app would pick and leaves the decision with them. "Not now" dismisses it for this reading of the screen; the
+    /// server will suggest it again next time, because the drift is still there.
+    ///
+    /// Both amounts are the **server's display strings** (ADR-0003): the client does not format money and has no
+    /// formatter to do it with.
+    @ViewBuilder
+    private func goalNudgeNote(_ nudge: HomeScreen.GoalNudge) -> some View {
+        if !viewModel.hasDismissedGoalNudge {
+            VStack(alignment: .leading, spacing: 8) {
+                Text("home.goalNudge.title")
+                    .hwLabel()
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Text("home.goalNudge.body \(nudge.suggested.display) \(nudge.current.display)")
+                    .font(.hw(.caption))
+                    .foregroundStyle(theme.palette.surface.inkSecondary)
+                    .fixedSize(horizontal: false, vertical: true)
+
+                HStack(spacing: 8) {
+                    HWButton(
+                        "home.goalNudge.action",
+                        variant: .soft,
+                        systemImage: "arrow.up",
+                        state: viewModel.isRaisingGoal ? .inFlight : .ready
+                    ) {
+                        Task { await viewModel.raiseGoal(to: nudge.suggested) }
+                    }
+
+                    HWButton("home.goalNudge.dismiss", variant: .ghost) {
+                        viewModel.dismissGoalNudge()
+                    }
+                }
+            }
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(12)
+            .hwBox(
+                fill: theme.palette.surface.backgroundSecondary,
+                radius: .medium,
+                border: theme.palette.surface.separator
+            )
+            .accessibilityElement(children: .contain)
         }
     }
 

@@ -107,6 +107,24 @@ struct HomeScreen: Sendable, Hashable, Decodable {
 
         /// What is left to save, or `nil` once the goal is met. Read by one of the three sentences.
         let remaining: Money?
+
+        /// What the goal would be at a fifth of today's pay, when that is **more** than the stored goal.
+        ///
+        /// `nil` is the ordinary case and means "say nothing". It is non-null only when a rise in pay has left the
+        /// goal behind — which was a real drift rather than a hypothetical one: a goal authored at registration was
+        /// never revisited, so a reader whose salary went up kept a goal measured against the old figure and read
+        /// "635% of goal" against a target that had become a twelfth of what they earned.
+        ///
+        /// **A suggestion, not a correction.** The server computes what it would pick; the reader decides. Both
+        /// figures are server-formatted display strings, so the card states them without the client formatting
+        /// money (ADR-0003).
+        let goalNudge: GoalNudge?
+    }
+
+    /// The savings goal a pay rise suggests, and the one it would replace.
+    struct GoalNudge: Sendable, Hashable, Decodable {
+        let suggested: Money
+        let current: Money
     }
 
     /// The design's three pill states — `low`, `warn`, and met.

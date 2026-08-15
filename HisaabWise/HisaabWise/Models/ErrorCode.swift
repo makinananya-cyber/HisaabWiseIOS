@@ -83,4 +83,20 @@ extension ErrorCode {
     /// bank here" to anybody who asked (#15). Not in `ErrorCopy` either: it is a *field* error on step 1, which
     /// the screen that owns the form draws.
     static let emailTaken = ErrorCode(rawValue: "EMAIL_TAKEN")
+
+    /// Too many failed attempts against this account, on a `429`.
+    ///
+    /// **Recovery keeps its own counters, separate from sign-in's**, which matters more than it sounds: recovery
+    /// is the only way back into an account, so sharing login's lockout would let a stranger's failed password
+    /// guesses lock the real owner out of their own recovery.
+    ///
+    /// The backoff is the server's and it is authoritative — the client shows this and never counts on its own,
+    /// because a client-side lockout is one a reinstall lifts.
+    static let accountLocked = ErrorCode(rawValue: "ACCOUNT_LOCKED")
+
+    /// The single-use password-reset ticket has been spent or has expired.
+    ///
+    /// Recoverable rather than fatal: the reader answers their questions again and gets a new one. The screen
+    /// sends them back a step rather than leaving a button that cannot succeed.
+    static let resetTicketInvalid = ErrorCode(rawValue: "RESET_TICKET_INVALID")
 }

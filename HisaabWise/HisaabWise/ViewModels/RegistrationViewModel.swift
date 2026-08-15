@@ -169,8 +169,14 @@ final class RegistrationViewModel {
     private(set) var failures: [RegistrationFailure] = []
     private(set) var isSubmitting = false
 
-    /// Product Spec §3.3 — 13+, which is also the App Store age rating this app carries.
-    static let minimumAge = 13
+    /// **16+.** The server's `MINIMUM_AGE_YEARS` is the same number, and the two have to stay that way: the
+    /// picker greys out every date this would refuse, so a disagreement of even one day shows the reader a
+    /// selectable birthday that registration then rejects — which is exactly the defect this pairing already
+    /// had at 13.
+    ///
+    /// The comparison is `age < minimumAge`, so somebody whose sixteenth birthday is **today** is old enough,
+    /// on both ends.
+    static let minimumAge = 16
     /// The design's own floor for the date picker, so a mistyped year lands inside a sensible range.
     static let maximumAge = 120
     static let minimumPasswordLength = 8
@@ -662,7 +668,13 @@ final class RegistrationViewModel {
     }
 }
 
-private extension String {
+/// Two small readings of a typed string, shared by the forms that take one.
+///
+/// **`internal`, not `private`, since recovery arrived.** Registration and recovery both trim an answer before
+/// sending it — the server hashes a *normalised* form, so trailing whitespace must not decide whether somebody
+/// gets back into their account — and a second copy of `trimmed` in the other file is one place for the two to
+/// drift apart on what counts as blank.
+extension String {
     var trimmed: String { trimmingCharacters(in: .whitespacesAndNewlines) }
     var digits: String { filter(\.isNumber) }
 }

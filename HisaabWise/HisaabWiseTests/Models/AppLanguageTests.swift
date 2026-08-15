@@ -5,13 +5,16 @@ import Testing
 /// The shipped set, and the matching rule that decides which of it a device gets.
 @Suite("AppLanguage")
 struct AppLanguageTests {
-    @Test("ships English and Arabic, and nothing else")
-    func shipsTwoLanguages() {
-        // The design lists 87 languages and the picker shows the **shipped** ones only (Product Spec
-        // §3.7 **[FIX]**). A third case appearing here without copy behind it would show a user the
-        // keys instead of sentences.
-        #expect(AppLanguage.allCases == [.english, .arabic])
-        #expect(AppLanguage.allCases.map(\.rawValue) == ["en", "ar"])
+    @Test("offers English, Arabic and Hindi, and nothing else")
+    func offersThreeLanguages() {
+        // The design lists 87 and the picker shows only what the app offers (Product Spec §3.7 **[FIX]**).
+        //
+        // **English is still the only one with copy behind it**, and that is deliberate rather than an
+        // oversight: the backend's `PREFERENCE_LANGUAGES` accepts all three while its `SHIPPED_LANGUAGES`
+        // narrows *content* to the files that exist, so a Hindi reader stores Hindi and reads English words
+        // until the translation pass lands. A fourth case appearing here is a decision, not a refactor.
+        #expect(AppLanguage.allCases == [.english, .arabic, .hindi])
+        #expect(AppLanguage.allCases.map(\.rawValue) == ["en", "ar", "hi"])
     }
 
     @Test(
@@ -28,11 +31,13 @@ struct AppLanguageTests {
         #expect(AppLanguage(preferring: ["en-GB", "ar-AE"]) == .english)
     }
 
-    @Test("skips a language the app does not ship rather than giving up at it")
-    func skipsUnshippedLanguages() {
+    @Test("skips a language the app does not offer rather than giving up at it")
+    func skipsUnofferedLanguages() {
         // A device set to French with Arabic second wants Arabic, not the default. Stopping at the first
-        // entry would hand that user English.
-        #expect(AppLanguage(preferring: ["fr-FR", "hi-IN", "ar-AE"]) == .arabic)
+        // entry would hand that user English. French and German are the unoffered pair now that Hindi is in.
+        #expect(AppLanguage(preferring: ["fr-FR", "de-DE", "ar-AE"]) == .arabic)
+        // And the order still decides between two the app *does* offer.
+        #expect(AppLanguage(preferring: ["fr-FR", "hi-IN", "ar-AE"]) == .hindi)
     }
 
     @Test("has no answer when nothing on the device ships")

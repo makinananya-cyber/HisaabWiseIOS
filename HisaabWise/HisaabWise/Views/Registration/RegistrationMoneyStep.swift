@@ -52,10 +52,7 @@ struct RegistrationMoneyStep: View {
             hint("registration.two.security.hint")
                 .hwEnters(step: 4, suppressed: reduceMotion)
 
-            firstQuestion.hwEnters(step: 5, suppressed: reduceMotion)
-            firstAnswer.hwEnters(step: 5, suppressed: reduceMotion)
-            secondQuestion.hwEnters(step: 5, suppressed: reduceMotion)
-            secondAnswer.hwEnters(step: 5, suppressed: reduceMotion)
+            securityQuestions.hwEnters(step: 5, suppressed: reduceMotion)
 
             submit.hwEnters(step: 5, suppressed: reduceMotion)
         }
@@ -104,57 +101,82 @@ struct RegistrationMoneyStep: View {
 
     // MARK: - Security questions
 
-    private var firstQuestion: some View {
-        HWCombo(
-            "registration.two.question.one.label",
-            value: viewModel.firstQuestion.map { Text(verbatim: $0.text) },
-            placeholder: "registration.two.question.placeholder",
-            systemImage: "questionmark.circle",
-            error: RegistrationView.copy(for: viewModel.failure(for: .firstQuestion)),
-            appearance: .brand
-        ) {
-            picker = .firstQuestion
+    /// Which of the two slots a row is. `Identifiable` because that identity is the point — see below.
+    private enum Slot: Int, CaseIterable, Identifiable {
+        case first, second
+        var id: Int { rawValue }
+    }
+
+    /// Both slots, built by **one loop with an identity per row** rather than four hand-written properties.
+    ///
+    /// This shape matches the password screen, whose two answers have always been a `ForEach` with an id per
+    /// row, and it is what makes the two distinct catalogue labels below possible — two boxes both reading
+    /// "Your answer" are two boxes a screen reader cannot tell apart.
+    ///
+    /// **It is not, on the evidence, the fix for the reported focus defect.** A test session found the second
+    /// answer box refusing the caret — taps landed in the first answer and every keystroke went there — and this
+    /// restructure did *not* change that. What the same session then established is that the boundary is
+    /// positional rather than structural: on this form a text field around 790pt down the screen or lower will
+    /// not take focus from a synthetic tap, while one at 680pt or above will, and *buttons* at 840pt work fine.
+    /// Both of these answer boxes focus normally on ``ForgotPasswordView``, which is the same component in the
+    /// same loop, higher up the screen.
+    ///
+    /// Ruled out: the shared label key, `HWTextField`'s inner `.id()`, `ForEach` identity, the submit button's
+    /// blurred backdrop, the `GeometryReader`/`minHeight` wrapper, and the software keyboard. The remaining
+    /// candidates are the test harness's tap injection and something about hit-testing near the bottom of this
+    /// particular scroll view; distinguishing them needs a real device or a UI test, not another guess.
+    private var securityQuestions: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            ForEach(Slot.allCases) { slot in
+                VStack(alignment: .leading, spacing: 16) {
+                    questionCombo(for: slot)
+                    answerField(for: slot)
+                }
+            }
         }
     }
 
-    private var firstAnswer: some View {
-        HWTextField(
-            "registration.two.answer.label",
-            text: Binding(
-                get: { viewModel.firstAnswer },
-                // Its **own** field. Clearing `.firstQuestion` here — which is what this did until review — wiped
-                // "choose a question" the moment the user typed an answer, leaving a clean-looking form with no
-                // question chosen that the next submit refuses again.
-                set: { viewModel.firstAnswer = $0; viewModel.clearFailure(for: .firstAnswer) }
-            ),
-            systemImage: "list.bullet",
-            error: RegistrationView.copy(for: viewModel.failure(for: .firstAnswer)),
-            appearance: .brand
-        )
-    }
-
-    private var secondQuestion: some View {
-        HWCombo(
-            "registration.two.question.two.label",
-            value: viewModel.secondQuestion.map { Text(verbatim: $0.text) },
+    private func questionCombo(for slot: Slot) -> some View {
+        let field: RegistrationField = slot == .first ? .firstQuestion : .secondQuestion
+        return HWCombo(
+            slot == .first
+                ? "registration.two.question.one.label"
+                : "registration.two.question.two.label",
+            value: (slot == .first ? viewModel.firstQuestion : viewModel.secondQuestion)
+                .map { Text(verbatim: $0.text) },
             placeholder: "registration.two.question.placeholder",
             systemImage: "questionmark.circle",
-            error: RegistrationView.copy(for: viewModel.failure(for: .secondQuestion)),
+            error: RegistrationView.copy(for: viewModel.failure(for: field)),
             appearance: .brand
         ) {
-            picker = .secondQuestion
+            picker = slot == .first ? .firstQuestion : .secondQuestion
         }
     }
 
-    private var secondAnswer: some View {
-        HWTextField(
-            "registration.two.answer.label",
+    /// **Two distinct labels, not one key twice.** Both boxes read "Your answer", but a screen reader landing
+    /// on the second one with the same label as the first cannot say which question it belongs to.
+    private func answerField(for slot: Slot) -> some View {
+        let field: RegistrationField = slot == .first ? .firstAnswer : .secondAnswer
+        return HWTextField(
+            slot == .first
+                ? "registration.two.answer.one.label"
+                : "registration.two.answer.two.label",
             text: Binding(
-                get: { viewModel.secondAnswer },
-                set: { viewModel.secondAnswer = $0; viewModel.clearFailure(for: .secondAnswer) }
+                get: { slot == .first ? viewModel.firstAnswer : viewModel.secondAnswer },
+                // Each clears its **own** failure. Clearing the question's here — which is what the first
+                // answer did until review — wiped "choose a question" the moment the user typed, leaving a
+                // clean-looking form with no question chosen that the next submit refuses again.
+                set: { typed in
+                    if slot == .first {
+                        viewModel.firstAnswer = typed
+                    } else {
+                        viewModel.secondAnswer = typed
+                    }
+                    viewModel.clearFailure(for: field)
+                }
             ),
             systemImage: "list.bullet",
-            error: RegistrationView.copy(for: viewModel.failure(for: .secondAnswer)),
+            error: RegistrationView.copy(for: viewModel.failure(for: field)),
             appearance: .brand
         )
     }
@@ -171,6 +193,10 @@ struct RegistrationMoneyStep: View {
                 .padding(.horizontal, 18)
                 .padding(.top, 6)
                 .accessibilityHidden(true)
+                // **Decoration, and decoration must not take touches.** A `.blur` renders well outside its own
+                // bounds, and this glow sits directly under the last field on the form — which is the field that
+                // could not be focused. It is a background: it has nothing to do when tapped.
+                .allowsHitTesting(false)
         }
     }
 

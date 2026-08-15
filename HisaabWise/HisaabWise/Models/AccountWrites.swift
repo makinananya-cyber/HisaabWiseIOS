@@ -82,3 +82,42 @@ struct PasswordChange: Sendable, Hashable, Encodable {
     /// server, because a client-side length check is a courtesy and not a rule.
     let newPassword: String
 }
+
+/// What `DELETE /v1/me` answers with.
+///
+/// **Decoded and then discarded**, which looks pointless and is not: `APIClient.delete` requires a response type
+/// because a delete on this API returns the state the deletion produced (ADR-0020), and declaring the shape is
+/// what makes a route that starts answering with something else a decode failure rather than a silent success.
+///
+/// The grace period is the reason there is anything here at all: the account is soft-deleted and erased after
+/// `purgeAfterDays` (ADR-0015). The screen does not draw these fields — it signs out — but the server's own
+/// sentence is the one the restore flow will need when #24 lands, so the contract is written down now.
+struct AccountDeletion: Sendable, Decodable {
+    let deletedAt: String
+    let purgeAfterDays: Int
+}
+
+/// The body of `POST /v1/me/password/check` — "is what I have typed so far right?"
+///
+/// **Advisory.** It writes nothing, and `POST /v1/me/password` re-verifies every field, so this changes when the
+/// reader is told rather than what the server trusts. Sending it is what stops the wizard collecting three screens
+/// of input before mentioning that the first box was wrong.
+///
+/// `securityAnswers` is `nil` on step one, where the only thing to check is the password. `Encodable` omits it, so
+/// the server reads "only check the password" from the shape of the request rather than from a flag.
+struct PasswordCheck: Sendable, Encodable {
+    let currentPassword: String
+    let securityAnswers: [SecurityAnswer]?
+}
+
+/// What the check answers with when it accepts. **The body carries nothing worth reading** — the status is the
+/// answer, and a refusal arrives as an `APIError` rather than as a field in here.
+struct PasswordCheckAccepted: Sendable, Decodable {}
+
+/// The body of `PUT /v1/me/goal` — a savings goal the reader has chosen.
+///
+/// **In the salary's currency**, which the server checks: the pair is compared by the budget engine, and two
+/// currencies would make `saved` a conversion rather than a subtraction.
+struct SavingsGoalUpdate: Sendable, Encodable {
+    let savingsGoal: MoneyAmount
+}

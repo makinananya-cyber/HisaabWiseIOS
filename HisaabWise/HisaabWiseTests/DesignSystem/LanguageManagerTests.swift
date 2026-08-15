@@ -24,7 +24,7 @@ struct LanguageManagerTests {
         // The picker's source. The design lists 87 languages; this is the promise (Product Spec §3.7
         // **[FIX]**, ADR-0011), and it is a property of the manager rather than something each picker
         // filters for itself.
-        #expect(LanguageManager(selected: .english).shipped == [.english, .arabic])
+        #expect(LanguageManager(selected: .english).shipped == [.english, .arabic, .hindi])
     }
 
     @Test("formats in the selected language, in Latin digits", arguments: AppLanguage.allCases)

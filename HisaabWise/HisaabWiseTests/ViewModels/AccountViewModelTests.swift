@@ -30,11 +30,17 @@ struct AccountViewModelTests {
         return AccountViewModel(
             client: client,
             content: ContentLoader(client: client, store: InMemoryContentStore()),
-            language: language
+            language: language,
+            // Deleting the account ends the session, so the view model is handed one (App Store 5.1.1(v)).
+            session: SessionCoordinator(
+                client: client,
+                keptStore: InMemoryTokenStore(),
+                transientStore: InMemoryTokenStore()
+            )
         )
     }
 
-    /// The screen, the two reference lists, the export, and **every write answering with the screen again**
+    /// The screen, the two reference lists, and **every write answering with the screen again**
     /// (ADR-0020).
     ///
     /// `Endpoint.me` is stubbed explicitly rather than claimed by the fixture, because `GET /v1/me` and
@@ -48,7 +54,6 @@ struct AccountViewModelTests {
             Endpoint.me: try .ok(screen),
             Endpoint.currency: try .ok(.accountAED),
             Endpoint.password: try .ok(screen),
-            Endpoint.export: try .ok(.meExport),
             Endpoint.language: try .ok(.languageArabic),
             Endpoint.path(for: .currencies): try .ok(.referenceCurrencies),
             Endpoint.path(for: .countries): try .ok(.referenceCountries),
@@ -510,7 +515,7 @@ struct AccountViewModelTests {
         let (viewModel, _) = try await Self.loaded(FixtureTransport(stubs: try Self.stubs()))
 
         #expect(viewModel.shippedLanguages == AppLanguage.shipped)
-        #expect(viewModel.shippedLanguages.count == 2)
+        #expect(viewModel.shippedLanguages.count == 3)
     }
 
     /// The tick follows the **payload**, not the manager: the manager is optimistic and reverts on failure, so
@@ -808,41 +813,44 @@ struct AccountViewModelTests {
         #expect(phone["e164"] as? String == "+971501234567")
     }
 
-    // MARK: - The data-subject export
+    // MARK: - Deleting the account
 
-    /// `GET /v1/me/export` — the UAE PDPL access right (Product Spec §8). The bytes are held and **not decoded**:
-    /// the client owns no schema for one person's whole history (``APIClient/bytes(at:)``).
-    @Test("the export is held as bytes, exactly as the server sent them")
-    func theExportIsHeldAsBytes() async throws {
-        let transport = FixtureTransport(stubs: try Self.stubs())
+    /// `DELETE /v1/me` — **App Store 5.1.1(v)**: an app that lets somebody create an account must let them delete
+    /// it in-app. The route existed and had no caller anywhere in this client.
+    @Test("deleting the account calls the route and ends the session")
+    func deletingTheAccountEndsTheSession() async throws {
+        let transport = FixtureTransport(stubs: try Self.stubs().merging([
+            Endpoint.deleteAccount: .response(
+                status: 200,
+                body: Data(#"{"deletedAt":"2026-08-14T12:00:00.000Z","purgeAfterDays":30}"#.utf8)
+            ),
+        ]) { _, stub in stub })
         let (viewModel, _) = try await Self.loaded(transport)
 
-        await viewModel.exportMyData()
+        await viewModel.deleteAccount()
 
-        #expect(viewModel.exportedData == TestBench.payload(.meExport))
-        #expect(await transport.requestCount(for: Endpoint.export) == 1)
-        // Per-user, so it **presents the session and bypasses every cache** (invariant 8).
-        let request = try #require(await transport.recordedRequests.last { $0.path == Endpoint.export })
+        let request = try #require(
+            await transport.recordedRequests.last { $0.path == Endpoint.deleteAccount && $0.method == "DELETE" }
+        )
+        // Per-user, so it presents the session and bypasses every cache (invariant 8).
         #expect(request.cachePolicy == .reloadIgnoringLocalCacheData)
-
-        viewModel.discardExport()
-        #expect(viewModel.exportedData == nil)
+        #expect(viewModel.isDeletingAccount == false)
     }
 
-    @Test("an export that will not download explains itself and leaves the screen alone")
-    func aFailedExportExplainsItself() async throws {
+    @Test("a deletion that will not send explains itself and leaves the screen alone")
+    func aFailedDeletionExplainsItself() async throws {
         let transport = FixtureTransport(stubs: try Self.stubs().merging(
-            [Endpoint.export: .notConnected]
+            [Endpoint.deleteAccount: .notConnected]
         ) { _, stub in stub })
         let (viewModel, screen) = try await Self.loaded(transport)
 
-        await viewModel.exportMyData()
+        await viewModel.deleteAccount()
 
-        #expect(viewModel.exportedData == nil)
-        #expect(viewModel.refusal(about: .export) == .needsConnection)
+        #expect(viewModel.refusal(about: .deleteAccount) == .needsConnection)
         // **And it says nothing about anything else**, which is review's correction: one bare reason on the view
         // model drew this sentence over the currency picker.
         #expect(viewModel.refusal(about: .currency) == nil)
+        // The account is still there, and so is the screen: a refused deletion changes nothing.
         #expect(viewModel.state.value == screen)
     }
 

@@ -162,11 +162,20 @@ final class ExpensesViewModel: BaseViewModel {
             BillDraft(
                 id: $0.id,
                 name: $0.name,
-                amount: TypedAmount.major($0.amount.minor, exponent: $0.amount.exponent),
+                // Empty rather than `0`, for the reason the fixed amount below is: see there.
+                amount: $0.amount.minor == 0
+                    ? ""
+                    : TypedAmount.major($0.amount.minor, exponent: $0.amount.exponent),
                 icon: $0.icon
             )
         }
-        fixedAmount = TypedAmount.major(category.total.minor, exponent: category.total.exponent)
+        // **Empty when there is nothing set yet, rather than a literal `0`.** A box pre-filled with `0` is a box
+        // that types `04500` when somebody enters their rent, because tapping a field puts the caret after what is
+        // already in it. Zero is also the one value that means "not set" here, so showing it as a *starting point*
+        // says the opposite of what it is. Any real figure is still filled in, which is what edit mode is for.
+        fixedAmount = category.total.minor == 0
+            ? ""
+            : TypedAmount.major(category.total.minor, exponent: category.total.exponent)
     }
 
     /// Leaves edit mode without saving — the way back out that does not commit.

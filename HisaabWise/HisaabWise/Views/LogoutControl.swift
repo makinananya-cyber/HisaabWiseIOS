@@ -7,11 +7,18 @@ import SwiftUI
 /// which `AppShellTests` asserts is the only one. A second caller would be a second exit, and it would not be
 /// one anybody chose.
 ///
-/// **The dialog is a `confirmationDialog`, not the design's `.confirm` overlay.** The design draws its own
-/// modal — scrim, dialog, icon, two buttons — and the system sheet is what a destructive confirmation is on
-/// iOS: it puts the destructive action in the platform's own red, reads correctly to VoiceOver as an
-/// alert, and cannot be dismissed by accident. The design's *copy* is converted verbatim, which is the part
-/// that carries the decision: "Your data stays safe. You'll need your password to sign back in."
+/// **The dialog is an `alert`, not the design's `.confirm` overlay and no longer a `confirmationDialog`.**
+/// The design draws its own modal — scrim, dialog, icon, two buttons — and a system presentation is what a
+/// destructive confirmation should be on iOS: the platform's own red, read correctly to VoiceOver, and not
+/// dismissable by accident. The design's *copy* is converted verbatim, which is the part carrying the
+/// decision: "Your data stays safe. You'll need your password to sign back in."
+///
+/// It was a `confirmationDialog` until this control was tested on a device, and that is the reason for the
+/// change: a `confirmationDialog` renders as a **popover** in some presentations, and SwiftUI drops
+/// `.cancel`-role buttons from a popover on the grounds that tapping outside dismisses it. The observed
+/// result was a confirmation offering "Log out" and nothing else — no visible way to say no to the one
+/// irreversible action in the app. An `alert` draws both buttons in every size class, so the way out of the
+/// dialog is always on screen. Keep it an alert.
 ///
 /// **The button is `HWButtonVariant.destructive`** since #23, which is the caller that shape was waiting for: the
 /// design's `.logout` is a card-coloured control with a danger-tinted border and danger text, and it was `.soft`
@@ -44,10 +51,9 @@ struct LogoutControl: View {
         ) {
             isConfirming = true
         }
-        .confirmationDialog(
+        .alert(
             Text("shell.logout.confirm.title"),
-            isPresented: $isConfirming,
-            titleVisibility: .visible
+            isPresented: $isConfirming
         ) {
             // The design spells the trigger "Log Out" and the confirm "Log out". One key, one spelling: two
             // strings that differ only in a capital letter are two strings to translate and one to get wrong.
