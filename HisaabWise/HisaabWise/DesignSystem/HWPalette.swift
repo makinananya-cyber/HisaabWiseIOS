@@ -28,6 +28,10 @@ struct HWPalette: Sendable {
     var meter = Meter()
     /// The three goal verdicts, as a wash and the ink that reads on it.
     var verdicts = Verdicts()
+    /// The tip card's own warm surface — the one card on Home that is not white.
+    var tip = Tip()
+    /// The streak card's galaxy→planetary gradient — the one card on Home that is not light at all.
+    var streak = Streak()
 
     static let standard = HWPalette()
 }
@@ -209,6 +213,47 @@ extension HWPalette {
             case .miss: nothing
             }
         }
+    }
+
+    /// The design's `.tip` card, which is a **surface of its own** rather than a tinted `.card`.
+    ///
+    /// ```css
+    /// .tip{background:linear-gradient(140deg,var(--sun-soft),#FFF8E9);border:1px solid rgba(240,180,41,.4)}
+    /// .tip-txt{color:#5E4409}
+    /// ```
+    ///
+    /// It is a group here rather than four expressions at the call site because a card that mixes its own
+    /// colours is a card the later palette swap cannot reach (ADR-0001) — and because two of these five values
+    /// are the sun accent, which is the fact a group makes visible and a call site would hide.
+    ///
+    /// **The gradient's second stop is `surface.background`, not the design's `#FFF8E9`.** The two differ by
+    /// seven units in one channel — invisible at this size — and adding an asset for it would put a fifth
+    /// near-white in the catalogue whose only job is to be slightly not `--milky`.
+    struct Tip: Sendable {
+        /// `--sun-soft` — the gradient's warm end.
+        var background = Color.hwUnitSunSoft
+        /// The pale end. See the note above for why it is the screen's own ground.
+        var backgroundEnd = Color.hwBackground
+        /// `rgba(240,180,41,.4)` — the sun at four-tenths, which is the one border on Home that is not a
+        /// hairline blue.
+        var border = Color.hwUnitSun.opacity(0.4)
+        /// `.tip-txt{color:#5E4409}` — a dark brown, because galaxy ink on a warm wash reads as a mistake.
+        var ink = Color.hwTipInk
+    }
+
+    /// The design's `.mini` — the streak card, `linear-gradient(150deg,--galaxy,#16357C 60%,--planetary)`.
+    ///
+    /// Three stops rather than the two ``HWButtonFill/gradient`` carries: the middle one is what makes this read
+    /// as a lit navy panel instead of a flat blue rectangle, and it is the only value in the group that is not
+    /// already a role.
+    struct Streak: Sendable {
+        var start = Color.hwAccentDeep
+        /// `#16357C` at 60% — between galaxy and planetary, and not either of them.
+        var middle = Color.hwStreakMid
+        var end = Color.hwAccent
+
+        /// Ordered for a `LinearGradient`.
+        var stops: [Color] { [start, middle, end] }
     }
 
     /// One verdict's badge: the wash behind it and the ink that reads on the wash.

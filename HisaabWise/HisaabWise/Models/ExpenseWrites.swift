@@ -47,6 +47,30 @@ struct FixedCostUpdate: Sendable, Hashable, Encodable {
     let amount: MoneyAmount
 }
 
+/// `PUT /v1/me/budget/wants` — the share of income the wants allowance is taken from.
+///
+/// **One number, and it is a *setting* rather than an amount.** The 50/30/20 split ships as the default and the
+/// reader can move the middle figure: somebody remitting most of their pay home wants less than 30% allocated to
+/// spending, and somebody without dependents may want more. What crosses the wire is the percentage they chose,
+/// **never an allowance** — the engine takes its share of income server-side and answers with the recomputed
+/// screen, so there is still exactly one owner of §4.2 (invariant 3). A client that sent a figure would be
+/// computing the budget, which is the two-owners situation defect D11 came out of.
+///
+/// It is `/v1/me/…` rather than `/v1/expenses/…` because it belongs to the *user*, not to the month: it survives
+/// the rollover, and Home and Reports read allowances derived from it too. It answers with the **Expenses** screen
+/// payload all the same, because Expenses is the only screen that sets it and ADR-0020's rule is that a write
+/// answers with the screen the writer is looking at.
+///
+/// A `PUT` because it replaces a value, so it carries no `Idempotency-Key` (ADR-0022).
+///
+/// **The bounds are the server's to enforce**, and the sheet only offers what §4.2 leaves room for — see
+/// `ExpensesView.wantsShareOptions`. A refusal comes back as an ordinary failed write.
+struct WantsShareUpdate: Sendable, Hashable, Encodable {
+    /// Whole percent — `30` for the plain rule. Not a fraction: the reader chose a percentage and a `0.3` on the
+    /// wire is one rounding decision away from being a different number than the one they tapped.
+    let percent: Int
+}
+
 /// `PUT /v1/expenses/lines/{categoryId}` — the whole set of bills for a `lines` category, replaced.
 ///
 /// **One request for the whole set, because that is the gesture the design has.** Utilities' edit mode lets the

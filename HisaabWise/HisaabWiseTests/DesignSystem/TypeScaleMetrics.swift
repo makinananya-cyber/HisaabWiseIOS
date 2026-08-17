@@ -37,10 +37,12 @@ extension HWTextStyle {
         case .title: 28
         case .heading: 22
         case .subheading: 20
-        case .bodyLarge: 16
-        case .body: 13
-        case .caption: 12
-        case .micro: 11
+        // The bottom half sits one Dynamic Type step above the design's transcribed pixels — see the
+        // note on `HWTextStyle` for why.
+        case .bodyLarge: 17
+        case .body: 15
+        case .caption: 13
+        case .micro: 12
         }
     }
 

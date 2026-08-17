@@ -94,10 +94,23 @@ struct HWButtonAppearance: Sendable, Equatable {
     let elevation: HWShadow?
     let radius: HWRadius
 
+    /// Whether the design draws `.btn-primary::before` on this control — the light streak that crosses it every
+    /// few seconds.
+    ///
+    /// A property of the resolved appearance rather than a check at the draw site, for the reason ``borderDash``
+    /// is one: "exactly one variant carries it" is then a fact `HWButtonTests` can state. It is the filled
+    /// gradient control on the in-app surface and nothing else. The brand primary is the *light* control on the
+    /// galaxy ground and the design's own sweep there is a gradient stop rather than a moving band — see the
+    /// note in `(.brand, .primary)` below, which drops it.
+    let sweeps: Bool
+
     init(variant: HWButtonVariant, appearance: HWAppearance = .surface, palette: HWPalette) {
         // Solid unless the one variant that is not says otherwise, set once so every arm below does not have
         // to repeat `nil`.
         borderDash = variant == .dashed ? HWBorderDash.standard : nil
+
+        // `.btn-primary::before` is spelled on exactly one selector, and this is the arm that resolves it.
+        sweeps = appearance == .surface && variant == .primary
 
         // The design's brand buttons are pills — `border-radius:29px` on a 58pt control, `30` on the
         // landing CTA's 60 — where the in-app ones use the 18pt card radius. Half my height is what a pill
@@ -341,7 +354,13 @@ struct HWButtonFace: View {
             borderWidth: resolved.borderDash == nil ? 1 : 1.5,
             borderDash: resolved.borderDash,
             elevation: state.keepsElevation ? resolved.elevation : nil
-        )
+        ) {
+            // `.btn-primary::before`. Not drawn while the control is unavailable or busy: a streak crossing a
+            // dimmed button says the button is alive, and one crossing a spinner competes with it.
+            if resolved.sweeps, state == .ready {
+                HWButtonSweep(tint: resolved.foreground)
+            }
+        }
         .contentShape(.rect)
     }
 
@@ -357,6 +376,85 @@ struct HWButtonFace: View {
         .multilineTextAlignment(.center)
         // Wraps rather than truncating once the text outgrows one line.
         .fixedSize(horizontal: false, vertical: true)
+    }
+}
+
+/// `.btn-primary::before` — the light streak that crosses the primary button, waits, and crosses again.
+///
+/// ```css
+/// .btn-primary::before{
+///   width:60px;height:150px;
+///   background:linear-gradient(90deg,transparent,rgba(255,249,240,.24),transparent);
+///   transform:translateX(-100px) rotate(18deg);
+///   animation:sweep 4.4s var(--ease-out) 1.8s infinite;
+/// }
+/// @keyframes sweep{0%{…-100px}40%{…400px}100%{…400px}}
+/// ```
+///
+/// **A `keyframeAnimator` rather than a repeating `.animation`**, and the keyframes are why: the design's cycle is
+/// mostly *pause*. A single repeating animation interpolates evenly across its whole duration, which turns a
+/// half-second glint into a band drifting slowly across the control forever — the opposite of the effect. Three
+/// keyframes reproduce the shape the CSS actually has: parked off the leading edge, one quick crossing, parked off
+/// the trailing edge until the cycle restarts.
+///
+/// **Under Reduce Motion it does not run** — and that is the one place ADR-0012's "replace, never remove" does not
+/// apply, because there is nothing to replace: the streak carries no information. It says nothing about the
+/// control's state, marks no change, and confirms no action; the press feedback that *does* confirm the tap is
+/// ``HWPressStyle``'s, which has its own reduced form. A static band frozen mid-crossing would be a stripe across
+/// the button that looks like a rendering fault.
+struct HWButtonSweep: View {
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    /// The streak's colour — the button's own foreground, at the design's 24%. It is the label's ink rather than
+    /// a light-coloured token of its own because that is what the design uses: `rgba(255,249,240,.24)` is
+    /// `--milky`, which on this control is `brand.ink`, which is exactly what the label is drawn in.
+    let tint: Color
+
+    /// `width:60px`.
+    private static let bandWidth: CGFloat = 60
+    /// `rotate(18deg)`. The band is drawn far taller than the control so the rotation cannot expose a corner.
+    private static let tilt: Double = 18
+    /// `translateX(-100px)` — the parked position before a crossing, in the leading direction.
+    private static let parkedBefore: CGFloat = -100
+
+    var body: some View {
+        GeometryReader { proxy in
+            band
+                .frame(width: Self.bandWidth, height: proxy.size.height * 3)
+                .rotationEffect(.degrees(Self.tilt))
+                // The travel, as a fraction of the control's own width, so the crossing takes the same time on
+                // a narrow control as on a wide one.
+                .keyframeAnimator(
+                    initialValue: Self.parkedBefore,
+                    repeating: !reduceMotion
+                ) { content, x in
+                    content.offset(x: x)
+                } keyframes: { _ in
+                    let parkedAfter = proxy.size.width + 100
+                    KeyframeTrack {
+                        // `animation-delay:1.8s`, then `0% → 40%` of a 4.4s cycle, then parked for the rest.
+                        LinearKeyframe(Self.parkedBefore, duration: 1.8)
+                        CubicKeyframe(parkedAfter, duration: 1.76)
+                        LinearKeyframe(parkedAfter, duration: 2.64)
+                    }
+                }
+                // Leading-aligned so `offset(x:)` starts from the same edge the design's `left:0` does. The
+                // offset itself does not mirror, which is accepted here for the reason `HWButtonFill/gradient`
+                // records: a 60pt glint carries no direction to read.
+                .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
+        }
+        // Decoration over a control: it must never eat a tap, and there is nothing here to describe.
+        .allowsHitTesting(false)
+        .accessibilityHidden(true)
+    }
+
+    /// `linear-gradient(90deg,transparent,rgba(milky,.24),transparent)`.
+    private var band: some View {
+        LinearGradient(
+            colors: [tint.opacity(0), tint.opacity(0.24), tint.opacity(0)],
+            startPoint: .leading,
+            endPoint: .trailing
+        )
     }
 }
 

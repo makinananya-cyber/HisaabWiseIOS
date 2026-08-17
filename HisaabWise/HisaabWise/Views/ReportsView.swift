@@ -55,6 +55,7 @@ struct ReportsView: BaseView {
         // row's copy of it (ADR-0020, ADR-0037).
         .navigationDestination(for: ReportsMonthRoute.self) { route in
             ReportsMonthView(viewModel: viewModel.monthViewModel(monthKey: route.monthKey))
+                .hwHidesTabBar()
         }
     }
 

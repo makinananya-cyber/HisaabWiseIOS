@@ -59,7 +59,13 @@ struct HisaabWiseApp: App {
                 // exception in it is a rule somebody has to remember (ADR-0014).
                 .hwPrivacyOverlay(covering: scenePhase)
                 .hwEnvironment(environment)
-                .task { await environment.session.restore() }
+                // **Launch always starts at Landing.** The app deliberately does *not* restore a
+                // persisted session on launch: every open shows the Get Started / Landing screen, and
+                // the user signs in or registers from there (owner decision, superseding ADR-0007's
+                // "a kept session survives a relaunch"). Sign-in and registration are the only paths
+                // that set `isSignedIn`, and log-out clears it — so `RootView` shows Landing on every
+                // cold start and returns to it on every sign-out. `SessionCoordinator.restore()` is no
+                // longer called here; it remains only for its unit tests.
                 .onChange(of: scenePhase) { previous, phase in
                     // A launch that arrives `.inactive` and then `.active` can put this alongside the
                     // restore above rather than after it. That is safe rather than co-ordinated:

@@ -878,4 +878,92 @@ struct ExpensesViewModelTests {
         #expect(viewModel.state.value != nil, "a failed pick list replaced a screen that had loaded")
         #expect(!viewModel.state.isOffline)
     }
+
+    // MARK: - The wants share
+
+    /// **A percentage crosses and an allowance comes back** — the fifth write, and the one that must not turn into
+    /// a second owner of §4.2 (invariant 3, defect D11).
+    ///
+    /// Asserted on the **bytes on the wire**, because that is the half a value assertion cannot see: a client that
+    /// helpfully sent the allowance it had worked out would still set `percent` correctly and still pass a test
+    /// written against `WantsShareUpdate`.
+    @Test("the chosen share is sent as a percentage, and nothing else is")
+    func theShareIsSentAsAPercentage() async throws {
+        let transport = FixtureTransport(stubs: [
+            Endpoint.screenExpenses: try .ok(.expensesINR),
+            Endpoint.wantsShare: try .ok(.expensesINR),
+        ])
+        let (viewModel, screen) = try await Self.loaded(transport)
+        #expect(screen.wants.sharePercent == 30, "the standing fixture no longer carries the plain-rule share")
+
+        await viewModel.setWantsShare(15)
+
+        let write = try #require(
+            await transport.recordedRequests.first { $0.path == Endpoint.wantsShare },
+            "no request reached the wants-share route"
+        )
+        #expect(write.method == "PUT", "a replacement of a value is a PUT and carries no idempotency key")
+        #expect(write.headers["Idempotency-Key"] == nil)
+
+        let sent = try #require(write.body, "the write went out with no body")
+        let body = try #require(try JSONSerialization.jsonObject(with: sent) as? [String: Any])
+        #expect(body["percent"] as? Int == 15)
+        // The whole body, so an amount smuggled alongside the percentage fails here rather than being reviewed for.
+        #expect(body.keys.sorted() == ["percent"], "the body carries more than the chosen share: \(body.keys)")
+        #expect(viewModel.notice == .wantsShareUpdated)
+    }
+
+    /// Tapping the row that already has a tick beside it costs no round trip — and, more to the point, produces no
+    /// toast claiming something changed.
+    @Test("choosing the share already in force sends nothing")
+    func anUnchangedShareSendsNothing() async throws {
+        let transport = FixtureTransport(stubs: [
+            Endpoint.screenExpenses: try .ok(.expensesINR),
+            Endpoint.wantsShare: try .ok(.expensesINR),
+        ])
+        let (viewModel, screen) = try await Self.loaded(transport)
+
+        let inForce = try #require(screen.wants.sharePercent)
+        await viewModel.setWantsShare(inForce)
+
+        #expect(await transport.requestCount(for: Endpoint.wantsShare) == 0)
+        #expect(viewModel.notice == nil)
+    }
+
+    /// **A refused share leaves the screen able to say so**, through the same write mapping every other write goes
+    /// through — there is no bespoke handling for this one, which is the point of asserting it.
+    @Test("a refused share is a failed screen, not a silent no-op")
+    func aRefusedShareFails() async throws {
+        let transport = FixtureTransport(stubs: [
+            Endpoint.screenExpenses: try .ok(.expensesINR),
+            Endpoint.wantsShare: .response(
+                status: 422,
+                body: Data(#"{"error":{"code":"VALIDATION_FAILED","message":"out of range"}}"#.utf8)
+            ),
+        ])
+        let (viewModel, _) = try await Self.loaded(transport)
+
+        await viewModel.setWantsShare(40)
+
+        #expect(viewModel.state.isFailed)
+        #expect(viewModel.notice == nil, "a refused write toasted as though it had landed")
+    }
+
+    /// A payload from before the setting existed still decodes, and reads as **no choice on offer** rather than as
+    /// a default the client invented — which is what the screen's Edit control keys on.
+    @Test("a payload with no share decodes, and offers no share")
+    func anAbsentShareDecodes() throws {
+        var payload = try #require(
+            try JSONSerialization.jsonObject(with: TestBench.payload(.expensesINR)) as? [String: Any]
+        )
+        var wants = try #require(payload["wants"] as? [String: Any])
+        wants.removeValue(forKey: "sharePercent")
+        payload["wants"] = wants
+
+        let data = try JSONSerialization.data(withJSONObject: payload)
+        let screen = try JSONDecoder().decode(ExpensesScreen.self, from: data)
+
+        #expect(screen.wants.sharePercent == nil)
+        #expect(screen.wants.allowance.display == "₹19,770", "the rest of the payload stopped decoding")
+    }
 }

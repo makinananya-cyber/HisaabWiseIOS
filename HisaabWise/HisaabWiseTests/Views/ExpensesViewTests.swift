@@ -141,6 +141,107 @@ struct ExpensesViewTests {
         #expect(picklists.other.count > HWOptionList.searchThreshold)
     }
 
+    // MARK: - The wants share
+
+    /// **Every share on offer has its own sentence**, and no two rows share one. Seven whole catalogue entries
+    /// rather than one with the number interpolated, because the digits belong to the translation — and because a
+    /// key derived as `%@` while SwiftUI looked up `%lld` is how a row comes to read its own key aloud (see
+    /// ``WantsShare``).
+    @Test("every wants share has its own row copy")
+    func everyShareHasCopy() throws {
+        var keys: [String] = []
+        for share in WantsShare.allCases {
+            keys.append(share.label.key)
+        }
+
+        #expect(Set(keys).count == WantsShare.allCases.count, "two shares share a row")
+        try CatalogueCopy.expectEnglishCopy(forKeys: keys + [
+            "expenses.wants.edit",
+            "expenses.wants.edit.hint",
+            "expenses.wants.edit.title",
+            "expenses.wants.edit.explain",
+            "expenses.wants.edit.default",
+        ])
+    }
+
+    /// The bounds come from §4.2 rather than from taste: the rule is 50 needs / 30 wants / 20 savings, and moving
+    /// the middle figure moves it at the expense of savings — so the ceiling has to leave a savings share standing,
+    /// and the default has to be on the list to be findable again.
+    @Test("the shares on offer are ordered, bounded, and include the rule of thumb")
+    func theSharesAreBounded() throws {
+        let percentages = WantsShare.allCases.map(\.percent)
+
+        #expect(percentages == percentages.sorted(), "the sheet's rows are not in ascending order")
+        #expect(Set(percentages).count == percentages.count)
+        let lowest = try #require(percentages.first)
+        let highest = try #require(percentages.last)
+        #expect(lowest >= 10)
+        // 40% wants against 50% needs still leaves a tenth to save; 45 would not.
+        #expect(highest <= 40)
+        #expect(percentages.contains(WantsShare.ruleOfThumb.percent))
+        #expect(WantsShare.ruleOfThumb.percent == 30, "the 30 in 50/30/20 moved")
+    }
+
+    /// **The Edit control is keyed on the payload, not on a constant.** `sharePercent` is `nil` while §4.2's
+    /// adaptive branch is in force, and a control that opened a sheet whose rows could not take effect is worse
+    /// than no control — so the condition the screen draws it under is asserted rather than reviewed.
+    @Test("the standing month offers a share to change, and a payload without one does not")
+    func theEditControlFollowsThePayload() async throws {
+        let standing = try await Self.loaded().wants
+        let over = try await Self.loaded(.expensesOverBudget).wants
+        #expect(standing.sharePercent != nil)
+        #expect(over.sharePercent != nil)
+    }
+
+    // MARK: - Figures that count up
+
+    /// **The parked position substitutes digits and moves nothing else.** That is the whole of what makes
+    /// ``HWCountingFigure`` compatible with ADR-0003: the symbol, the grouping separators, the decimal mark and
+    /// any sign stay exactly where the server put them, and the digit *count* is unchanged — which is what lets
+    /// `numericText` pair the glyphs positionally instead of cross-fading two strings of different lengths.
+    @Test(
+        "the zeroed figure keeps every non-digit and every position",
+        arguments: [
+            (figure: "₹5,539", zeroed: "₹0,000"),
+            (figure: "AED 12,340.50", zeroed: "AED 00,000.00"),
+            (figure: "+AED 900", zeroed: "+AED 000"),
+            (figure: "¥1,200", zeroed: "¥0,000"),
+            (figure: "-₹45", zeroed: "-₹00"),
+            // Nothing to count: a figure with no digits in it comes back untouched rather than blank.
+            (figure: "—", zeroed: "—"),
+        ]
+    )
+    func theZeroedFigureKeepsItsShape(_ testCase: (figure: String, zeroed: String)) {
+        let zeroed = HWCountingFigure.zeroed(testCase.figure)
+
+        #expect(zeroed == testCase.zeroed)
+        #expect(zeroed.count == testCase.figure.count, "the parked figure is a different length")
+        #expect(
+            zeroed.filter { !$0.isWholeNumber } == testCase.figure.filter { !$0.isWholeNumber },
+            "a character that is not a digit was changed"
+        )
+    }
+
+    /// And the property that matters most, over every figure the corpus actually contains: **a counted figure can
+    /// never be mistaken for a different amount**. A substitution that dropped a separator or a symbol would turn
+    /// `₹5,539` into a plausible-looking wrong number for the length of the roll.
+    @Test("no figure in the payload parks as something that reads as a different amount")
+    func parkingNeverInventsAFigure() async throws {
+        let screen = try await Self.loaded()
+        let figures = [
+            screen.summary.total.display,
+            screen.summary.fixed.display,
+            screen.summary.variable.display,
+            screen.summary.income.display,
+        ] + screen.categories.map(\.total.display)
+
+        for figure in figures {
+            let zeroed = HWCountingFigure.zeroed(figure)
+            #expect(zeroed != figure || !figure.contains(where: \.isWholeNumber), "\(figure) did not park")
+            #expect(!zeroed.contains { $0.isWholeNumber && $0 != "0" }, "\(zeroed) still carries a real digit")
+        }
+    }
+
     // MARK: - It renders
 
     @Test("the screen renders through the real environment in each of its months")

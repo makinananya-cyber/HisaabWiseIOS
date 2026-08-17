@@ -19,6 +19,9 @@ import SwiftUI
 /// content, so a render draws something and a test can say so; this is the scroll, the title, the toolbar, and the
 /// sheet. Chrome outside, content inside, which is the arrangement `ScreenChrome` and `BaseView` already have.
 struct ExpenseCategoryView: View {
+    /// Read for one thing only — the ground. See ``scrolling(_:)``.
+    @Environment(ThemeManager.self) private var theme
+
     let viewModel: ExpensesViewModel
 
     /// Which category. An id rather than the value, for the reason above.
@@ -52,6 +55,13 @@ struct ExpenseCategoryView: View {
         .onAppear { viewModel.open(categoryID) }
     }
 
+    /// - Note: **`hwScreenGround` is what fixes the colour inside a category**, and its absence is a consequence
+    ///   of this page not being a `BaseView`: `ScreenChrome` paints the ground for the five tab roots, and a page
+    ///   pushed on top of one gets nothing — so this took the system's white, the design's white cards vanished
+    ///   into it, and the warm `.wash` the whole app sits on stopped at the navigation push. It is the third
+    ///   caller of that modifier and the second to arrive by being looked at rather than reasoned about (Account's
+    ///   four pushed pages were the first). `HWGround.detail` is the design's own `.page--detail` treatment: the
+    ///   same wash, warming to `--meteor` at the foot.
     private func scrolling(_ category: ExpensesScreen.Category) -> some View {
         ScrollView {
             ExpenseCategoryPage(viewModel: viewModel, category: category, picker: $picker)
@@ -59,6 +69,7 @@ struct ExpenseCategoryView: View {
                 .padding(.vertical, 14)
         }
         .scrollBounceBehavior(.basedOnSize)
+        .hwScreenGround(theme.palette, .detail)
         // The design's `.editbtn`, as a toolbar item — the platform's place for a mode toggle, and hidden for the
         // `log` kind exactly as `editBtn.hidden = cat.kind === 'log'` hides it: appending an entry is not editing.
         .toolbar {

@@ -77,6 +77,27 @@ struct ExpensesScreen: Sendable, Hashable, Decodable {
         /// is what happens when one of those is worked out in two places; it is also not the same question as
         /// `fill >= 1`, because the fill clamps and the verdict does not.
         let isOver: Bool
+
+        /// The share of income the wants allowance is taken from, as **whole percent** — 30 under the plain
+        /// 50/30/20 rule, and whatever the user has since chosen instead.
+        ///
+        /// **A setting, not a figure**, which is the distinction that lets it be an `Int` here at all: it is not
+        /// an amount and not a ratio the server derived, it is the number the reader picked on the Edit sheet and
+        /// the engine now takes its 30% *from*. ``allowance`` is still the engine's output and is still never
+        /// re-derived from this (invariant 3) — a client that multiplied income by this share would be the second
+        /// owner of §4.2, which is exactly defect D11.
+        ///
+        /// **`nil` means the screen offers no choice**, and there are two ways to get there: a server that does
+        /// not send the field yet, and a month whose needs have outgrown their half of income — where §4.2's
+        /// adaptive branch splits what is left down the middle and a chosen percentage has nothing to apply to.
+        /// Optional rather than defaulted to 30, because "the plain rule is running and it is set to 30" and "we
+        /// do not know" are different states and only one of them should draw a tick beside a row.
+        ///
+        /// **No hand-written decoder for it**, unlike ``Category``'s: the synthesised one already calls
+        /// `decodeIfPresent` for an `Optional` property, so a payload written before this setting existed decodes
+        /// unchanged. Writing the initialiser out would also have meant naming `Double` in this file to decode
+        /// ``fill``, which `MoneyFormattingAbsenceTests` bans everywhere but the four geometry declarations.
+        let sharePercent: Int?
     }
 
     // MARK: - A category

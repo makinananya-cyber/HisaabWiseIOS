@@ -246,6 +246,13 @@ enum Endpoint {
     /// this is what lets the reader take the suggestion.
     static let goal = "/v1/me/goal"
 
+    /// `PUT /v1/me/budget/wants` — the share of income the wants allowance is taken from (``WantsShareUpdate``).
+    ///
+    /// Under `/v1/me` rather than `/v1/expenses` because it is the user's setting and not the month's: it outlives
+    /// the rollover, and Home's savings meter and Reports' archive read allowances derived from it too. It answers
+    /// with the Expenses screen payload, because Expenses is where it is set.
+    static let wantsShare = "/v1/me/budget/wants"
+
     /// `DELETE /v1/me` — the account, soft-deleted with a 30-day grace period (ADR-0015).
     ///
     /// **App Store 5.1.1(v)**: an app that lets somebody create an account has to let them delete it from

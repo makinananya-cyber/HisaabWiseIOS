@@ -43,6 +43,7 @@ private func hwAccentGround(
 /// states as far apart as the design intends.
 struct HWUnitHeader: View {
     @Environment(ThemeManager.self) private var theme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     /// The `1`…`5` in the `.unit-n` tile, already a string.
     ///
@@ -155,9 +156,44 @@ struct HWUnitHeader: View {
         .padding(.horizontal, 18)
         .padding(.vertical, 16)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .hwBox(fill: ground, radius: .extraLarge, elevation: isUnlocked ? .medium : .small)
+        .hwBox(fill: ground, radius: .extraLarge, elevation: isUnlocked ? .medium : .small) {
+            // Only on a live band. On the locked grey it would read as a smudge rather than as light.
+            if isUnlocked { bloom }
+        }
         .accessibilityElement(children: .contain)
     }
+
+    /// `.unit-head::after` — the soft white light in the band's top corner, drifting on a nine-second loop.
+    ///
+    /// Drawn through ``SwiftUI/View/hwBox(fill:radius:border:borderWidth:borderDash:elevation:shine:)``'s `shine`
+    /// slot, because that is where `overflow:hidden` already is: the design clips the light to the band's own
+    /// radius, and a `clipShape` here would be the same rounding written a second time.
+    ///
+    /// **Placed with negative padding rather than with an offset.** `.trailing` mirrors under Arabic and an
+    /// `offset(x:)` does not — the fix ``HWSavingsMeter`` records for its pin (ADR-0011). For the same reason the
+    /// design's 14pt *sideways* drift is dropped and its 12pt vertical drift kept: a blurred circle sliding
+    /// sideways is not what the reader is looking at, and it is not worth a direction to negate.
+    private var bloom: some View {
+        Circle()
+            .fill(
+                RadialGradient(
+                    colors: [theme.palette.brand.ink.opacity(0.3), theme.palette.brand.ink.opacity(0)],
+                    center: .center,
+                    startRadius: 0,
+                    endRadius: Self.bloomDiameter * 0.5
+                )
+            )
+            .frame(width: Self.bloomDiameter, height: Self.bloomDiameter)
+            .hwDrifts(suppressed: reduceMotion)
+            .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+            // `top:-92px;right:-46px` — most of it hangs outside the band and is clipped away, which is what
+            // leaves a wash in the corner rather than a disc on the band.
+            .padding(.top, -92)
+            .padding(.trailing, -46)
+    }
+
+    /// `.unit-head::after{width:170px;height:170px}`.
+    private static let bloomDiameter: CGFloat = 170
 }
 
 /// The design's `.track` — the zig-zagging path of lesson nodes, with the dotted line that joins them.
@@ -172,8 +208,12 @@ struct HWUnitHeader: View {
 /// layout for the same reason this reads each node's frame out of a named coordinate space: the nodes' positions
 /// depend on how the labels wrapped. Measuring also makes the path mirror for nothing — the frames come back
 /// already mirrored under Arabic, where a hand-computed `x` would have needed the direction read and negated.
+///
+/// That last claim is true **only because ``connectors`` pins its drawing to `leftToRight`**, which it did not
+/// always do. A measured frame and a drawn `Path` are in two different spaces under RTL; see the note there.
 struct HWLessonTrack: View {
     @Environment(ThemeManager.self) private var theme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     /// One node on the path. Everything both the path and its replacement draw, and nothing either derives.
     struct Node: Sendable, Equatable, Identifiable {
@@ -228,17 +268,24 @@ struct HWLessonTrack: View {
     /// main-actor-isolated by its conformance. A `String` constant is safe to read from anywhere.
     private nonisolated static let space = "hwLessonTrack"
 
+    /// `.track{padding:34px 0 18px}` — room above the first node for its **START** flag, which is an overlay and
+    /// so reserves none of its own.
+    private static let topInset: CGFloat = 34
+    private static let bottomInset: CGFloat = 18
+
+    /// `.node-row.has-start{margin-top:20px}` — the extra the design gives a row carrying the flag, on top of the
+    /// 30pt between rows. The flag needs about 36 and gets 50.
+    private static let flagRoom: CGFloat = 20
+
+    /// `.start{bottom:calc(100% + 6px)}` — between the tip of the flag's tail and the top of the ring.
+    private static let flagGap: CGFloat = 6
+
+    /// `.start::after{border:6px solid transparent}` — a 12×6 wedge, so the flag points at its node.
+    private static let tailWidth: CGFloat = 12
+    private static let tailHeight: CGFloat = 6
+
     /// Each node's centre in the track's own space, measured after layout.
     @State private var centres: [String: CGPoint] = [:]
-
-    /// And the bottom of each node's whole **column** — the node, its label, and its badge.
-    ///
-    /// Measured separately because a connector that left a node's centre going straight down ran through the
-    /// label underneath it, which is the collision the design's rotate-and-bow arithmetic exists to avoid. A
-    /// curve leaving the column instead avoids it by construction, and it needs one more number rather than a
-    /// second geometry model. **Looking at it running is what found this** — the first build drew a dotted line
-    /// through the middle of "Emergency Fund".
-    @State private var columnBottoms: [String: CGFloat] = [:]
 
     private var accent: HWPalette.UnitAccent { theme.palette.units.accent(tint) }
 
@@ -260,20 +307,25 @@ struct HWLessonTrack: View {
         .frame(maxWidth: .infinity)
         .coordinateSpace(.named(Self.space))
         .background { connectors }
-        .padding(.vertical, 8)
+        .padding(.top, Self.topInset)
+        .padding(.bottom, Self.bottomInset)
     }
 
     private func nodeColumn(_ node: Node, isLeading: Bool) -> some View {
         VStack(spacing: 6) {
-            if node.isNext {
-                startBadge
-            }
-
             HWLessonNode(node: node, tint: tint) { onSelect(node) }
                 .onGeometryChange(for: CGPoint.self) { proxy in
                     let frame = proxy.frame(in: .named(Self.space))
                     return CGPoint(x: frame.midX, y: frame.midY)
                 } action: { centres[node.id] = $0 }
+                // **An overlay rather than a row above the node**, which is what
+                // `.start{position:absolute;bottom:calc(100% + 6px)}` is. In the flow it pushed the node down and
+                // the measured centre with it, so one lesson on the whole map sat lower than its neighbours and
+                // the two connectors either side of it kinked. Out of the flow, the flag is decoration over a
+                // node whose position nothing about the flag changes.
+                .overlay(alignment: .top) {
+                    if node.isNext { startFlag }
+                }
 
             Text(verbatim: node.title)
                 .font(.hw(.caption))
@@ -291,18 +343,31 @@ struct HWLessonTrack: View {
         // `.node-row{transform:translateX(var(--x))}`, as an alignment inside the full width so it mirrors.
         .frame(maxWidth: .infinity, alignment: isLeading ? .leading : .trailing)
         .padding(isLeading ? .leading : .trailing, Self.swing)
-        .onGeometryChange(for: CGFloat.self) { proxy in
-            proxy.frame(in: .named(Self.space)).maxY
-        } action: { columnBottoms[node.id] = $0 }
+        // The room the flag hangs into. Reserved by the row rather than by the flag, because the flag is an
+        // overlay and an overlay reserves nothing — without this it would ride over the label of the row above.
+        .padding(.top, node.isNext ? Self.flagRoom : 0)
     }
 
-    /// `.start` — the bobbing "START" flag above the cursor.
+    /// `.start` — the hopping **START** flag above the cursor, and the tail that points it at the node.
     ///
-    /// **It does not bob.** The design animates it on a 1.6s loop; ADR-0012's rule is replace-never-remove, and
-    /// the replacement for a continuous attention loop is the thing itself — a bordered flag in the unit's accent
-    /// is already the loudest element on the screen. Dropping the loop rather than gating it on Reduce Motion is
-    /// what keeps this component out of the "animates without offering a replacement" shape.
-    private var startBadge: some View {
+    /// **It hops.** An earlier build dropped the design's 1.6s loop on the reading that a bordered flag in the
+    /// unit's accent is already the loudest thing on the screen. It is — and the hop is still what makes the eye
+    /// land on it out of fifteen lessons, so the loop is the design's and it is back. Suppressed under Reduce
+    /// Motion rather than replaced, for the reason ``HWAmbientLoop`` sets out: nothing in it is a fact, and the
+    /// same sentence reaches VoiceOver either way through the node's own hint.
+    ///
+    /// The tail is `.start::after{top:100%;border-top-color:var(--acc)}` — a wedge hanging out of the flag's
+    /// bottom edge into the gap below it, in the same accent as the border, so the flag points rather than floats.
+    /// It hops with the flag, as a pseudo-element of it does in the design.
+    ///
+    /// **Collapsed to nothing and hung upward, rather than offset by its own height.** The flag's height is the
+    /// reader's type size, so an offset would have to be measured — and a measured offset is a frame late, which
+    /// on the first pass drew the flag *over* the ring it is supposed to point at. `.frame(height: 0,
+    /// alignment: .bottom)` says the same thing without a number: the flag's bottom edge is the whole of its
+    /// zero-height box, so aligning that box to the node's top hangs the flag above it at every Dynamic Type step.
+    /// An `alignmentGuide` was tried first and landed the flag on the ring; **looking at it running is what found
+    /// this**, and what says the arithmetic-free version is the one to keep.
+    private var startFlag: some View {
         Text(startLabel)
             .font(.hw(.micro).weight(.heavy))
             .foregroundStyle(accent.deep)
@@ -316,6 +381,17 @@ struct HWLessonTrack: View {
                 borderWidth: 2,
                 elevation: .medium
             )
+            .overlay(alignment: .bottom) {
+                Triangle()
+                    .fill(accent.base)
+                    .frame(width: Self.tailWidth, height: Self.tailHeight)
+                    .offset(y: Self.tailHeight)
+            }
+            .hwBobs(suppressed: reduceMotion)
+            // Zero-height, bottom-aligned: the flag hangs out of the top of its own box. See the note above.
+            .frame(height: 0, alignment: .bottom)
+            // And the box's bottom clears the ring by the gap, with the tail filling it.
+            .offset(y: -(Self.flagGap + Self.tailHeight))
             // The node below says it is the next lesson in its own hint; this is the visual half.
             .accessibilityHidden(true)
     }
@@ -331,60 +407,134 @@ struct HWLessonTrack: View {
             curves(\.isDone)
                 .stroke(accent.base.opacity(0.65), style: Self.stroke)
         }
+        // **The two spaces this component works in do not agree, and this is where they are made to.**
+        //
+        // `GeometryProxy.frame(in:)` reports **visual** coordinates — x grows rightward whatever the layout
+        // direction, so a `.leading` node under Arabic measures a *large* x. A `Shape`, though, is drawn in
+        // **layout** coordinates: SwiftUI mirrors `Path` content under RTL, so `x: 0` lands at the right edge.
+        // Measured centres fed into a path therefore came out reflected, and every connector on the screen was
+        // drawn on the wrong side of its nodes.
+        //
+        // Pinning the drawing to `leftToRight` puts the path in the same space the measurements came from. The
+        // curves still mirror — the *centres* are already mirrored by the layout, which is what makes the whole
+        // path follow the nodes with no direction of its own (ADR-0011). Nothing here is text, so this is the
+        // whole of what the environment value affects.
+        //
+        // **The mismatch predates the curves.** The straight-down connectors this replaced had it too; a
+        // near-vertical line reflected about the centre looks like a near-vertical line, so it read as a slightly
+        // odd path rather than as a bug. A one-line probe of a leading marker against a `Path` at `x: 0` is what
+        // settled it — the doc comment above used to assert the opposite.
+        .environment(\.layoutDirection, .leftToRight)
         .accessibilityHidden(true)
     }
 
     /// `stroke-dasharray:2 15` at `stroke-width:4.5`, round caps — a line of dots rather than dashes.
     private static let stroke = StrokeStyle(lineWidth: 4.5, lineCap: .round, dash: [2, 15])
 
+    /// `R` in the design's `drawLinks` — "node radius plus a little breathing room", which is where a connector
+    /// leaves one ring and lands on the next.
+    ///
+    /// Built from the **node's own** diameter rather than restating 39 here: the dots stopping cleanly at the ring
+    /// is only true while the two agree, and two copies of 78 in one file agree until somebody changes one.
+    private static let clearance: CGFloat = 8
+    private static var reach: CGFloat { HWLessonNode.diameter / 2 + clearance }
+
+    /// How far the curve is turned off the straight line as it leaves a ring, and back as it arrives — the
+    /// design's `-side * 1.0` and `side * 0.75`, in radians.
+    ///
+    /// **The asymmetry is what keeps the dots off the captions.** Turned a full radian on the way out, the line
+    /// leaves the ring at its outer side and slightly *above* centre — clear of the title underneath it — bows
+    /// out past both, and comes back down into the next ring from very nearly straight above.
+    ///
+    /// Not `private`, for ``turned(_:by:)``'s reason: the asymmetry is the whole mechanism, and `LearnViewTests`
+    /// asserts that the two have not quietly become one number.
+    nonisolated static let outboundTurn = 1.0
+    nonisolated static let inboundTurn = 0.75
+
     /// The curves whose pair passes `include`.
     ///
-    /// A **cubic** leaving one column at its bottom and entering the next node from straight above, so it sweeps
-    /// past the label rather than through it — which is what the design's rotate-and-bow arithmetic achieves by a
-    /// longer route. It needs no direction of its own, because both endpoints are measured.
+    /// **The design's own arithmetic, and the second attempt at this.** The first drew a cubic straight down from
+    /// the bottom of one column into the top of the next ring. It needed each column's bottom measured as well as
+    /// its centre, it read as a column of near-vertical lines rather than as a path, and it still crowded the
+    /// captions. This bows each link *outwards* — right-hand side when the next lesson is to the right, left-hand
+    /// side when it is to the left — so the dots sweep around the ring and its caption instead of squeezing past.
+    ///
+    /// Every term comes off the two measured centres, so there is no direction in it to mirror: under Arabic the
+    /// frames arrive mirrored, `side` flips with them, and the whole path follows (ADR-0011).
+    ///
+    /// SVG and SwiftUI both put `+y` downward and turn a vector the same way, so the design's `rot` transcribes
+    /// with no sign to flip.
     private func curves(_ include: (Link) -> Bool) -> Path {
         Path { path in
             for link in links where include(link) {
-                guard link.to.y > link.from.y else { continue }
-                // Both control points sit on the waist, which keeps the curve leaving and arriving vertically —
-                // straight out of the column and straight into the ring above the next node.
-                let waist = (link.from.y + link.to.y) / 2
-                path.move(to: link.from)
+                let delta = CGPoint(x: link.to.x - link.from.x, y: link.to.y - link.from.y)
+                // `|| 1` in the design — two nodes measured at the same point would divide by zero.
+                let distance = max(hypot(delta.x, delta.y), 1)
+                let unit = CGPoint(x: delta.x / distance, y: delta.y / distance)
+
+                // Which way the next lesson lies, and so which side the bow goes.
+                let side: CGFloat = delta.x >= 0 ? 1 : -1
+                let outbound = Self.turned(unit, by: -side * Self.outboundTurn)
+                let inbound = Self.turned(CGPoint(x: -unit.x, y: -unit.y), by: side * Self.inboundTurn)
+
+                let start = CGPoint(
+                    x: link.from.x + outbound.x * Self.reach,
+                    y: link.from.y + outbound.y * Self.reach
+                )
+                let end = CGPoint(x: link.to.x + inbound.x * Self.reach, y: link.to.y + inbound.y * Self.reach)
+
+                // The perpendicular the bow pushes along, how far it pushes, and how far each end carries on in
+                // the direction it left or will arrive in. The design's `bow * 0.5` is folded into the one
+                // fraction, so the number here is the one that decides how round the curve is.
+                let normal = CGPoint(x: side * unit.y, y: -side * unit.x)
+                let bow = distance * 0.25
+                let lead = distance * 0.3
+
+                path.move(to: start)
                 path.addCurve(
-                    to: link.to,
-                    control1: CGPoint(x: link.from.x, y: waist),
-                    control2: CGPoint(x: link.to.x, y: waist)
+                    to: end,
+                    control1: CGPoint(
+                        x: start.x + outbound.x * lead + normal.x * bow,
+                        y: start.y + outbound.y * lead + normal.y * bow
+                    ),
+                    control2: CGPoint(
+                        x: end.x + inbound.x * lead + normal.x * bow,
+                        y: end.y + inbound.y * lead + normal.y * bow
+                    )
                 )
             }
         }
     }
 
-    /// One connector: where it leaves, where it arrives, and whether the lesson it leaves is finished.
+    /// A vector turned by `angle` radians — the design's `rot`, which it writes inline twice.
+    ///
+    /// `nonisolated` so `LearnViewTests` can assert the rotation rather than assert a picture of it: the bow is the
+    /// one piece of this component that is arithmetic rather than layout, and arithmetic is what a test can hold.
+    nonisolated static func turned(_ vector: CGPoint, by angle: Double) -> CGPoint {
+        let cosine = cos(angle)
+        let sine = sin(angle)
+        return CGPoint(
+            x: vector.x * cosine - vector.y * sine,
+            y: vector.x * sine + vector.y * cosine
+        )
+    }
+
+    /// One connector: the two ring centres it runs between, and whether the lesson it leaves is finished.
     private struct Link {
         let from: CGPoint
         let to: CGPoint
         let isDone: Bool
     }
 
-    /// The pairs that have both ends measured. Before the first layout pass there are none, and drawing nothing
-    /// is right — a curve to a node whose position is not known yet would be a line to the origin.
+    /// The pairs that have both centres measured. Before the first layout pass there are none, and drawing
+    /// nothing is right — a curve to a node whose position is not known yet would be a line to the origin.
     ///
-    /// It leaves from **below the label** and arrives at the top of the next **ring**, which is the asymmetry the
-    /// label collision required: a node's own label is under it, and the next node's is under *that*.
+    /// **Centres only.** The bow leaves each ring at its own outer edge, so where the caption underneath ends is
+    /// no longer something this has to know — which is one measurement fewer and one collision that cannot happen.
     private var links: [Link] {
         zip(nodes, nodes.dropFirst()).compactMap { above, below in
-            guard let from = centres[above.id],
-                  let bottom = columnBottoms[above.id],
-                  let to = centres[below.id]
-            else { return nil }
-            return Link(
-                from: CGPoint(x: from.x, y: bottom),
-                // The **node's own** diameter, read from the node rather than restated here: the curve landing on
-                // the top of the ring is only correct while the two agree, and two 78s in one file agree until
-                // somebody changes one of them.
-                to: CGPoint(x: to.x, y: to.y - HWLessonNode.diameter / 2),
-                isDone: above.state == .completed
-            )
+            guard let from = centres[above.id], let to = centres[below.id] else { return nil }
+            return Link(from: from, to: to, isDone: above.state == .completed)
         }
     }
 
@@ -416,8 +566,13 @@ struct HWLessonTrack: View {
 /// is `disabled`, and its container's click handler then says "Finish the lesson before it to unlock this one."
 /// A SwiftUI `.disabled(true)` button fires nothing at all, so the reader would tap a padlock and be told
 /// nothing. Enabled-with-a-refusal is the same experience the design delivers by a stranger route.
-private struct HWLessonNode: View {
+///
+/// **Internal rather than file-private**, which it was until the face was found crossing its own ring: the four
+/// numbers that decide whether it does are a relationship rather than four constants, and ``ringClearance`` is
+/// only assertable from a test if the type it lives on is visible to one.
+struct HWLessonNode: View {
     @Environment(ThemeManager.self) private var theme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     let node: HWLessonTrack.Node
     let tint: HWUnitTint
@@ -425,16 +580,40 @@ private struct HWLessonNode: View {
 
     private var accent: HWPalette.UnitAccent { theme.palette.units.accent(tint) }
 
-    /// `.node{width:78px;height:78px}` and `.face{width:58px}`.
+    /// `.node{width:78px;height:78px}`.
     ///
     /// ``diameter`` is not `private`: the track reads it to know where a connector has to stop, and a second copy
     /// of 78 in the same file is two numbers that agree until one of them changes.
     static let diameter: CGFloat = 78
-    private static let faceDiameter: CGFloat = 58
+
     /// `.ring circle{stroke-width:6}`.
     private static let ringWidth: CGFloat = 6
+
+    /// `.face{width:58px;height:58px}` — **54 here, and the 4pt is the whole reason the number is written down.**
+    ///
+    /// The design's face is 58 across with a `0 6px 0 0` solid block under it, so it reaches 35pt from the centre
+    /// while the inside of the ring is at 33: in the browser the face crosses its own ring by about 2pt along the
+    /// bottom. On a phone that reads as a mistake rather than as depth, and it is the first thing the eye finds.
+    /// 54 with a 4pt block reaches 31 and clears the ring on every side — the hop below included.
+    ///
+    /// The three of them are one decision, which is what ``ringClearance`` is for.
+    private static let faceDiameter: CGFloat = 54
     /// `box-shadow:0 6px 0 0` — a solid block under the face rather than a blur, which is what the design draws.
-    private static let faceLift: CGFloat = 5
+    private static let faceLift: CGFloat = 4
+    /// `@keyframes breathe{50%{transform:translateY(-4px)}}` — how far the open face rises.
+    private static let breathe: CGFloat = 4
+
+    /// The gap between the face at its furthest travel and the inside of the ring. **Positive, or the face crosses
+    /// its own ring** — which is the defect this exists to keep fixed.
+    ///
+    /// `nonisolated` and not `private` so `LearnViewTests` can assert it. Four constants that have to hold a
+    /// relationship are not four constants; a test is the only thing that keeps them one.
+    nonisolated static var ringClearance: CGFloat {
+        // The stroke is centred on a circle inset by half its width, so its inner edge is a full width in.
+        let ringInnerEdge = diameter / 2 - ringWidth
+        let faceReach = faceDiameter / 2 + max(faceLift, breathe)
+        return ringInnerEdge - faceReach
+    }
 
     private var isLocked: Bool { node.state == .locked }
 
@@ -507,6 +686,15 @@ private struct HWLessonNode: View {
                         .foregroundStyle(faceInk)
                 }
         }
+        // `.node.current .face{animation:breathe 2.4s var(--ease-io) infinite}` — the face of the lesson that is
+        // **open** rises and settles, so out of fifteen nodes the one the reader can start is the one that moves.
+        // A finished face and a locked one are still: `.done` and `.locked` carry no such rule in the design, and
+        // a map where everything moved would point at nothing.
+        //
+        // Applied to the face rather than to the node, exactly as the design's selector is: the ring stays put
+        // while the disc inside it lifts, which is what makes the movement read as the face rising out of its own
+        // shadow instead of the whole node sliding.
+        .hwBreathes(suppressed: reduceMotion || node.state != .available)
         .accessibilityHidden(true)
     }
 
@@ -654,6 +842,73 @@ struct HWLessonRow: View {
         .accessibilityLabel(Text(verbatim: title))
         .accessibilityValue(Text(verbatim: detail))
         .accessibilityHint(Text(HWComponentCopy.lessonHint(state: state, isNext: isNext)))
+    }
+}
+
+// MARK: - The map's ambient loops
+
+/// A **continuous loop that is decoration rather than feedback** — the design's `breathe`, `bob`, and `orb`, which
+/// are the three animations this screen runs forever.
+///
+/// One modifier for all three because they are one shape: a distance, a scale, a period, and the rule that
+/// `prefers-reduced-motion` stops it. Three copies of a latched `@State` and a `repeatForever` would be three
+/// places to forget the `.id(suppressed)` rebuild in — a note `LandingView`'s two ambient loops already carry
+/// twice, which is what says the shape is worth naming here.
+///
+/// **Suppression here *removes* the loop rather than replacing it, and that is ADR-0012's rule rather than an
+/// exception to it.** Replace-never-remove governs *feedback*: something the reader would otherwise not know had
+/// happened. None of these three carry a fact. The **START** flag says which lesson is next in a word and reaches
+/// VoiceOver through the node's hint; an open node's state is in its ring, its glyph, and its accessibility value;
+/// the light in a unit band's corner says nothing at all. A reader who has asked for less movement loses no
+/// information, which is the same finding `LandingView.ambientFloat` recorded for the hero card.
+///
+/// File-private on purpose. A design system earns a modifier when a second *screen* wants it, and until one does
+/// these are the Learn map's.
+private struct HWAmbientLoop: ViewModifier {
+    /// How far it travels, in points. Negative is upward.
+    let lift: CGFloat
+    /// What it grows to at the far end. `1` for the two that only travel.
+    let scale: CGFloat
+    /// The period. Seconds rather than an ``HWDuration``, because an ambient loop is not a transition — see
+    /// ``HWCurve/loop(seconds:)``, which exists to make that exception visible at the call site.
+    let seconds: Double
+    let suppressed: Bool
+
+    @State private var atFarEnd = false
+
+    func body(content: Content) -> some View {
+        let moved = atFarEnd && !suppressed
+
+        return content
+            .offset(y: moved ? lift : 0)
+            .scaleEffect(moved ? scale : 1)
+            .animation(
+                suppressed ? nil : HWMotion.easeInOut.loop(seconds: seconds).repeatForever(autoreverses: true),
+                value: atFarEnd
+            )
+            .onAppear { atFarEnd = true }
+            // Rebuilt when the setting changes, so turning Reduce Motion off starts the loop rather than waiting
+            // for a relaunch: `.animation(_:value:)` has nothing left to fire on once `atFarEnd` has latched.
+            .id(suppressed)
+    }
+}
+
+private extension View {
+    /// `@keyframes breathe` — an open lesson's face rising 4pt and settling, over 2.4s.
+    func hwBreathes(suppressed: Bool) -> some View {
+        modifier(HWAmbientLoop(lift: -4, scale: 1, seconds: 2.4, suppressed: suppressed))
+    }
+
+    /// `@keyframes bob` — the **START** flag hopping 5pt, over 1.6s.
+    func hwBobs(suppressed: Bool) -> some View {
+        modifier(HWAmbientLoop(lift: -5, scale: 1, seconds: 1.6, suppressed: suppressed))
+    }
+
+    /// `@keyframes orb` — the light in a unit band's corner drifting 12pt down and swelling to 1.16, over 9s.
+    ///
+    /// The design drifts it 14pt sideways as well; ``HWUnitHeader/bloom`` records why that half is dropped.
+    func hwDrifts(suppressed: Bool) -> some View {
+        modifier(HWAmbientLoop(lift: 12, scale: 1.16, seconds: 9, suppressed: suppressed))
     }
 }
 

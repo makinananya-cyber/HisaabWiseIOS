@@ -43,11 +43,32 @@ enum HWComponentCopy {
     /// *is*, and a screen supplying the word would be a screen able to get it wrong.
     static let closeLesson: LocalizedStringResource = "component.lesson.close"
 
+    /// `.mend-goal` — the word in front of the savings meter's far end, `Goal AED 2,000`.
+    ///
+    /// The component's rather than the screen's, unusually, and the design is why: the meter's whole idea is that
+    /// **the bar's far edge *is* the goal**, so the word naming it belongs to the bar. Two screens draw this meter
+    /// — Home and a month's detail — and a caller supplying the word would be two callers able to disagree about
+    /// what the right-hand end of the same control means. The figure inside it is still the server's.
+    static func meterGoal(_ figure: String) -> LocalizedStringResource {
+        "component.meter.goal \(figure)"
+    }
+
+    /// `#mtag` — the label that travels with the savings meter's pin, `AED 1,120 saved`.
+    ///
+    /// The component's for ``meterGoal(_:)``'s reason, and one more: the word is what stops the tag being a bare
+    /// figure floating over a gradient. The figure inside it is the server's display string, never re-formatted
+    /// (ADR-0003).
+    static func meterSaved(_ figure: String) -> LocalizedStringResource {
+        "component.meter.saved \(figure)"
+    }
+
     /// Every key the components render themselves.
     static let keys = [
         closeSheet.key, inFlight.key, unitGuide.key,
         lessonOpenHint.key, lessonLockedHint.key, lessonNextHint.key,
         closeLesson.key,
+        // Taken with a sample argument: the key is the format string, and that is what the catalogue holds.
+        meterGoal("").key, meterSaved("").key,
     ]
 
     /// The hint for one lesson: where to start, what will happen, or why it will not.

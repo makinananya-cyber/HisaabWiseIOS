@@ -75,6 +75,9 @@ struct ColorAssetTests {
         ("hwUnitViolet", "7B6BD6", 1.0, "--violet"),
         ("hwUnitVioletSoft", "E9E5FB", 1.0, "--violet-soft"),
         ("hwUnitVioletDeep", "5B4CB0", 1.0, "--violet-deep"),
+        // the two cards on Home that are not white — `.tip` and `.mini`
+        ("hwTipInk", "5E4409", 1.0, ".tip-txt color"),
+        ("hwStreakMid", "16357C", 1.0, ".mini gradient middle stop"),
         // savings-meter ramp
         ("hwMeterNothing", "F2554E", 1.0, "--r1"),
         ("hwMeterLow", "FA8A47", 1.0, "--r2"),

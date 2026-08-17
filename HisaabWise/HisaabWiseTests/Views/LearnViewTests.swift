@@ -127,8 +127,9 @@ struct LearnViewTests {
     /// screen it belonged to.
     @Test("every key the screen renders has copy behind it")
     func theScreenCopyExists() throws {
+        // No eyebrow: the design's header is the mark and two figures, and the row itself is the heading
+        // (``LearnMapPage``). `learn.title` is what it reads, so the key stays and `learn.eyebrow` has gone.
         try CatalogueCopy.expectEnglishCopy(forKeys: [
-            "learn.eyebrow",
             "learn.title",
             "learn.empty",
             "learn.start",
@@ -236,6 +237,52 @@ struct LearnViewTests {
                 #expect(caption != other, "two units share a caption")
             }
         }
+    }
+
+    // MARK: - The path's geometry
+
+    /// **The face fits inside its own ring**, which for one build it did not: the design's 58pt face with a 6pt
+    /// solid block under it reaches 35 from the centre while the inside of the ring is at 33, so the disc crossed
+    /// the arcs along the bottom. On a phone that reads as a mistake rather than as depth.
+    ///
+    /// Asserted as the relationship rather than as the four numbers, so the diameters, the block, and the hop can
+    /// all be retuned and only a combination that actually overlaps fails. A picture cannot check this — the
+    /// overlap is two points at the bottom of a 78pt circle.
+    @Test("a lesson face clears the ring around it, hop included")
+    func theFaceFitsInsideItsRing() {
+        #expect(
+            HWLessonNode.ringClearance > 0,
+            "the face crosses its own ring by \(-HWLessonNode.ringClearance)pt"
+        )
+        // And it is not clearing it by so much that the ring has a hole in the middle rather than a face in it.
+        #expect(HWLessonNode.ringClearance < 6)
+    }
+
+    /// The connectors' one piece of arithmetic: the rotation that turns a link off the straight line so it bows
+    /// around the ring and its caption instead of cutting through them.
+    ///
+    /// Checked as the two properties that make it a rotation — length is preserved, and the turn goes the way the
+    /// design's `rot` goes in a y-down space — because those are what a sign error breaks. A curve with a flipped
+    /// sign still draws; it just bows *into* the label, which is exactly the defect being fixed.
+    @Test("the connector's turn preserves length and turns the way the design turns")
+    func theConnectorTurnIsARotation() {
+        let down = CGPoint(x: 0, y: 1)
+
+        // A quarter turn of straight-down, positive: y-down and x-right means positive angles sweep from down
+        // towards the *leading* side, which is the direction the design's `-side * 1.0` relies on.
+        let quarter = HWLessonTrack.turned(down, by: .pi / 2)
+        #expect(abs(quarter.x - -1) < 0.0001, "a positive turn goes the wrong way")
+        #expect(abs(quarter.y) < 0.0001)
+
+        // Length is preserved at the angles the path actually uses, so `reach` means the same thing on every link.
+        for angle in [1.0, -1.0, 0.75, -0.75] {
+            let turned = HWLessonTrack.turned(down, by: angle)
+            #expect(abs(hypot(turned.x, turned.y) - 1) < 0.0001, "the turn changed the vector's length at \(angle)")
+        }
+
+        // And the two turns are genuinely different, which is what keeps the curve leaving a ring at its outer
+        // side and arriving at the next one from above rather than mirroring itself.
+        #expect(HWLessonTrack.outboundTurn != HWLessonTrack.inboundTurn)
     }
 
     // MARK: - It renders

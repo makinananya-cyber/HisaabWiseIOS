@@ -41,7 +41,8 @@
     },
     "percentageLabel": "108%",
     "fill": 1.0,
-    "isOver": true
+    "isOver": true,
+    "sharePercent": 30
   },
   "entry": {
     "code": "INR",

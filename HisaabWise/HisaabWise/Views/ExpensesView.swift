@@ -1,5 +1,51 @@
 import SwiftUI
 
+/// The shares of pay the wants budget may be taken from — **10% to 40% in fives**.
+///
+/// **A closed vocabulary rather than a range**, and the bounds come from §4.2 rather than from taste. The rule is
+/// 50 needs / 30 wants / 20 savings, and moving the middle figure moves it at the expense of savings — so the
+/// ceiling is what leaves a savings share standing at all (40% wants against 50% needs still leaves a tenth), and
+/// the floor is low enough for a reader remitting most of their pay home to say so. Fives, because the reader is
+/// choosing a policy for their month rather than tuning a number.
+///
+/// **An enum rather than `[10, 15, …]`, because of the copy.** A row reading `"…option \(percent)"` would put the
+/// client in the business of rendering a number into a sentence, and it would derive the catalogue key `%@` in the
+/// localisation scan while SwiftUI looked up `%lld` — one of those keys orphaned and the other missing, which is
+/// how a row comes to read its own key aloud. Seven whole sentences in the catalogue instead: the digits belong to
+/// the translation, exactly as they do for every other closed vocabulary in the app (``ExpensesScreen/Field``),
+/// and ``label`` is total over the cases so a share cannot exist without words.
+///
+/// **The server enforces the same bounds.** What is listed here is what the reader can tap, not what the rule is;
+/// a share outside it comes back as a refused write like any other bad body.
+enum WantsShare: Int, Sendable, Hashable, CaseIterable, Identifiable {
+    case tenth = 10
+    case fifteen = 15
+    case fifth = 20
+    case quarter = 25
+    /// The 30 in 50/30/20 — marked on its row, so a reader who has moved the share can find the way back.
+    case ruleOfThumb = 30
+    case thirtyFive = 35
+    case twoFifths = 40
+
+    var id: Int { rawValue }
+
+    /// Whole percent, which is what crosses the wire (``WantsShareUpdate``).
+    var percent: Int { rawValue }
+
+    /// `.opt-name` — the row's sentence. App copy: it names a rule, not anything the server stores.
+    var label: LocalizedStringResource {
+        switch self {
+        case .tenth: "expenses.wants.edit.option.10"
+        case .fifteen: "expenses.wants.edit.option.15"
+        case .fifth: "expenses.wants.edit.option.20"
+        case .quarter: "expenses.wants.edit.option.25"
+        case .ruleOfThumb: "expenses.wants.edit.option.30"
+        case .thirtyFive: "expenses.wants.edit.option.35"
+        case .twoFifths: "expenses.wants.edit.option.40"
+        }
+    }
+}
+
 /// Which category's detail page is being pushed.
 ///
 /// A wrapper rather than a bare `String`, because `navigationDestination(for:)` matches on **type**: a stack that
@@ -26,10 +72,15 @@ struct ExpenseCategoryRoute: Hashable, Sendable {
 /// its first-run donut, and the reason ``HWEmptyNote`` exists.
 struct ExpensesView: BaseView {
     @Environment(ThemeManager.self) private var theme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     /// Held rather than read from `@Environment`, so a test or a preview can construct the screen over a fixture
     /// transport. The five-tab shell puts one per tab in the environment.
     let viewModel: ExpensesViewModel
+
+    /// Whether the wants-share sheet is open. The screen's, not the view model's: which sheet is on screen is
+    /// presentation with no bearing on a write, exactly as ``ExpenseCategoryView``'s `picker` is.
+    @State private var isEditingWantsShare = false
 
     /// Overridden because the server can answer with no screen at all, and a screen that supplied no empty copy
     /// would fall back to a default that says nothing about Expenses. `isEmpty` is `false` — see the note above.
@@ -37,25 +88,32 @@ struct ExpensesView: BaseView {
         StateCopy(empty: "expenses.empty")
     }
 
+    /// **The scroll, the sheet, the destination, the toast, and the alert** — and the content is
+    /// ``ExpensesPage``.
+    ///
+    /// Split at the scroll for the reason ``ExpenseCategoryView`` records for its own split, which was found by
+    /// looking rather than designed: an `ImageRenderer` does not lay out the content of a `ScrollView`, so a render
+    /// of this whole screen comes back as an empty ground — and "the screen renders" passes on it. With the content
+    /// in a view of its own, a test can render the three bands and see them.
     @ViewBuilder
     func loadedContent(_ screen: ExpensesScreen) -> some View {
         ScrollView {
-            VStack(alignment: .leading, spacing: 18) {
-                HWTopBar(eyebrow: "expenses.eyebrow", title: Text("expenses.title"))
-
-                summary(screen)
-
-                categories(screen)
-            }
-            .padding(.horizontal, 18)
-            .padding(.vertical, 14)
+            ExpensesPage(viewModel: viewModel, screen: screen, isEditingWantsShare: $isEditingWantsShare)
+                .padding(.horizontal, 18)
+                .padding(.vertical, 14)
         }
         .scrollBounceBehavior(.basedOnSize)
+        // The wants-share sheet, presented from the top bar's Edit control. `HWSheetChrome` supplies the panel,
+        // so what this screen owns is the rows and the sentence above them.
+        .sheet(isPresented: $isEditingWantsShare) {
+            wantsShareSheet(screen)
+        }
         // One destination, pushed onto the stack the shell wraps this tab in. It carries the **id** and the page
         // re-reads the category from the view model, so a write that returns a new payload re-renders the page
         // that is open rather than leaving it showing what it was pushed with.
         .navigationDestination(for: ExpenseCategoryRoute.self) { route in
             ExpenseCategoryView(viewModel: viewModel, categoryID: route.id)
+                .hwHidesTabBar()
         }
         .hwToast(Self.copy(for: viewModel.notice), isPresented: viewModel.notice != nil)
         // The toast's lifetime is the screen's, not the component's (``HWToast``): it confirms something the user
@@ -94,77 +152,41 @@ struct ExpensesView: BaseView {
         }
     }
 
-    // MARK: - The monthly summary
-
-    /// `.summary` — the total, the three-way split, and the wants bar under a rule.
-    private func summary(_ screen: ExpensesScreen) -> some View {
-        HWSpendSummary(
-            caption: "expenses.summary.caption",
-            total: screen.summary.total.display,
-            splits: [
-                .init("expenses.summary.fixed", screen.summary.fixed.display),
-                .init("expenses.summary.variable", screen.summary.variable.display),
-                .init("expenses.summary.income", screen.summary.income.display),
-            ]
-        ) {
-            HWBudgetBar(
-                caption: "expenses.wants.caption",
-                amount: Self.wantsAmount(screen.wants),
-                percentageLabel: screen.wants.percentageLabel,
-                fill: screen.wants.fill,
-                isOver: screen.wants.isOver,
-                accessibilityDescription: Self.wantsDescription(screen.wants)
-            )
-        }
-    }
-
-    // MARK: - The seven categories
-
-    /// `.bubble` — the tinted panel the rows sit in, with its caption and hint.
-    private func categories(_ screen: ExpensesScreen) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            HStack(alignment: .firstTextBaseline, spacing: 10) {
-                Text("expenses.categories.caption")
-                    .hwEyebrow()
+    /// The sheet behind **Edit** — one row per share the reader may choose, with a tick on the one in force.
+    ///
+    /// **Rows rather than a slider**, and the design's own vocabulary rather than a new one: `HWSheetChrome`,
+    /// `HWSheetList`, and `HWSheetRow` are what every other choice in the app is made from — a currency, a
+    /// country, a mode of transport — so this reads as the same kind of decision. A slider would also invite a
+    /// figure to be shown against each position, and the only figure worth showing is the resulting allowance,
+    /// which the engine computes and the client may not (invariant 3): the honest sequence is choose, send, and
+    /// read the allowance the server sends back.
+    private func wantsShareSheet(_ screen: ExpensesScreen) -> some View {
+        HWSheetChrome(title: "expenses.wants.edit.title", onClose: { isEditingWantsShare = false }) {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("expenses.wants.edit.explain")
+                    .font(.hw(.body))
+                    .foregroundStyle(theme.palette.surface.inkSecondary)
                     .fixedSize(horizontal: false, vertical: true)
+                    .padding(.horizontal, 20)
 
-                Spacer(minLength: 0)
-
-                Text("expenses.categories.hint")
-                    .font(.hw(.caption))
-                    .foregroundStyle(theme.palette.accent.base)
-                    .fixedSize(horizontal: false, vertical: true)
-            }
-            .padding(.horizontal, 12)
-            .padding(.bottom, 4)
-            .accessibilityElement(children: .combine)
-            .accessibilityAddTraits(.isHeader)
-
-            ForEach(screen.categories) { category in
-                // A `NavigationLink` rather than a button plus a path append: the row *is* the destination, and
-                // the shell already wraps this tab in a stack.
-                NavigationLink(value: ExpenseCategoryRoute(id: category.id)) {
-                    HWCategoryRowLabel(
-                        name: category.name,
-                        hint: category.hint,
-                        total: category.total.display,
-                        systemImage: Self.symbol(category.icon),
-                        isIncoming: category.flow == .incoming
-                    )
+                HWSheetList {
+                    ForEach(WantsShare.allCases) { share in
+                        HWSheetRow(
+                            name: Text(share.label),
+                            meta: share == .ruleOfThumb ? Text("expenses.wants.edit.default") : nil,
+                            isSelected: share.percent == screen.wants.sharePercent
+                        ) {
+                            isEditingWantsShare = false
+                            Task { await viewModel.setWantsShare(share.percent) }
+                        }
+                    }
                 }
-                .buttonStyle(HWPressStyle())
-                .accessibilityElement(children: .ignore)
-                .accessibilityLabel(Text(verbatim: category.name))
-                .accessibilityValue(Text(verbatim: category.total.display))
-                .accessibilityHint(Text(verbatim: category.hint))
             }
+            .padding(.top, 2)
         }
-        .padding(8)
-        .hwBox(
-            fill: theme.palette.accent.tintSecondary,
-            radius: .extraLarge,
-            border: theme.palette.surface.separator
-        )
+        // Tall enough for seven rows and the sentence above them, and short enough that the summary card stays
+        // visible behind it — the figure the choice is about is on that card.
+        .presentationDetents([.medium, .large])
     }
 
     // MARK: - Mapping
@@ -223,9 +245,182 @@ struct ExpensesView: BaseView {
         case .entryRemoved: "expenses.notice.entryRemoved"
         case .fixedUpdated: "expenses.notice.fixedUpdated"
         case .billsUpdated: "expenses.notice.billsUpdated"
+        case .wantsShareUpdated: "expenses.notice.wantsShareUpdated"
         case nil: nil
         }
     }
+}
+
+
+/// The screen's **content** — the top bar, the summary card, and the panel of seven category rows.
+///
+/// Split from ``ExpensesView`` at the scroll, which is the split ``ExpenseCategoryPage`` already makes one level
+/// down and for the same reason: an `ImageRenderer` does not lay out the content of a `ScrollView`, so a render of
+/// the whole screen came back as an empty ground and the test asserting that it "renders" was passing on it.
+/// Chrome outside, content inside.
+///
+/// It takes the payload rather than reading it back out of the view model, because the chrome has already unwrapped
+/// it — `loadedContent(_:)` is handed a loaded screen, and a second `state` read here would be a second place that
+/// could disagree about which state the screen is in (`StateTaxonomyTests`). The view model is still held, for the
+/// two things the bands genuinely ask it: whether a write is in flight, and where a chosen share is sent.
+struct ExpensesPage: View {
+    @Environment(ThemeManager.self) private var theme
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    let viewModel: ExpensesViewModel
+
+    /// The payload as the chrome has it — see the note above.
+    let screen: ExpensesScreen
+
+    /// Owned by the chrome, because the chrome is what presents the sheet. The same arrangement
+    /// ``ExpenseCategoryPage`` has with its `picker`.
+    @Binding var isEditingWantsShare: Bool
+
+    var body: some View {
+        // `.rise` with the design's own `animation-delay` per band — `.topbar` at .02s, `.summary` at .08s,
+        // `.bubble` at .14s. The stagger is `hwEnters(step:)`'s, whose six delays are the design's; the three
+        // bands here take its first three. Suppressed under Reduce Motion, where the content has simply already
+        // arrived (ADR-0012, and see `HWStaggeredEntrance`).
+        VStack(alignment: .leading, spacing: 18) {
+            topBar
+                .hwEnters(step: 0, suppressed: reduceMotion)
+
+            summary
+                .hwEnters(step: 1, suppressed: reduceMotion)
+
+            categories
+                .hwEnters(step: 2, suppressed: reduceMotion)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+
+    // MARK: - The top bar and its Edit control
+
+    /// `.topbar` — the logo, the eyebrow over the title, and **Edit** at the trailing edge.
+    ///
+    /// The design's `.topbar` on this screen has an empty trailing slot; the `.editbtn` it defines is used on the
+    /// *detail* pages, to turn a `lines` or `fixed` category's edit mode on. This one is a second use of the same
+    /// control for the thing the design never gave the reader a way to do: change the share of income their wants
+    /// budget is taken from. ``HWEditButton`` rather than a new control, because the design already has a pill
+    /// that means "change what this screen is showing you", and a second shape for the same meaning is how two
+    /// controls come to look nearly alike.
+    ///
+    /// **Absent when there is nothing to choose.** `sharePercent` is `nil` while the adaptive branch of §4.2 is in
+    /// force — needs have outgrown half of income, so what is left is split down the middle and a percentage has
+    /// nothing to apply to — and a control that opened a sheet whose rows could not take effect would be worse
+    /// than no control. `isOn` is false always: this opens a sheet rather than entering a mode, so there is no
+    /// inverted state to be in.
+    @ViewBuilder
+    private var topBar: some View {
+        HWTopBar(eyebrow: "expenses.eyebrow", title: Text("expenses.title")) {
+            if screen.wants.sharePercent != nil {
+                HWEditButton(
+                    "expenses.wants.edit",
+                    systemImage: "slider.horizontal.3",
+                    isOn: false,
+                    state: viewModel.isWriting ? .inFlight : .ready
+                ) {
+                    isEditingWantsShare = true
+                }
+                .accessibilityHint(Text("expenses.wants.edit.hint"))
+            }
+        }
+    }
+
+    // MARK: - The monthly summary
+
+    /// `.summary` — the total, the three-way split, and the wants bar under a rule.
+    private var summary: some View {
+        HWSpendSummary(
+            caption: "expenses.summary.caption",
+            total: screen.summary.total.display,
+            splits: [
+                .init("expenses.summary.fixed", screen.summary.fixed.display),
+                .init("expenses.summary.variable", screen.summary.variable.display),
+                .init("expenses.summary.income", screen.summary.income.display),
+            ]
+        ) {
+            HWBudgetBar(
+                caption: "expenses.wants.caption",
+                amount: ExpensesView.wantsAmount(screen.wants),
+                percentageLabel: screen.wants.percentageLabel,
+                fill: screen.wants.fill,
+                isOver: screen.wants.isOver,
+                accessibilityDescription: ExpensesView.wantsDescription(screen.wants)
+            )
+        }
+    }
+
+    // MARK: - The seven categories
+
+    /// `.bubble` — the tinted panel the rows sit in, with its caption and hint.
+    private var categories: some View {
+        VStack(alignment: .leading, spacing: 6) {
+            HStack(alignment: .firstTextBaseline, spacing: 10) {
+                Text("expenses.categories.caption")
+                    .hwEyebrow()
+                    .fixedSize(horizontal: false, vertical: true)
+
+                Spacer(minLength: 0)
+
+                Text("expenses.categories.hint")
+                    .font(.hw(.caption))
+                    .foregroundStyle(theme.palette.accent.base)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(.horizontal, 12)
+            .padding(.bottom, 4)
+            .accessibilityElement(children: .combine)
+            .accessibilityAddTraits(.isHeader)
+
+            ForEach(screen.categories) { category in
+                // A `NavigationLink` rather than a button plus a path append: the row *is* the destination, and
+                // the shell already wraps this tab in a stack.
+                NavigationLink(value: ExpenseCategoryRoute(id: category.id)) {
+                    HWCategoryRowLabel(
+                        name: category.name,
+                        hint: category.hint,
+                        total: category.total.display,
+                        systemImage: ExpensesView.symbol(category.icon),
+                        isIncoming: category.flow == .incoming
+                    )
+                }
+                .buttonStyle(HWPressStyle())
+                .accessibilityElement(children: .ignore)
+                .accessibilityLabel(Text(verbatim: category.name))
+                .accessibilityValue(Text(verbatim: category.total.display))
+                .accessibilityHint(Text(verbatim: category.hint))
+            }
+        }
+        .padding(8)
+        .hwBox(
+            fill: bubbleGround,
+            radius: .extraLarge,
+            border: theme.palette.surface.separator
+        )
+    }
+
+    /// `.bubble{background:linear-gradient(180deg,rgba(208,227,255,.62),rgba(186,214,235,.34))}`.
+    ///
+    /// **A translucent sky→venus fade, where this was drawing flat opaque venus** — which is why the panel came
+    /// back a solid grey-blue slab instead of the pale wash in the design. Two things were wrong and each mattered:
+    /// the design fades *between* the two tints rather than using one of them, and it does so at 62% and 34%
+    /// opacity, so the warm `.wash` behind the screen shows through the panel and the seven white rows sit on
+    /// something lighter than themselves at the top and cooler at the foot.
+    ///
+    /// `accent.tint` is `--sky` and `accent.tintSecondary` is `--venus`, so both stops are roles and the later
+    /// palette swap reaches both (ADR-0001).
+    private var bubbleGround: LinearGradient {
+        LinearGradient(
+            colors: [
+                theme.palette.accent.tint.opacity(0.62),
+                theme.palette.accent.tintSecondary.opacity(0.34),
+            ],
+            startPoint: .top,
+            endPoint: .bottom
+        )
+    }
+
 }
 
 #if DEBUG

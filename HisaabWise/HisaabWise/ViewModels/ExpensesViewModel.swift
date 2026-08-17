@@ -300,6 +300,27 @@ final class ExpensesViewModel: BaseViewModel {
 
     func editFixedAmount(_ text: String) { fixedAmount = text }
 
+    // MARK: - Personalising the wants share
+
+    /// **Sets the share of income the wants allowance is taken from** — `PUT /v1/me/budget/wants`.
+    ///
+    /// The 50/30/20 rule ships as the default and this is what lets the reader move the middle figure. What goes
+    /// out is the percentage they chose and nothing else: the allowance comes back **computed by the engine**
+    /// (invariant 3, ``WantsShareUpdate``), so this method holds no arithmetic and the screen it re-renders from is
+    /// the server's.
+    ///
+    /// Nothing is sent when the choice is the one already in force, which is the ordinary case of tapping the row
+    /// that already has a tick beside it: a `PUT` that changes nothing still costs a round trip and still answers
+    /// with a toast saying something happened.
+    func setWantsShare(_ percent: Int) async {
+        guard percent != state.value?.wants.sharePercent else { return }
+
+        let body = WantsShareUpdate(percent: percent)
+        await write(.other, notice: .wantsShareUpdated) {
+            try await self.client.put(Endpoint.wantsShare, body: body, as: ExpensesScreen.self)
+        }
+    }
+
     func addBill() {
         billDrafts.append(BillDraft(id: nil, name: "", amount: "", icon: .bolt))
     }
@@ -615,6 +636,9 @@ extension ExpensesViewModel {
         case entryRemoved
         case fixedUpdated
         case billsUpdated
+        /// The fifth, and the only one the design has no toast for — it is the write the design has no control
+        /// for either. See ``ExpensesViewModel/setWantsShare(_:)``.
+        case wantsShareUpdated
     }
 
     /// The offer to file a refused write into the live month (§4.5).

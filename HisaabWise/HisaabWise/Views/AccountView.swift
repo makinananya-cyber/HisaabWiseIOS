@@ -54,6 +54,7 @@ struct AccountView: BaseView {
         // a row — and the `switch` inside it is where they differ.
         .navigationDestination(for: AccountDetailRoute.self) { route in
             page(route.section)
+                .hwHidesTabBar()
         }
         .hwToast(Self.copy(for: viewModel.notice), isPresented: viewModel.notice != nil)
         // The toast's lifetime is the screen's, not the component's (``HWToast``): it confirms something the user

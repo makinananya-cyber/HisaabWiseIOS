@@ -398,9 +398,14 @@ final class AccountViewModel: BaseViewModel {
             return
         }
 
-        // The screen's own payload was formatted in the old language, so it is re-read like every other. A
-        // reload that fails reports itself through `load()`, which is the one owner of that mapping (ADR-0016).
-        try? await load()
+        // The screen's own payload was formatted in the old language, so it is re-read — but **quietly**. The
+        // language switch has already succeeded on the server (`language.select` above), so the reader is looking
+        // at a good, correctly-worded screen. Re-reading through `load()` would blank it to a spinner and then, if
+        // the follow-up GET happened to fail, to a `.failed` placeholder — reporting an error for a change that
+        // worked, which is the warning triangle seen after switching language. `refreshQuietly()` swaps in the
+        // newly-formatted payload when it lands and keeps the current one when it does not: the same reasoning
+        // that method already documents, and the graceful shape `selectCurrency`'s `write(...)` has.
+        await refreshQuietly()
         notice = .languageChanged
         await repaint?.repaintEveryScreen()
     }

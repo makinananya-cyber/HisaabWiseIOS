@@ -58,15 +58,15 @@
     },
     {
       "id": "remittance",
-      "short": "Sending money home",
+      "short": "Remittances in the UAE",
       "icon": "globe",
-      "accent": 4
+      "accent": 2
     },
     {
       "id": "credit",
-      "short": "Borrowing and credit",
+      "short": "Debt management guidance",
       "icon": "steps",
-      "accent": 1
+      "accent": 4
     }
   ]
 }

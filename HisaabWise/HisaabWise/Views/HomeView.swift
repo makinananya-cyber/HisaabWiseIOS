@@ -16,6 +16,15 @@ struct HomeView: BaseView {
     @Environment(ThemeManager.self) private var theme
     @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
+    /// Read for the two places this screen lays out **two things side by side**: the ring and its key, and the
+    /// streak panel and the reading list. The design pairs both and stacks them at its own narrow breakpoint;
+    /// above the accessibility sizes neither half has the width to be worth reading, so the same thing happens
+    /// here. Not a clamp — nothing on this screen caps how large text may get (ADR-0012).
+    @Environment(\.dynamicTypeSize) private var typeSize
+
+    /// How wide the `.duo` row turned out to be, so its two columns can take the design's ratio. See ``duo(_:)``.
+    @State private var duoWidth: CGFloat = 0
+
     /// Held rather than read from `@Environment` so that a test can construct the screen over a fixture
     /// transport. The five-tab shell puts one per tab in the environment.
     let viewModel: HomeViewModel
@@ -47,13 +56,18 @@ struct HomeView: BaseView {
         StateCopy(empty: "home.empty")
     }
 
+    /// Whether the two paired layouts on this screen have to stack. See ``typeSize``.
+    private var stacksPairs: Bool { typeSize.isAccessibilitySize }
+
     @ViewBuilder
     func loadedContent(_ screen: HomeScreen) -> some View {
         ScrollView {
-            VStack(spacing: 16) {
+            VStack(spacing: 14) {
                 greeting(screen)
                 spendingCard(screen)
                 savingsCard(screen)
+                // **Not inside an `HWCard`.** The tip draws its own warm surface (see ``HWTipCard``); wrapping it
+                // put the one coloured card on Home inside a white one.
                 tipCard(screen)
                 duo(screen)
             }
@@ -64,7 +78,16 @@ struct HomeView: BaseView {
         // One destination, pushed onto the stack the shell wraps this tab in. The teaser carries the id and the
         // title; the body is fetched by the screen it opens (ADR-0020).
         .navigationDestination(for: HomeScreen.ArticleTeaser.self) { teaser in
-            ArticleView(viewModel: viewModel.articleViewModel(for: teaser), title: teaser.short)
+            // The glyph and the accent travel with the teaser, so the article opens in the colour the row it was
+            // tapped on was drawn in. Without them every article opened in the same default tint, and three
+            // differently-coloured rows led to three identical screens.
+            ArticleView(
+                viewModel: viewModel.articleViewModel(for: teaser),
+                title: teaser.short,
+                systemImage: Self.symbol(teaser.icon),
+                accent: teaser.accent
+            )
+            .hwHidesTabBar()
         }
     }
 
@@ -73,15 +96,18 @@ struct HomeView: BaseView {
     /// `.hello` — "Good morning, Ananya" over the date. **Both are the server's** (invariant 6): the prototype
     /// read `new Date().getHours()`, which a device-clock change moves.
     private func greeting(_ screen: HomeScreen) -> some View {
-        VStack(alignment: .leading, spacing: 2) {
-            Text("home.greeting \(screen.greeting) \(screen.name)")
+        VStack(alignment: .leading, spacing: 3) {
+            // `.hello-h span{color:var(--planetary)}` — **the name is a lighter blue than the greeting**, which is
+            // the one piece of colour on this line and the whole reason it reads as addressed to somebody rather
+            // than printed at them.
+            Text(Self.tintedGreeting(screen, accent: theme.palette.accent.base))
                 .font(.hw(.title))
                 .foregroundStyle(theme.palette.surface.ink)
                 .fixedSize(horizontal: false, vertical: true)
 
             Text(verbatim: screen.dateLabel)
                 .font(.hw(.body))
-                .foregroundStyle(theme.palette.surface.inkSecondary)
+                .foregroundStyle(theme.palette.surface.inkTertiary)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -89,27 +115,62 @@ struct HomeView: BaseView {
         .accessibilityAddTraits(.isHeader)
     }
 
+    /// The greeting sentence with the **name** in the accent, and the rest in ink.
+    ///
+    /// **One `Text`, tinted after resolution — not two `Text`s joined.** "Good evening, Ananya" is a sentence whose
+    /// word order a translation may change, and `Text(greeting) + Text(name)` pins the name to the end, which is
+    /// exactly the assembly ADR-0011 forbids. So the catalogue resolves the whole line with both arguments in its
+    /// own order, and only then is the range the name occupies given a colour.
+    ///
+    /// Locating it by `range(of:)` is safe because the client passed the string in: it is looking for a value it
+    /// supplied, not parsing prose. A name that cannot be found — a translation that transliterated it, a name that
+    /// is empty — leaves the line entirely in ink, which is the greeting without its flourish rather than a wrong
+    /// one. `static` and pure so that is a rule a test can hand every case to.
+    static func tintedGreeting(_ screen: HomeScreen, accent: Color) -> AttributedString {
+        var line = AttributedString(String(localized: "home.greeting \(screen.greeting) \(screen.name)"))
+        guard !screen.name.isEmpty, let range = line.range(of: screen.name) else { return line }
+        line[range].foregroundColor = accent
+        return line
+    }
+
     // MARK: - Spending
 
     private func spendingCard(_ screen: HomeScreen) -> some View {
         HWCard {
-            VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 16) {
                 cardTop("home.spending.caption", sub: screen.monthLabel)
 
                 if screen.spending.isFirstRun {
                     firstRun(screen)
                 } else {
-                    // The ring, then the key — which the design draws at **every** size, and which is therefore
-                    // the screen's rather than something `hwVisualisation` supplies. Above the accessibility
-                    // threshold the ring goes and this list is what remains, so there is one list either way.
-                    donut(screen)
-                    HWCategoryList(
-                        slices: Self.slices(screen),
-                        isolated: viewModel.isolated,
-                        onIsolate: { viewModel.isolate($0) }
-                    )
+                    // **The design's `.spend` row: the ring on the leading side, the key beside it.** This was a
+                    // column — ring, then key, then button, each full width — which made the card twice as tall as
+                    // the design's and left a 132pt ring centred in 320pt of white. The key is drawn at every
+                    // size, which is why it is the screen's rather than something `hwVisualisation` supplies:
+                    // above the accessibility threshold the ring is gone and this same list is what remains.
+                    spendingSplit(screen)
+
+                    // `.add-below` — **under** the ring and the key, so it is the last thing the eye reaches on
+                    // the card rather than the thing between the figures and their labels.
                     HWButton("home.spending.addMore", systemImage: "plus", action: onAddExpense)
                 }
+            }
+        }
+    }
+
+    /// The ring and its key, side by side or stacked. See ``stacksPairs``.
+    @ViewBuilder
+    private func spendingSplit(_ screen: HomeScreen) -> some View {
+        let key = HWCategoryList(slices: Self.slices(screen), isolated: viewModel.isolated)
+
+        if stacksPairs {
+            // The ring has already stood aside for the list at these sizes (`HWDonut` returns nothing), so this
+            // is the key on its own and there is no row left to make.
+            key
+        } else {
+            HStack(alignment: .center, spacing: 14) {
+                donut(screen)
+                key.frame(maxWidth: .infinity, alignment: .leading)
             }
         }
     }
@@ -122,7 +183,6 @@ struct HomeView: BaseView {
         ) {
             centreReadout(screen)
         }
-        .frame(maxWidth: .infinity)
     }
 
     /// `.donut-mid` — a caption, a figure, and a share. It says either the total and its **% of pay** or one
@@ -222,22 +282,18 @@ struct HomeView: BaseView {
                     goalLabel: screen.savings.goal.display,
                     percentageLabel: screen.savings.percentageLabel,
                     verdict: Self.verdict(screen.savings.verdict),
+                    // The `.mf-l` sentence, chosen by the **server's** verdict and interpolating the server's
+                    // figures. Three whole sentences in the catalogue rather than one assembled from a verdict and
+                    // a number: the prototype built it with string concatenation and `<b>` tags, which no
+                    // translation can reorder (ADR-0011). It is passed *into* the meter because the design puts it
+                    // on the same row as the percentage pill.
+                    foot: Text(Self.footLine(screen.savings)),
                     accessibilityDescription: Self.meterDescription(screen.savings)
                 )
 
-                // The `.mf-l` sentence, chosen by the **server's** verdict and interpolating the server's figures.
-                // Three whole sentences in the catalogue rather than one assembled from a verdict and a number:
-                // the prototype built it with string concatenation and `<b>` tags, which no translation can
-                // reorder (ADR-0011).
                 if let nudge = screen.savings.goalNudge {
                     goalNudgeNote(nudge)
                 }
-
-                Text(Self.footLine(screen.savings))
-                    .font(.hw(.caption))
-                    .foregroundStyle(theme.palette.surface.inkSecondary)
-                    .fixedSize(horizontal: false, vertical: true)
-                    .frame(maxWidth: .infinity, alignment: .leading)
             }
         }
     }
@@ -295,51 +351,109 @@ struct HomeView: BaseView {
     private func tipCard(_ screen: HomeScreen) -> some View {
         let tip = viewModel.tip(in: screen)
 
-        return HWCard {
-            HWTipCard(text: tip.resolvedText) {
-                Task { await viewModel.showAnotherTip(after: tip) }
-            }
+        // No `HWCard` around it: `HWTipCard` **is** a card, and the design's is the warm one (see its own note).
+        return HWTipCard(text: tip.resolvedText) {
+            Task { await viewModel.showAnotherTip(after: tip) }
         }
     }
 
     // MARK: - Streak and reading
 
-    /// `.duo` — the streak card and the reading list. A column rather than the design's two-up grid: at
-    /// accessibility sizes two cards side by side leave neither enough width, and the design's own breakpoint
-    /// stacks them.
+    /// `.duo` — the streak panel on the leading side and the reading list beside it, at the design's
+    /// `1fr 1.15fr` ratio.
+    ///
+    /// **A row, which it was not.** This drew as a column on the grounds that "at accessibility sizes two cards
+    /// side by side leave neither enough width" — true, and an argument for stacking *at those sizes*, which is
+    /// what ``stacksPairs`` now does. Stacking at every size gave up the design's whole bottom third: the two
+    /// halves say different kinds of thing — one lesson to continue, three things to read — and side by side is
+    /// what makes that legible as a choice rather than as a list.
+    @ViewBuilder
     private func duo(_ screen: HomeScreen) -> some View {
-        VStack(spacing: 16) {
-            HWStreakCard(
-                streak: screen.learning.streak,
-                summary: screen.learning.summary,
-                nextLesson: screen.learning.nextLesson,
-                action: onContinueLearning
-            )
+        let streak = HWStreakCard(
+            streak: screen.learning.streak,
+            summary: screen.learning.summary,
+            nextLesson: screen.learning.nextLesson,
+            action: onContinueLearning
+        )
 
-            HWCard {
-                VStack(alignment: .leading, spacing: 8) {
-                    Text("home.reads.caption")
-                        .hwEyebrow()
-                        .fixedSize(horizontal: false, vertical: true)
-                        .accessibilityAddTraits(.isHeader)
+        if stacksPairs {
+            VStack(spacing: 14) {
+                streak
+                reads(screen)
+            }
+        } else {
+            HStack(alignment: .top, spacing: Self.duoSpacing) {
+                streak.frame(width: streakColumn)
+                reads(screen).frame(maxWidth: .infinity)
+            }
+            // **`grid-template-columns:1fr 1.15fr`, measured rather than approximated.** Equal halves were the
+            // first attempt and they cost the reading list a word: at 171pt the row hyphenated "Remittances" in
+            // the middle. `onGeometryChange` rather than a `GeometryReader` — the reader would collapse this
+            // row's height inside the screen's `VStack` and have to be undone with a fixed one, which is the
+            // trade that made equal columns look like the cheaper option.
+            .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { duoWidth = $0 }
+        }
+    }
 
-                    ForEach(screen.articles) { teaser in
-                        // A `NavigationLink` rather than a button plus a path append: the row *is* the
-                        // destination, and the shell already wraps this tab in a stack.
-                        NavigationLink(value: teaser) {
-                            HWReadRowLabel(
-                                title: teaser.short,
-                                systemImage: Self.symbol(teaser.icon),
-                                accent: teaser.accent
-                            )
-                        }
-                        .buttonStyle(HWPressStyle.compact)
-                        .accessibilityLabel(Text(verbatim: teaser.short))
-                        .accessibilityHint(Text("home.reads.hint"))
-                    }
+    /// `.duo{gap:12px}`
+    private static let duoSpacing: CGFloat = 12
+
+    /// The streak column's share of the row.
+    ///
+    /// **`1 : 1.3`, where the design writes `1fr 1.15fr`** — and the extra tenth is the type scale's doing rather
+    /// than a preference. The design sets `.read-t` at 11.5px; these titles are at the `body` step, which is 15pt
+    /// (see `HWTextStyle`), and at the design's own ratio the word "Remittances" does not fit on one line of the
+    /// narrower column and gets hyphenated mid-word. The streak card has room to give: it holds one number and two
+    /// short lines. Bigger text was the change asked for, so the column that carries text is the one that grows.
+    private static let streakShare = 1.0 / 2.3
+
+    /// The streak column's width, or `nil` before the row has been measured — on the first pass the two cards take
+    /// their natural widths, which is one frame nobody sees.
+    private var streakColumn: CGFloat? {
+        guard duoWidth > 0 else { return nil }
+        return (duoWidth - Self.duoSpacing) * Self.streakShare
+    }
+
+    /// `.reads` — the "Read more about" card and its three rows.
+    ///
+    /// **Its own box rather than an ``HWCard``**, for one number: `HWCard` carries `.card{padding:18px 16px}` and
+    /// the design gives this one `.reads{padding:14px 12px 12px}`. Eight points of horizontal padding is a word on
+    /// a title in a column this narrow, and the design tightened it here for exactly that reason.
+    private func reads(_ screen: HomeScreen) -> some View {
+        VStack(alignment: .leading, spacing: 8) {
+            Text("home.reads.caption")
+                .hwEyebrow()
+                .fixedSize(horizontal: false, vertical: true)
+                .accessibilityAddTraits(.isHeader)
+                .padding(.horizontal, 4)
+
+            ForEach(screen.articles) { teaser in
+                // A `NavigationLink` rather than a button plus a path append: the row *is* the
+                // destination, and the shell already wraps this tab in a stack.
+                NavigationLink(value: teaser) {
+                    HWReadRowLabel(
+                        title: teaser.short,
+                        systemImage: Self.symbol(teaser.icon),
+                        accent: teaser.accent
+                    )
                 }
+                .buttonStyle(HWPressStyle.compact)
+                .accessibilityLabel(Text(verbatim: teaser.short))
+                .accessibilityHint(Text("home.reads.hint"))
             }
         }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(.horizontal, 12)
+        .padding(.top, 14)
+        .padding(.bottom, 12)
+        .hwBox(
+            fill: theme.palette.surface.raised,
+            radius: .extraLarge,
+            border: theme.palette.surface.separator,
+            elevation: .small
+        )
+        // One card, read as a card — the same thing `HWCard` does for the two above it.
+        .accessibilityElement(children: .contain)
     }
 
     // MARK: - Card chrome

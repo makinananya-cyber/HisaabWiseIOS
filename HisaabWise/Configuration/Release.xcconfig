@@ -1,11 +1,13 @@
 // Release — production (workspace Rule 2, ADR-0010).
 //
-// TODO(decision): api-domain — see `Staging.xcconfig`. Same reserved-TLD placeholder, same reason:
-// the domain is unresolved (`DEVELOPMENT_PLAN.md` §7) and Rule 7 forbids hardcoding a host in the
-// meantime.
+// This is the configuration the **"Release"** scheme builds and archives: the shipping
+// build, pointed at the production backend.
+//
+// The base URL is the bare **origin** — `APIClient` hangs `/v1/...` off it (APIClient.swift), and
+// `/health` is the backend's health probe, not the API root, so it must not appear here.
 //
 // `//` opens a comment in an .xcconfig; `$()` expands to nothing and breaks the token up.
-HW_API_BASE_URL = https:/$()/api.hisaabwise.invalid
+HW_API_BASE_URL = https:/$()/hisaabwise-backend.onrender.com
 
 // No ATS exception: production is HTTPS. Only `Info-Debug.plist` carries one.
 INFOPLIST_FILE = Configuration/Info.plist

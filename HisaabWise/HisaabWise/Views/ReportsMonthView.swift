@@ -333,11 +333,9 @@ struct ReportsMonthPage: View {
                     // screen's rather than something `hwVisualisation` supplies. Above the accessibility threshold
                     // the ring goes and this list is what remains, so there is one list either way.
                     donut(slices)
-                    HWCategoryList(
-                        slices: slices,
-                        isolated: viewModel.isolated,
-                        onIsolate: { viewModel.isolate($0) }
-                    )
+                    // Isolating a slice is the **ring's** affordance and no longer the key's — see
+                    // ``HWCategoryList``. The list still reads `isolated`, so a wedge tapped above is marked here.
+                    HWCategoryList(slices: slices, isolated: viewModel.isolated)
                 }
             }
         }
@@ -459,10 +457,12 @@ struct ReportsMonthPage: View {
                     goalLabel: screen.savings.goal.display,
                     percentageLabel: screen.percentageLabel,
                     verdict: ReportsMonthView.meterVerdict(screen.verdict),
+                    // Passed *into* the meter rather than drawn beneath it, so the sentence and the percentage
+                    // pill share one row — the design's `.meter-foot`. Home does the same with its own three
+                    // sentences; a screen drawing this underneath left the pill on a line of its own.
+                    foot: Text(ReportsMonthView.meterFoot(screen.savings)),
                     accessibilityDescription: Text(ReportsMonthView.meterDescription(screen))
                 )
-
-                footLine(ReportsMonthView.meterFoot(screen.savings))
             }
         }
     }

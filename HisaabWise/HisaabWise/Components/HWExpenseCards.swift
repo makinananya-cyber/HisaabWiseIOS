@@ -52,13 +52,16 @@ struct HWSpendSummary<Footer: View>: View {
                 .hwEyebrow(.brand)
                 .fixedSize(horizontal: false, vertical: true)
 
-            Text(verbatim: total)
+            // `countTo($('#sum-num'), shown(spent))` — the card's one big figure, counted up on arrival and
+            // rolled from the old value to the new one after a write (``HWCountingFigure``).
+            HWCountingFigure(figure: total)
                 .font(.hw(.display))
                 .foregroundStyle(theme.palette.brand.ink)
                 .fixedSize(horizontal: false, vertical: true)
                 .padding(.top, 6)
                 // The figure is a *value* of the caption above it, so a reload re-announces the number rather
-                // than the words (ADR-0012).
+                // than the words (ADR-0012). It is also what keeps a half-rolled figure away from VoiceOver:
+                // the element's value is the string that came in, not whatever is drawn this frame.
                 .accessibilityElement(children: .ignore)
                 .accessibilityLabel(Text(caption))
                 .accessibilityValue(Text(verbatim: total))
@@ -72,8 +75,62 @@ struct HWSpendSummary<Footer: View>: View {
         .padding(.horizontal, 20)
         .padding(.top, 20)
         .padding(.bottom, 18)
-        .hwBox(fill: ground, radius: .extraLarge, elevation: .large)
+        .hwBox(fill: ground, radius: .extraLarge, elevation: elevation) {
+            orb
+        }
         .accessibilityElement(children: .contain)
+    }
+
+    /// **`--shadow-m`, where the design writes `--shadow-l`** — and this is the owner's call rather than a
+    /// transcription.
+    ///
+    /// `--shadow-l` is `0 26px 60px -24px rgba(8,31,92,.42)`, which folds to a 18pt radius 26pt below the card
+    /// (``HWShadow``). In the browser that lands on a white page under a card in the middle of a document; here
+    /// it lands on the warm `.wash` directly under a header, and 42% of galaxy navy pooling beneath the first
+    /// thing on the screen read as a smudge rather than as a lift. The owner asked for less, so the card takes
+    /// the medium step — still the most-lifted thing on Expenses, since every row and every other card below it
+    /// is `--shadow-s`.
+    /// An instance constant rather than a `static` one: `HWSpendSummary` is generic over its footer slot, and
+    /// Swift does not allow static stored properties in a generic type.
+    private let elevation: HWShadow = .medium
+
+    /// `.summary::after` — a soft `--sky` bloom off the top-trailing corner, which is what stops the gradient
+    /// reading as a flat blue rectangle.
+    ///
+    /// ```css
+    /// .summary::after{width:190px;height:190px;border-radius:50%;top:-96px;right:-52px;
+    ///   background:radial-gradient(circle,rgba(208,227,255,.34),rgba(208,227,255,0) 70%);
+    ///   animation:orb 9s var(--ease-io) infinite alternate}
+    /// ```
+    ///
+    /// Drawn through ``SwiftUI/View/hwBox(fill:radius:border:borderWidth:borderDash:elevation:shine:)``'s shine
+    /// slot rather than as an `.overlay`, for the reason that slot exists: an overlay draws over the content, so
+    /// the bloom would wash out the caption and the figure instead of sitting behind them as `::after` does.
+    ///
+    /// **The design's 9-second drift is not here**, which is the call `HWSurfaceWash` already made for the two
+    /// blooms on the screen behind this card: a permanently animating background is a permanently redrawing one,
+    /// and at this radius the two ends of the drift are indistinguishable. The bloom is what was asked for; the
+    /// wander is what was dropped.
+    private var orb: some View {
+        RadialGradient(
+            stops: [
+                .init(color: theme.palette.accent.soft.opacity(0.34), location: 0),
+                .init(color: theme.palette.accent.soft.opacity(0), location: 0.70),
+            ],
+            center: .center,
+            startRadius: 0,
+            endRadius: 95
+        )
+        .frame(width: 190, height: 190)
+        // `top:-96px;right:-52px`, as **negative padding then an aligned frame** rather than an `offset`: an
+        // offset's `x` is always screen-rightward, so under Arabic the bloom would leave the trailing corner and
+        // reappear off the leading one, while padding mirrors with the layout (ADR-0011). The two negatives let
+        // the drawing hang outside the box that is being aligned, which is what `top:-96px` means; `hwBox` clips
+        // whatever hangs out to the card's own radius, exactly as `.summary{overflow:hidden}` does.
+        .padding(.top, -96)
+        .padding(.trailing, -52)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topTrailing)
+        .accessibilityHidden(true)
     }
 
     /// `background:linear-gradient(145deg,var(--galaxy),#123273 55%,var(--planetary))`.
@@ -138,11 +195,18 @@ struct HWCategoryRowLabel: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
 
+            // `.cat-amt{white-space:nowrap;font-variant-numeric:tabular-nums}` — tabular digits because seven rows
+            // of proportional ones leave seven differently-wide columns down the trailing edge of the panel, and
+            // **`fixedSize` on both axes because a figure must not break across lines**: at AX3 this column was
+            // 44pt wide and every row read `₹86` over `0`. The design says `nowrap` here for the same reason. What
+            // gives instead is the name and the hint beside it, which are words and may wrap — so the row grows
+            // taller and nothing is lost or shrunk (ADR-0011, ADR-0012).
             Text(verbatim: total)
                 .font(.hw(.bodyLarge).weight(.heavy))
+                .monospacedDigit()
                 .foregroundStyle(isIncoming ? theme.palette.accent.base : theme.palette.surface.ink)
                 .multilineTextAlignment(.trailing)
-                .fixedSize(horizontal: false, vertical: true)
+                .fixedSize()
 
             // `chevron.forward` rather than `chevron.right`: the glyph mirrors and the named direction would not.
             Image(systemName: "chevron.forward")
@@ -269,10 +333,15 @@ struct HWCategoryHero: View {
             .frame(maxWidth: .infinity, alignment: .leading)
 
             VStack(alignment: .trailing, spacing: 2) {
-                Text(verbatim: total)
+                // Counted, because this is the figure that moves when an entry is added or deleted — and because
+                // "going back and forth within the subpages" is where the owner asked to see the count. The
+                // element below reads the string that came in, not the frame being drawn.
+                HWCountingFigure(figure: total)
                     .font(.hw(.subheading))
                     .foregroundStyle(isIncoming ? theme.palette.accent.base : theme.palette.surface.ink)
-                    .fixedSize(horizontal: false, vertical: true)
+                    // Both axes, for the reason the row's total is — see ``HWCategoryRowLabel``. The name and the
+                    // hint to its leading side are the words, and they are what wraps.
+                    .fixedSize()
 
                 Text(verbatim: monthLabel)
                     .hwLabel()

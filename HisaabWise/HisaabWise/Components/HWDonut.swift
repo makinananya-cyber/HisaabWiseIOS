@@ -186,60 +186,65 @@ struct HWEmptyRing<Centre: View>: View {
 /// One view doing both jobs is deliberate. The design draws the key beside the ring at ordinary sizes, and
 /// ADR-0012 requires an equivalent text layout at accessibility sizes — which is the same list. Writing it twice
 /// would be two lists that drift, and the second one only for the users who cannot see the first.
+///
+/// **The rows are not controls.** Each one used to be a `Button` that isolated its slice, duplicating what a tap on
+/// the ring already does — six extra tab stops for a reading that the ring beside them offers, and a legend that
+/// looked pressable without saying what pressing it would do. The key is a *key*: it names the colours in the ring
+/// and states each share. Isolating a slice is the ring's own affordance, and ``isolated`` is still read here so
+/// that a slice picked there is marked in the list too.
 struct HWCategoryList: View {
     @Environment(ThemeManager.self) private var theme
 
     let slices: [HWDonut.Slice]
+    /// The slice the ring has isolated, so the row for it takes the same wash. Read, never written.
     let isolated: String?
-    let onIsolate: (String?) -> Void
 
     var body: some View {
-        VStack(spacing: 2) {
+        VStack(spacing: 1) {
             ForEach(slices) { slice in
-                Button {
-                    onIsolate(slice.id)
-                } label: {
-                    row(slice)
-                }
-                .buttonStyle(HWPressStyle.compact)
-                // Read as one thing — "Rent, ₹3,000, 54%" — and its isolated state announced rather than left to
-                // the tint, which VoiceOver cannot see (ADR-0012).
-                .accessibilityElement(children: .ignore)
-                .accessibilityLabel(Text(verbatim: slice.name))
-                .accessibilityValue(Text(verbatim: "\(slice.amount), \(slice.shareLabel)"))
-                .hwSelectionTraits(isSelected: isolated == slice.id)
+                row(slice)
+                    // Read as one thing — "Rent, ₹3,000, 54%" — and the isolated state announced rather than
+                    // left to the tint, which VoiceOver cannot see (ADR-0012). Still a single element even
+                    // though it is no longer a control: three views state one fact.
+                    .accessibilityElement(children: .ignore)
+                    .accessibilityLabel(Text(verbatim: slice.name))
+                    .accessibilityValue(Text(verbatim: "\(slice.amount), \(slice.shareLabel)"))
+                    .hwSelectionTraits(isSelected: isolated == slice.id)
             }
         }
     }
 
     private func row(_ slice: HWDonut.Slice) -> some View {
-        HStack(spacing: 10) {
-            // `.key-dot`
-            Circle()
+        HStack(spacing: 9) {
+            // `.key-dot{width:9px;height:9px;border-radius:3px}` — a rounded square rather than a circle, which
+            // is what the design draws and what keeps six of them reading as a key rather than as bullet points.
+            RoundedRectangle(cornerRadius: HWRadius.hairline.points)
                 .fill(colour(for: slice))
-                .frame(width: 9, height: 9)
+                .frame(width: 10, height: 10)
                 .accessibilityHidden(true)
 
             Text(verbatim: slice.name)
-                .font(.hw(.body))
+                .font(.hw(.body).weight(.semibold))
                 .foregroundStyle(theme.palette.surface.ink)
                 .fixedSize(horizontal: false, vertical: true)
                 .frame(maxWidth: .infinity, alignment: .leading)
 
             Text(verbatim: slice.shareLabel)
-                .font(.hw(.body).weight(.bold))
-                .foregroundStyle(theme.palette.surface.inkSecondary)
+                .font(.hw(.body).weight(.heavy))
+                .foregroundStyle(theme.palette.surface.ink)
+                // `font-variant-numeric:tabular-nums` — six percentages in a column line up.
+                .monospacedDigit()
                 .fixedSize(horizontal: false, vertical: true)
         }
-        .padding(.horizontal, 10)
-        .padding(.vertical, 9)
-        .frame(minHeight: HWTouchTarget.minimum)
+        // `.key-row{padding:5px 6px}`. No 44pt minimum: these are no longer targets, and forcing one would
+        // stretch a six-row key to 264pt beside a 132pt ring.
+        .padding(.horizontal, 7)
+        .padding(.vertical, 6)
         .hwBox(
             // `.key-row.on` — the isolated row takes the sky wash, which is the same signal the ring gives.
             fill: isolated == slice.id ? theme.palette.accent.soft : Color.clear,
-            radius: .medium
+            radius: .small
         )
-        .contentShape(.rect)
     }
 
     private func colour(for slice: HWDonut.Slice) -> Color {
@@ -261,10 +266,12 @@ private let previewSlices: [HWDonut.Slice] = [
     .init(id: "other", name: "Other", share: 0.0740, shareLabel: "7%", amount: "₹410", slot: 6),
 ]
 
-#Preview("Donut — whole ring and one slice isolated") {
+/// The pair as Home draws them — the ring on the leading side, the key beside it — so a tap on a wedge can be
+/// seen marking the matching row.
+#Preview("Donut — the ring and its key, side by side") {
     @Previewable @State var isolated: String?
 
-    VStack(spacing: 24) {
+    HStack(alignment: .center, spacing: 14) {
         HWDonut(slices: previewSlices, isolated: isolated, onIsolate: { isolated = $0 }) {
             VStack(spacing: 1) {
                 Text(verbatim: "Total spent").hwLabel()
@@ -272,7 +279,7 @@ private let previewSlices: [HWDonut.Slice] = [
             }
         }
 
-        HWCategoryList(slices: previewSlices, isolated: isolated, onIsolate: { isolated = $0 })
+        HWCategoryList(slices: previewSlices, isolated: isolated)
     }
     .padding()
     .background(HWPreviewGround())
@@ -290,7 +297,7 @@ private let previewSlices: [HWDonut.Slice] = [
 }
 
 #Preview("RTL — the rows mirror and the ring keeps its direction") {
-    HWCategoryList(slices: previewSlices, isolated: "groceries", onIsolate: { _ in })
+    HWCategoryList(slices: previewSlices, isolated: "groceries")
         .padding()
         .environment(\.layoutDirection, .rightToLeft)
         .background(HWPreviewGround())

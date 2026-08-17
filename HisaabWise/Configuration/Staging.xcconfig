@@ -1,14 +1,13 @@
-// Staging — the `release` branch's deployed Worker (workspace Rule 2, ADR-0010).
+// Staging — the deployed dev/staging backend (workspace Rule 2, ADR-0010).
 //
-// TODO(decision): api-domain — the domain is an open point (`DEVELOPMENT_PLAN.md` §7, "Domain name
-// for the API") and Rule 7 defers DNS until the owner's Cloudflare credentials arrive. Until then
-// this is a reserved-TLD placeholder: it is a well-formed URL, so `AppConfig` parses it and the app
-// launches, and it can never resolve, so a build that ships by accident reaches nobody else's host.
-// Pointing this at the real domain is a one-line change to this file — which is the whole point of
-// the base URL living in build configuration.
+// This is the configuration the **"Dev"** scheme builds: a build pointed at the deployed dev
+// backend on Cloudflare Workers, as opposed to Debug's local `npm run dev`.
+//
+// The base URL is the bare **origin** — `APIClient` hangs `/v1/...` off it (APIClient.swift), and
+// `/health` is the backend's health probe, not the API root, so it must not appear here.
 //
 // `//` opens a comment in an .xcconfig; `$()` expands to nothing and breaks the token up.
-HW_API_BASE_URL = https:/$()/staging.api.hisaabwise.invalid
+HW_API_BASE_URL = https:/$()/hisaabwisebackend.hisaabwise1.workers.dev
 
 // No ATS exception: staging is HTTPS. Only `Info-Debug.plist` carries one.
 INFOPLIST_FILE = Configuration/Info.plist
@@ -17,3 +16,11 @@ INFOPLIST_FILE = Configuration/Info.plist
 // what a new user agrees to (Rule 7 — placeholder domain until the credentials arrive).
 HW_TERMS_URL = https:/$()/staging.hisaabwise.invalid/terms
 HW_PRIVACY_URL = https:/$()/staging.hisaabwise.invalid/privacy
+
+// **Dev is a debug build.** Without `DEBUG`, `NetworkLogger`'s request/response tracing
+// (Networking/NetworkLogger.swift) is `#if DEBUG`-compiled out, which is why the Dev scheme showed no
+// logs — Staging otherwise inherits the release defaults (no DEBUG, `-O`). Turning it on here (only the
+// Debug config also carries it) restores the HTTP logs and, with `-Onone`, makes breakpoints and
+// stepping reliable. The shipping Release config is deliberately left without either.
+SWIFT_ACTIVE_COMPILATION_CONDITIONS = $(inherited) DEBUG
+SWIFT_OPTIMIZATION_LEVEL = -Onone

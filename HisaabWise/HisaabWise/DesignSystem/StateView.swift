@@ -37,18 +37,144 @@ struct StateCopy: Sendable {
     var retry: LocalizedStringResource? = "state.retry"
 }
 
+/// Which of the design's two light grounds a screen sits on.
+///
+/// Not two appearances — ADR-0021's two appearances are `surface` and `brand`, and both of these are `surface`.
+/// This is the design's own distinction between a `.page` and a `.page--detail`, which is one extra layer on the
+/// same ground and not a second palette.
+enum HWGround: Sendable, Hashable, CaseIterable {
+    /// `.page` — a tab root. The `.wash` and nothing else.
+    case root
+
+    /// `.page--detail` — a **pushed** page, which the design warms towards its foot.
+    ///
+    /// ```css
+    /// .page--detail{background:linear-gradient(180deg,var(--bg) 0%,var(--bg) 40%,var(--bg-2) 100%)}
+    /// ```
+    ///
+    /// `--bg` is `--milky` and `--bg-2` is `--meteor`: white-cream for the top 40%, then a fade to the warmer
+    /// cream at the bottom. It is what makes a pushed page read as a different sheet of paper from the root it
+    /// came off, and it is the reason the inside of a category looked like the wrong app — the detail pages are
+    /// not `BaseView`s, so they inherited no ground at all and took the system's white.
+    case detail
+}
+
 extension View {
-    /// The ground a screen sits on: the surface background, filling the window and running under the status bar.
+    /// The ground a screen sits on: the design's `.wash`, filling the window and running under the status bar.
     ///
-    /// **Two callers, which is why it is a modifier** — `ScreenChrome`, which every `BaseView` gets for free, and
-    /// Account's four **pushed** pages (#23), which are plain `View`s and so get no chrome. Without it a pushed page
-    /// takes the system's white, and the design's cards — which are `surface.raised`, also white — become invisible
-    /// outlines on it. Looking at the running app is what found that; nothing a test asserts about a render could.
+    /// **Three callers, which is why it is a modifier** — `ScreenChrome`, which every `BaseView` gets for free;
+    /// Account's four **pushed** pages (#23); and Expenses' seven category pages, which are pushed for the same
+    /// reason and were missing this for the same reason. Without it a pushed page takes the system's white, and
+    /// the design's cards — which are `surface.raised`, also white — become invisible outlines on it. Looking at
+    /// the running app is what found that; nothing a test asserts about a render could.
     ///
-    /// `ignoresSafeArea` on the **colour alone**: the ground runs under the status bar, the content does not.
-    func hwScreenGround(_ palette: HWPalette) -> some View {
+    /// - Parameter ground: which of ``HWGround``'s two the page is. Defaults to `root`, so no existing caller
+    ///   changes meaning.
+    ///
+    /// `ignoresSafeArea` on the **ground alone**: it runs under the status bar, the content does not.
+    func hwScreenGround(_ palette: HWPalette, _ ground: HWGround = .root) -> some View {
         frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
-            .background(palette.surface.background.ignoresSafeArea())
+            .background(HWSurfaceWash(palette: palette, ground: ground).ignoresSafeArea())
+    }
+}
+
+/// The design's `.wash` — the milky ground with a cool bloom in two opposite corners.
+///
+/// **The in-app screens are not a flat colour, and shipping them as one is what made them look unfinished.** The
+/// design puts a `.wash` layer inside every `.screen`: two large blurred radial gradients, `--sky` off the
+/// top-trailing corner and `--venus` off the bottom-leading one, over `--milky`. What the eye reads is an ombré
+/// from pale blue at the top through white behind the cards to warm cream at the foot — which is what the cards,
+/// being pure white, are drawn to sit on.
+///
+/// It lives here beside ``SwiftUI/View/hwScreenGround(_:)`` rather than in `Components/` for the reason
+/// ``StateView``'s retry button is not an `HWButton`: `Components` draws with `DesignSystem`'s tokens, so a
+/// `DesignSystem` view reaching the other way would point the dependency both directions. The brand ground —
+/// `HWBrandGround`, the galaxy twin of this — is a component because Landing and Auth are ordinary screens that
+/// place it themselves; this one is chrome that every `BaseView` inherits and no screen names.
+///
+/// **The design's slow float is not here.** `.wash::before/::after` drift over 13 and 17 seconds; a permanently
+/// animating background is a permanently redrawing one, and at this blur nobody can see the difference between
+/// the two positions. The ombré is what was asked for and the drift is what was dropped (the same call ADR-0029
+/// records for `.grain`).
+struct HWSurfaceWash: View {
+    let palette: HWPalette
+
+    /// Whether this is a tab root or a pushed page — see ``HWGround``. Defaulted, so the `ScreenChrome` call
+    /// that has always said nothing about it goes on saying nothing.
+    var ground: HWGround = .root
+
+    var body: some View {
+        ZStack {
+            base
+
+            // `.wash::before` — 420pt of `--sky`, off the top-right corner.
+            bloom(
+                colour: palette.accent.soft,
+                opacity: 0.85,
+                size: 420,
+                alignment: .topTrailing,
+                offset: CGSize(width: 160, height: -190)
+            )
+
+            // `.wash::after` — 400pt of `--venus`, off the bottom-left.
+            bloom(
+                colour: palette.accent.tintSecondary,
+                opacity: 0.60,
+                size: 400,
+                alignment: .bottomLeading,
+                offset: CGSize(width: -150, height: 180)
+            )
+        }
+        // Decoration, exactly as the design's `aria-hidden` wash is.
+        .accessibilityHidden(true)
+    }
+
+    /// The flat colour the two blooms sit on — `--milky` for a root, and the design's own
+    /// `linear-gradient(180deg,--milky 0%,--milky 40%,--meteor 100%)` for a pushed page.
+    ///
+    /// A `LinearGradient` in both arms rather than a `Color` in one, so the two branches are the same *kind* of
+    /// thing and the root is visibly "the same gradient with both ends the same". Two stops at the same colour
+    /// cost nothing to draw and one branch fewer to read.
+    @ViewBuilder
+    private var base: some View {
+        switch ground {
+        case .root:
+            palette.surface.background
+        case .detail:
+            LinearGradient(
+                stops: [
+                    .init(color: palette.surface.background, location: 0),
+                    .init(color: palette.surface.background, location: 0.40),
+                    .init(color: palette.surface.backgroundSecondary, location: 1),
+                ],
+                startPoint: .top,
+                endPoint: .bottom
+            )
+        }
+    }
+
+    /// One blurred radial fade. `filter:blur(10px)` on a gradient that already fades to nothing at 70% — the
+    /// blur is what stops the stop's edge reading as a ring.
+    private func bloom(
+        colour: Color,
+        opacity: Double,
+        size: CGFloat,
+        alignment: Alignment,
+        offset: CGSize
+    ) -> some View {
+        RadialGradient(
+            stops: [
+                .init(color: colour.opacity(opacity), location: 0),
+                .init(color: colour.opacity(0), location: 0.70),
+            ],
+            center: .center,
+            startRadius: 0,
+            endRadius: size / 2
+        )
+        .frame(width: size, height: size)
+        .blur(radius: 10)
+        .offset(offset)
+        .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: alignment)
     }
 }
 

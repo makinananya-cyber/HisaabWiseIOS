@@ -345,12 +345,22 @@ enum Fixture: String, CaseIterable, Sendable {
         switch self {
         case .budgetINR, .budgetAED, .budgetDrifted: [Endpoint.budget]
         case .homeINR, .homeFirstRun: [Endpoint.screenHome]
-        // **Four paths, one set of bytes**, which is ADR-0020's write rule as a fixture: the read and all three
+        // **Five paths, one set of bytes**, which is ADR-0020's write rule as a fixture: the read and all four
         // writes answer with the same screen payload. `serving(_:)` refuses two fixtures for one path, so only
         // one of the three Expenses payloads may claim them — the standing default does, and the other two are
         // stubbed explicitly by whichever test or preview wants that month.
+        //
+        // `wantsShare` is here for the same reason and is the odd one by address: it is a `/v1/me` route, because
+        // the share is the user's setting rather than the month's, and it answers with the Expenses screen because
+        // Expenses is where it is set (``WantsShareUpdate``).
         case .expensesINR:
-            [Endpoint.screenExpenses, Endpoint.expenses, Endpoint.fixedCosts, Endpoint.billLines]
+            [
+                Endpoint.screenExpenses,
+                Endpoint.expenses,
+                Endpoint.fixedCosts,
+                Endpoint.billLines,
+                Endpoint.wantsShare,
+            ]
         case .expensesFirstRun, .expensesOverBudget: []
         // Same rule as the Expenses trio: three payloads for one path, and only one may claim it (see below).
         //

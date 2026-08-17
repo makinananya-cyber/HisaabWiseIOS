@@ -2,14 +2,22 @@ import SwiftUI
 
 /// The design's `.topbar` — the eyebrow-over-title header a tab-root screen opens with.
 ///
-/// `.topbar` is `.eyebrow` above `.h1`, with room at the trailing edge for whatever that screen puts
-/// there: Expenses puts an `.editbtn`, Reports puts nothing. So the trailing slot is a `ViewBuilder`
-/// rather than a value — it holds a *control*, and a component that took one as data would be picking
-/// which control.
+/// `.topbar` is `.mark`, then `.eyebrow` above `.h1`, with room at the trailing edge for whatever that
+/// screen puts there: Expenses puts an `.editbtn`, Reports puts nothing. So the trailing slot is a
+/// `ViewBuilder` rather than a value — it holds a *control*, and a component that took one as data would
+/// be picking which control.
 ///
-/// **The design's `.mark`** — the 38pt wordmark tile beside the titles — is not drawn here: the asset
-/// catalogue carries colour sets only, and inventing a placeholder logo would be re-picking rather than
-/// converting. It is added here, once the image ships.
+/// **The design's `.mark` is now here**, which is what the old note in this place said would happen once
+/// the logo shipped: `.topbar{display:flex;align-items:center;gap:11px}` opens with a 38pt tile on all four
+/// tab roots that carry a top bar, and the app was drawing the titles alone. It is unconditional rather
+/// than an argument, because the design puts it on every one of them — a screen able to leave it out is a
+/// screen that will, and then four headers disagree about what a header is. Home draws no `HWTopBar` at
+/// all (its header is a greeting) and so is untouched.
+///
+/// **`.center`, not `.firstTextBaseline`.** The row is a tile, a two-line block, and a pill, and a
+/// baseline shared between them lands the tile's *bottom* on the eyebrow's baseline — which puts the logo
+/// most of its own height above the title. `align-items:center` is what the design sets, and with three
+/// items of three heights it is the only alignment that reads as a row.
 struct HWTopBar<Trailing: View>: View {
     @Environment(ThemeManager.self) private var theme
 
@@ -27,8 +35,18 @@ struct HWTopBar<Trailing: View>: View {
         self.trailing = trailing()
     }
 
+    /// `.mark{width:38px;height:38px}`, and `.topbar{gap:11px}`.
+    ///
+    /// An instance constant rather than a `static` one because `HWTopBar` is generic over its trailing slot, and
+    /// Swift does not allow static stored properties in a generic type.
+    private let markSize: CGFloat = 38
+
     var body: some View {
-        HStack(alignment: .firstTextBaseline, spacing: 11) {
+        HStack(alignment: .center, spacing: 11) {
+            // `surface`, because a top bar only ever appears on the five light screens — the galaxy tile is
+            // the privacy overlay's and Landing's (``HWMark``).
+            HWMark(size: markSize, appearance: .surface)
+
             VStack(alignment: .leading, spacing: 1) {
                 if let eyebrow {
                     Text(eyebrow).hwEyebrow()

@@ -560,15 +560,22 @@ actor APIClient {
             request.setValue(etag, forHTTPHeaderField: "If-None-Match")
         }
 
+        NetworkLogger.logRequest(request)
+        let started = Date()
+
         do {
-            return try await transport.send(request)
+            let (data, response) = try await transport.send(request)
+            NetworkLogger.logResponse(response, body: data, elapsed: Date().timeIntervalSince(started), for: request)
+            return (data, response)
         } catch is CancellationError {
             // A cancelled task is not a network condition. Swallowing it here would tell a user who
             // navigated away that they are offline, and would break structured concurrency.
+            NetworkLogger.logCancellation(for: request)
             throw CancellationError()
         } catch {
             // ADR-0007 — a transport failure preserves the session. It is offline, not failed, and
             // never a reason to sign anyone out.
+            NetworkLogger.logFailure(error, elapsed: Date().timeIntervalSince(started), for: request)
             throw APIError.offline
         }
     }

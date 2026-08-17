@@ -50,12 +50,31 @@ struct HWBudgetBar: View {
         self.accessibilityDescription = accessibilityDescription
     }
 
-    /// `.bar{height:7px}`.
-    private static let trackHeight: CGFloat = 7
+    /// **14, where the design writes `.bar{height:7px}`** — the owner asked for a bigger bar, and 7 is what made
+    /// the ask reasonable: at that height the venus→sky fill is a hairline, the 6% state is a dot, and the light
+    /// that travels across it (``shimmer``) has nowhere to be seen. Double is still a bar rather than a panel, and
+    /// it is the same move the savings meter's track made from 14 to its own design value of 22.
+    private static let trackHeight: CGFloat = 14
+
+    /// Whether the fill is currently held at empty, waiting to grow.
+    ///
+    /// **The design fills the bar from empty and lets it grow into place** — `.bar i{transform:scaleX(0)}` with
+    /// `transition:transform 1.1s var(--ease-out) .25s`, and `paintSummary()` setting the real `scaleX` on the
+    /// next frame. It is state rather than a transition because there is nothing to transition *from*: the value
+    /// does not change while the screen is open, so the `.animation(value:)` below was watching a number that
+    /// never moved and the bar was simply already full.
+    ///
+    /// **False by default — the filled bar is the resting state and empty is the departure from it**, which is
+    /// the inversion ``HWCountingFigure`` explains at length and which was made here for the same reason: a
+    /// context that does not run `onAppear` should show the extent the payload says, not an empty budget.
+    @State private var isParked = false
 
     /// Clamped **again**, here. The server sends it clamped; a fill drawn at 1.4 would run outside the card, and
     /// a view that trusts a number it could check is a view that draws the one bad payload wrongly.
     private var clamped: Double { min(max(fill, 0), 1) }
+
+    /// How much of the track is filled *this frame* — nothing, while it is parked.
+    private var drawnFill: Double { isParked ? 0 : clamped }
 
     var body: some View {
         VStack(alignment: .leading, spacing: 9) {
@@ -82,6 +101,27 @@ struct HWBudgetBar: View {
         .accessibilityElement(children: .ignore)
         .accessibilityLabel(Text(caption))
         .accessibilityValue(accessibilityDescription)
+        // Parked and released on every appearance, so coming back to Expenses — from another tab, or out of a
+        // category — fills the bar again rather than finding it already full. The same pair, in the same order and
+        // for the same reasons, as ``HWCountingFigure/park()``.
+        //
+        // Under Reduce Motion nothing is parked and the bar is at its extent from the first paint. Nothing
+        // replaces the growth, and nothing needs to: the extent is printed twice beside it — as the two figures
+        // above and as the percentage at the trailing edge (ADR-0012).
+        .onAppear {
+            guard !reduceMotion else { return }
+
+            Task { @MainActor in
+                var snap = Transaction()
+                snap.disablesAnimations = true
+                withTransaction(snap) { isParked = true }
+
+                await Task.yield()
+
+                // `transition:… 1.1s var(--ease-out) .25s` — the scale's longest step and the design's own delay.
+                withAnimation(HWMotion.easeOut.animation(.slow).delay(0.25)) { isParked = false }
+            }
+        }
     }
 
     /// `.budget-top` — the caption at one end, the two figures at the other.
@@ -94,7 +134,10 @@ struct HWBudgetBar: View {
             Spacer(minLength: 0)
 
             amount
+                // `.budget-amt{font-size:12.5px;font-weight:600}` at the scale's `caption` step, and
+                // `font-variant-numeric:tabular-nums`, which the design sets on every figure in this card.
                 .font(.hw(.caption).weight(.semibold))
+                .monospacedDigit()
                 // `.budget.over .budget-amt b{color:#FFC9C0}` — the brand surface's own danger value, which is
                 // a different colour from the in-app one (ADR-0021).
                 .foregroundStyle(isOver ? theme.palette.brand.danger : theme.palette.brand.inkSecondary)
@@ -110,6 +153,7 @@ struct HWBudgetBar: View {
 
             Text(verbatim: percentageLabel)
                 .font(.hw(.caption).weight(.heavy))
+                .monospacedDigit()
                 .foregroundStyle(isOver ? theme.palette.brand.danger : theme.palette.brand.inkAccent)
                 .fixedSize(horizontal: false, vertical: true)
         }
@@ -132,14 +176,69 @@ struct HWBudgetBar: View {
                                 endPoint: .trailing
                             )
                         )
-                        .frame(width: clamped * proxy.size.width)
+                        .frame(width: drawnFill * proxy.size.width)
+                        // **Hidden at nothing, rather than drawn at nothing.** A `Capsule` given a width of zero
+                        // still paints a dot the height of the track, so an empty bar came back with a 14pt blob
+                        // sitting on its leading end — which reads as a fault rather than as a bar with nothing in
+                        // it. Found by looking at a render of the parked frame.
+                        .opacity(drawnFill > 0 ? 1 : 0)
                 }
+                // `.bar::after` — the light crossing the whole track, filled part and empty part alike, which is
+                // where the design draws it (`inset:0` on `.bar`, not on `.bar i`).
+                .overlay { shimmer(width: proxy.size.width) }
+                // `.bar{overflow:hidden}` — both the fill and the travelling light are cut to the capsule.
+                .clipShape(Capsule())
         }
         .frame(height: Self.trackHeight)
-        // `transition:transform 1.1s var(--ease-out)` — the fill grows into place. Under Reduce Motion it is
-        // *there*, rather than growing slower: a bar sliding across the screen is the kind of movement the
-        // setting exists for (ADR-0012).
+        // The growth itself is driven by `hasGrown` in `onAppear`; this is what carries a fill that *changes*
+        // while the screen is open, which is every write (ADR-0020). Under Reduce Motion the new extent is
+        // simply there rather than sliding to it (ADR-0012).
         .animation(reduceMotion ? nil : HWMotion.easeOut.animation(.slow), value: clamped)
+        .accessibilityHidden(true)
+    }
+
+    /// `.bar::after` — the band of light that crosses the bar every few seconds and waits.
+    ///
+    /// ```css
+    /// .bar::after{inset:0;background:linear-gradient(90deg,transparent,rgba(255,249,240,.34),transparent);
+    ///   transform:translateX(-100%);animation:shimmer 3.4s var(--ease-io) 1.4s infinite}
+    /// @keyframes shimmer{0%{translateX(-100%)}55%,100%{translateX(100%)}}
+    /// ```
+    ///
+    /// **The same shape as ``HWButtonSweep``, and a `keyframeAnimator` for the same reason**: the design's cycle
+    /// is mostly *pause*, and one repeating `.animation` interpolated evenly across 3.4 seconds turns a crossing
+    /// into a band drifting forever. Three keyframes give it the shape the CSS has — parked off the leading edge,
+    /// one crossing over 55% of the cycle, then parked off the trailing edge until it restarts. It differs from
+    /// the button's in the two ways the design differs: the band is the control's own width rather than a 60pt
+    /// glint, and it is not tilted.
+    ///
+    /// **Suppressed under Reduce Motion with nothing put in its place**, which is the exemption ``HWButtonSweep``
+    /// records: the light says nothing. It marks no change, confirms no action, and reports no state — the bar's
+    /// extent, its two figures, and the over-budget verdict are all on screen without it. A band frozen mid-cross
+    /// would read as a rendering fault.
+    private func shimmer(width: CGFloat) -> some View {
+        LinearGradient(
+            colors: [
+                theme.palette.brand.ink.opacity(0),
+                theme.palette.brand.ink.opacity(0.34),
+                theme.palette.brand.ink.opacity(0),
+            ],
+            startPoint: .leading,
+            endPoint: .trailing
+        )
+        .keyframeAnimator(initialValue: -width, repeating: !reduceMotion) { content, x in
+            content.offset(x: x)
+        } keyframes: { _ in
+            KeyframeTrack {
+                // `animation-delay:1.4s`, then `0% → 55%` of a 3.4s cycle, then parked for the rest.
+                LinearKeyframe(-width, duration: 1.4)
+                CubicKeyframe(width, duration: 1.87)
+                LinearKeyframe(width, duration: 1.53)
+            }
+        }
+        // The offset does not mirror, which is accepted for the reason `HWButtonSweep` gives: a band of light
+        // with no leading edge carries no direction to read.
+        .allowsHitTesting(false)
         .accessibilityHidden(true)
     }
 

@@ -282,32 +282,39 @@ struct LearnMapPage: View {
         }
     }
 
-    /// `.stats` — the screen's title, then the streak and the XP.
+    /// `.stats` — the mark, the streak, and the XP, on **one row**.
     ///
-    /// The design has no title on this screen at all: the stats bar sits at the top and the tab bar says where you
-    /// are. An `HWTopBar` is added because the other four tab roots carry one and a screen with no heading has
-    /// nothing for VoiceOver's heading rotor to land on (ADR-0012) — the design's own `<header>` is not a heading,
-    /// it is two figures.
+    /// **The design has no title on this screen and now neither does this.** An earlier build put a full `HWTopBar`
+    /// above the figures, on the reading that the other four tab roots carry one and that a screen with no heading
+    /// gives VoiceOver's heading rotor nothing to land on (ADR-0012). The first half was a guess and the second is
+    /// answered more cheaply: the design puts its `.mark` *in* the stats row rather than over a title, and this row
+    /// is the heading — it carries the trait and reads "Learn", so the rotor lands on it without a title line the
+    /// design does not draw. `learn.eyebrow` went with it.
+    ///
+    /// The row is a `.contain` element rather than a `.combine`, because the two chips are figures a reader wants
+    /// to hear one at a time and each already composes its own sentence server-side (``HWStatChip``).
     private var statsBar: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            HWTopBar(eyebrow: "learn.eyebrow", title: Text("learn.title"))
+        HStack(spacing: 8) {
+            // `surface`, because Learn is one of the five light screens — the galaxy tile is Landing's (``HWMark``).
+            HWMark(size: 34, appearance: .surface)
 
-            HStack(spacing: 8) {
-                HWStatChip(
-                    tone: .streak,
-                    value: map.progress.streak.display,
-                    accessibilityLabel: map.progress.streak.accessibilityLabel
-                )
+            HWStatChip(
+                tone: .streak,
+                value: map.progress.streak.display,
+                accessibilityLabel: map.progress.streak.accessibilityLabel
+            )
 
-                Spacer(minLength: 0)
+            Spacer(minLength: 0)
 
-                HWStatChip(
-                    tone: .experience,
-                    value: map.progress.xp.display,
-                    accessibilityLabel: map.progress.xp.accessibilityLabel
-                )
-            }
+            HWStatChip(
+                tone: .experience,
+                value: map.progress.xp.display,
+                accessibilityLabel: map.progress.xp.accessibilityLabel
+            )
         }
+        .accessibilityElement(children: .contain)
+        .accessibilityLabel(Text("learn.title"))
+        .accessibilityAddTraits(.isHeader)
     }
 
     /// `.unit` — the header band, then the path of nodes under it.

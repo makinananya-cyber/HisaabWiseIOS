@@ -159,6 +159,27 @@ struct AppShell: View {
     }
 }
 
+extension View {
+    /// Hides the tab bar while this screen is on top of its navigation stack, restoring it when the
+    /// user pops back.
+    ///
+    /// The app's drill-down screens — an Account settings page (language, password, currency,
+    /// personal), a category's expenses, a month's report, an article — are focused, single-purpose
+    /// pages reached from a row. The tab bar is chrome the reader does not need there, and leaving it
+    /// up invites a jump to another tab in the middle of a task the drill-down exists to finish. A
+    /// full-screen mode like the lesson player already sits over the bar; these are the pushed screens
+    /// that otherwise keep it.
+    ///
+    /// **Applied at the `navigationDestination`, not inside the screen.** Whether a view is a
+    /// drill-down is a fact about the stack it was pushed onto, not about the view — the same
+    /// `ArticleView` or `AccountLanguagePage` should draw its own tab bar if it were ever a root. This
+    /// keeps that decision at the one place that knows the answer, the way the shell keeps the stack
+    /// itself (`AppShell.root(_:)`).
+    func hwHidesTabBar() -> some View {
+        toolbar(.hidden, for: .tabBar)
+    }
+}
+
 #if DEBUG
 /// The shell over fixtures, which is the only way to look at it: the app itself launches signed out, and
 /// `RootView` draws Landing.
