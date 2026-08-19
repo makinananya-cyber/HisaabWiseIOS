@@ -391,7 +391,17 @@ struct HomeView: BaseView {
             // the middle. `onGeometryChange` rather than a `GeometryReader` — the reader would collapse this
             // row's height inside the screen's `VStack` and have to be undone with a fixed one, which is the
             // trade that made equal columns look like the cheaper option.
-            .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { duoWidth = $0 }
+            //
+            // **Measured once, and that guard is load-bearing.** `streakColumn` is derived from `duoWidth` and
+            // applied back to a column *inside this same row*, so writing every measurement made a geometry
+            // feedback loop: the column resizes, the row's measured width shifts, `duoWidth` updates, the column
+            // resizes again — `body` re-evaluates without end. It spun so tightly that SwiftUI never committed
+            // the loaded frame, so Home sat on its spinner forever with the network request already answered.
+            // The row's width is the viewport's and does not change under us, so the first reading is the only
+            // one needed; ignoring the rest is what closes the loop.
+            .onGeometryChange(for: CGFloat.self) { $0.size.width } action: { newWidth in
+                if duoWidth == 0 { duoWidth = newWidth }
+            }
         }
     }
 

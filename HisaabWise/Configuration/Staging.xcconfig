@@ -1,13 +1,19 @@
 // Staging — the deployed dev/staging backend (workspace Rule 2, ADR-0010).
 //
 // This is the configuration the **"Dev"** scheme builds: a build pointed at the deployed dev
-// backend on Cloudflare Workers, as opposed to Debug's local `npm run dev`.
+// backend on Render, as opposed to Debug's local `npm run dev`.
+//
+// **Render, not Cloudflare Workers.** The backend moved from Workers to Node on Render (backend
+// ADR-0016), the same move Debug.xcconfig records. The old Workers origin
+// (`hisaabwisebackend.hisaabwise1.workers.dev`) is stale and now answers `500 INTERNAL` on every
+// write — which presented as registration failing on Submit / Skip for now. This points the Dev
+// scheme at the live Render backend instead, the same origin the Release config uses.
 //
 // The base URL is the bare **origin** — `APIClient` hangs `/v1/...` off it (APIClient.swift), and
 // `/health` is the backend's health probe, not the API root, so it must not appear here.
 //
 // `//` opens a comment in an .xcconfig; `$()` expands to nothing and breaks the token up.
-HW_API_BASE_URL = https:/$()/hisaabwisebackend.hisaabwise1.workers.dev
+HW_API_BASE_URL = https:/$()/hisaabwise-backend-0l9b.onrender.com
 
 // No ATS exception: staging is HTTPS. Only `Info-Debug.plist` carries one.
 INFOPLIST_FILE = Configuration/Info.plist

@@ -7,7 +7,7 @@
 // `/health` is the backend's health probe, not the API root, so it must not appear here.
 //
 // `//` opens a comment in an .xcconfig; `$()` expands to nothing and breaks the token up.
-HW_API_BASE_URL = https:/$()/hisaabwise-backend.onrender.com
+HW_API_BASE_URL = https:/$()/hisaabwise-backend-0l9b.onrender.com
 
 // No ATS exception: production is HTTPS. Only `Info-Debug.plist` carries one.
 INFOPLIST_FILE = Configuration/Info.plist
