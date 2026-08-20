@@ -103,11 +103,18 @@ struct HomeView: BaseView {
             Text(Self.tintedGreeting(screen, accent: theme.palette.accent.base))
                 .font(.hw(.title))
                 .foregroundStyle(theme.palette.surface.ink)
+                // Pin the paragraph to the layout direction's leading edge. Without this, a `Text` aligns to
+                // its *content's* natural direction, so a greeting whose words are still Latin (an untranslated
+                // language, or the user's Latin-script name) stayed left-aligned under RTL while the rest of the
+                // screen mirrored. `.leading` resolves against `\.layoutDirection`, so it is the right edge in
+                // Arabic and the left edge otherwise.
+                .multilineTextAlignment(.leading)
                 .fixedSize(horizontal: false, vertical: true)
 
             Text(verbatim: screen.dateLabel)
                 .font(.hw(.body))
                 .foregroundStyle(theme.palette.surface.inkTertiary)
+                .multilineTextAlignment(.leading)
                 .fixedSize(horizontal: false, vertical: true)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
