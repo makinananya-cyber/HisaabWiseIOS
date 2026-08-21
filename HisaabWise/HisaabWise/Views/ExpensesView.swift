@@ -296,34 +296,12 @@ struct ExpensesPage: View {
 
     // MARK: - The top bar and its Edit control
 
-    /// `.topbar` — the logo, the eyebrow over the title, and **Edit** at the trailing edge.
-    ///
-    /// The design's `.topbar` on this screen has an empty trailing slot; the `.editbtn` it defines is used on the
-    /// *detail* pages, to turn a `lines` or `fixed` category's edit mode on. This one is a second use of the same
-    /// control for the thing the design never gave the reader a way to do: change the share of income their wants
-    /// budget is taken from. ``HWEditButton`` rather than a new control, because the design already has a pill
-    /// that means "change what this screen is showing you", and a second shape for the same meaning is how two
-    /// controls come to look nearly alike.
-    ///
-    /// **Absent when there is nothing to choose.** `sharePercent` is `nil` while the adaptive branch of §4.2 is in
-    /// force — needs have outgrown half of income, so what is left is split down the middle and a percentage has
-    /// nothing to apply to — and a control that opened a sheet whose rows could not take effect would be worse
-    /// than no control. `isOn` is false always: this opens a sheet rather than entering a mode, so there is no
-    /// inverted state to be in.
-    @ViewBuilder
+    /// `.topbar` — the logo and the eyebrow over the title, with an **empty trailing slot**, as the design draws
+    /// it. The control for changing the wants share used to sit here; it now sits in the summary card beside the
+    /// wants budget it edits (see ``summary``), which is where a reader looking at that bar reaches for it.
     private var topBar: some View {
         HWTopBar(eyebrow: "expenses.eyebrow", title: Text("expenses.title")) {
-            if screen.wants.sharePercent != nil {
-                HWEditButton(
-                    "expenses.wants.edit",
-                    systemImage: "slider.horizontal.3",
-                    isOn: false,
-                    state: viewModel.isWriting ? .inFlight : .ready
-                ) {
-                    isEditingWantsShare = true
-                }
-                .accessibilityHint(Text("expenses.wants.edit.hint"))
-            }
+            EmptyView()
         }
     }
 
@@ -340,14 +318,40 @@ struct ExpensesPage: View {
                 .init("expenses.summary.income", screen.summary.income.display),
             ]
         ) {
-            HWBudgetBar(
-                caption: "expenses.wants.caption",
-                amount: ExpensesView.wantsAmount(screen.wants),
-                percentageLabel: screen.wants.percentageLabel,
-                fill: screen.wants.fill,
-                isOver: screen.wants.isOver,
-                accessibilityDescription: ExpensesView.wantsDescription(screen.wants)
-            )
+            VStack(alignment: .leading, spacing: 12) {
+                HWBudgetBar(
+                    caption: "expenses.wants.caption",
+                    amount: ExpensesView.wantsAmount(screen.wants),
+                    percentageLabel: screen.wants.percentageLabel,
+                    fill: screen.wants.fill,
+                    isOver: screen.wants.isOver,
+                    accessibilityDescription: ExpensesView.wantsDescription(screen.wants)
+                )
+
+                // **The control that changes the wants share, beside the bar it changes** — a reader looking at
+                // "₹4,815 of ₹56,400" reaches for it here rather than at the far corner of the screen. It opens
+                // the same sheet the top bar used to, and the server recomputes the allowance and the savings
+                // that follow from it (invariant 3). A separate element from the bar above, which is one
+                // read-only accessibility element, so the button is its own VoiceOver stop rather than being
+                // swallowed by it.
+                //
+                // **Absent when there is nothing to choose.** `sharePercent` is `nil` while the adaptive branch
+                // of §4.2 is in force — needs have outgrown half of income, so what is left is split down the
+                // middle and a percentage has nothing to apply to — and a control opening a sheet whose rows
+                // could not take effect would be worse than no control.
+                if screen.wants.sharePercent != nil {
+                    HWButton(
+                        "expenses.wants.edit",
+                        variant: .ghost,
+                        appearance: .brand,
+                        systemImage: "slider.horizontal.3",
+                        state: viewModel.isWriting ? .inFlight : .ready
+                    ) {
+                        isEditingWantsShare = true
+                    }
+                    .accessibilityHint(Text("expenses.wants.edit.hint"))
+                }
+            }
         }
     }
 
