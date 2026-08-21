@@ -182,10 +182,12 @@ struct ExpensesViewTests {
         #expect(WantsShare.ruleOfThumb.percent == 30, "the 30 in 50/30/20 moved")
     }
 
-    /// **The Edit control is keyed on the payload, not on a constant.** `sharePercent` is `nil` while §4.2's
-    /// adaptive branch is in force, and a control that opened a sheet whose rows could not take effect is worse
-    /// than no control — so the condition the screen draws it under is asserted rather than reviewed.
-    @Test("the standing month offers a share to change, and a payload without one does not")
+    /// **The Edit budget control is always offered — the payload's share is what the sheet opens *at*, not
+    /// whether it opens at all.** `sharePercent` is `nil` while §4.2's adaptive branch is in force, and choosing a
+    /// share is how a reader states the split they want when needs have outgrown half of pay, so the control is
+    /// shown regardless (``ExpensesPage``). These two fixtures carry a share; the adaptive `nil` case is a corpus
+    /// gap the view model suite covers directly (`ExpensesViewModelTests`).
+    @Test("the standing and over-budget months both carry a wants share to open the sheet at")
     func theEditControlFollowsThePayload() async throws {
         let standing = try await Self.loaded().wants
         let over = try await Self.loaded(.expensesOverBudget).wants

@@ -335,22 +335,21 @@ struct ExpensesPage: View {
                 // read-only accessibility element, so the button is its own VoiceOver stop rather than being
                 // swallowed by it.
                 //
-                // **Absent when there is nothing to choose.** `sharePercent` is `nil` while the adaptive branch
-                // of §4.2 is in force — needs have outgrown half of income, so what is left is split down the
-                // middle and a percentage has nothing to apply to — and a control opening a sheet whose rows
-                // could not take effect would be worse than no control.
-                if screen.wants.sharePercent != nil {
-                    HWButton(
-                        "expenses.wants.edit",
-                        variant: .ghost,
-                        appearance: .brand,
-                        systemImage: "slider.horizontal.3",
-                        state: viewModel.isWriting ? .inFlight : .ready
-                    ) {
-                        isEditingWantsShare = true
-                    }
-                    .accessibilityHint(Text("expenses.wants.edit.hint"))
+                // **Always offered**, including while §4.2's adaptive branch is in force — when needs have
+                // outgrown half of income, choosing a wants share is *how* a reader states the split they want,
+                // so hiding the one control that sets it is exactly backwards. The sheet opens with no row ticked
+                // (`sharePercent` is `nil`), the reader picks one, and the server recomputes the allowance and
+                // the savings that follow — the client asserts nothing about what the figure becomes.
+                HWButton(
+                    "expenses.wants.edit",
+                    variant: .ghost,
+                    appearance: .brand,
+                    systemImage: "slider.horizontal.3",
+                    state: viewModel.isWriting ? .inFlight : .ready
+                ) {
+                    isEditingWantsShare = true
                 }
+                .accessibilityHint(Text("expenses.wants.edit.hint"))
             }
         }
     }
