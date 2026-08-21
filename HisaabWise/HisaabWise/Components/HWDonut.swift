@@ -64,6 +64,11 @@ struct HWDonut: View {
     /// The design draws the ring at 132×132.
     static let diameter: CGFloat = 132
 
+    /// The diameter of the hole the centre readout sits in — `diameter × innerRadiusRatio`, ≈ 90pt. The readout
+    /// is constrained to it so a long figure ("AED 12,345") scales down inside the ring rather than growing wide
+    /// enough to sit on top of it, which is what a month of real spending made it do.
+    static let innerDiameter: CGFloat = diameter * innerRadiusRatio
+
     /// `stroke-width="15"` — the ring's thickness, shared with the empty ring so the two are the same shape.
     static let ringWidth: CGFloat = 15
 

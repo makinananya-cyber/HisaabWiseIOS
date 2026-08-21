@@ -160,12 +160,23 @@ struct HWStreakCard: View {
     /// column. The criterion that the next lesson be *shown* is met by `summary`, which the server composes with
     /// the title in it.
     private let nextLesson: String
+    /// Whether the card stretches to fill the height it is offered. `false` everywhere it stands alone; `true`
+    /// only in Home's `.duo` row, where the design draws it the same height as the taller reading list beside it
+    /// rather than as a short panel floating against a tall one.
+    private let fillsHeight: Bool
     private let action: () -> Void
 
-    init(streak: Int, summary: String, nextLesson: String, action: @escaping () -> Void) {
+    init(
+        streak: Int,
+        summary: String,
+        nextLesson: String,
+        fillsHeight: Bool = false,
+        action: @escaping () -> Void
+    ) {
         self.streak = streak
         self.summary = summary
         self.nextLesson = nextLesson
+        self.fillsHeight = fillsHeight
         self.action = action
     }
 
@@ -222,7 +233,14 @@ struct HWStreakCard: View {
                 .foregroundStyle(theme.palette.brand.inkAccent)
                 .padding(.top, 3)
             }
-            .frame(maxWidth: .infinity, alignment: .leading)
+            // `maxHeight: .infinity` only when asked, so the card fills the row's height beside the taller
+            // reading list; content stays pinned to the top of the stretched box rather than floating in its
+            // middle. Left unset everywhere else, where the card is sized to its own content.
+            .frame(
+                maxWidth: .infinity,
+                maxHeight: fillsHeight ? .infinity : nil,
+                alignment: .topLeading
+            )
             .padding(15)
             .hwBox(
                 // `linear-gradient(150deg, --galaxy, #16357C 60%, --planetary)` — the middle stop at 60%, which

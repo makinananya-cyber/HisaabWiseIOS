@@ -205,20 +205,28 @@ struct HomeView: BaseView {
         return VStack(spacing: 1) {
             (category.map { Text(verbatim: $0.name) } ?? Text("home.spending.total"))
                 .hwLabel()
-                .fixedSize(horizontal: false, vertical: true)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
 
             Text(verbatim: category?.amount.display ?? screen.spending.total.display)
                 .font(.hw(.subheading))
                 .foregroundStyle(theme.palette.surface.ink)
-                .fixedSize(horizontal: false, vertical: true)
+                // **One line, scaled down to fit the hole.** A month of real spending pushes the total to
+                // "AED 12,345", which at the subheading size is wider than the ring's ~90pt hole — so it drew
+                // across the ring. Held to one line and allowed to shrink, it stays inside the hole instead.
+                .lineLimit(1)
+                .minimumScaleFactor(0.5)
 
             // "9% of pay" for the whole ring, "54%" for one slice — the server's strings, either way.
             Text(verbatim: category?.shareLabel ?? screen.spending.shareOfPayLabel)
                 .font(.hw(.caption))
                 .foregroundStyle(theme.palette.surface.inkTertiary)
-                .fixedSize(horizontal: false, vertical: true)
+                .lineLimit(1)
+                .minimumScaleFactor(0.7)
         }
-        .padding(.horizontal, 12)
+        // Bounded to the ring's hole so the readout scales down inside it rather than spreading onto the ring.
+        .frame(maxWidth: HWDonut.innerDiameter)
+        .padding(.horizontal, 4)
         // Read as one sentence, and **as a value** so that isolating a slice re-announces the figure rather than
         // the caption (ADR-0012).
         .accessibilityElement(children: .ignore)
@@ -380,6 +388,9 @@ struct HomeView: BaseView {
             streak: screen.learning.streak,
             summary: screen.learning.summary,
             nextLesson: screen.learning.nextLesson,
+            // Side by side, the streak card fills the row's height so it matches the taller reading list rather
+            // than sitting short beside it. Stacked (below), each card takes its own height as before.
+            fillsHeight: !stacksPairs,
             action: onContinueLearning
         )
 
@@ -389,8 +400,10 @@ struct HomeView: BaseView {
                 reads(screen)
             }
         } else {
+            // `.top`, and both columns offered the full row height — the row is as tall as the reading list, and
+            // the streak card (asked to fill) stretches to the same height rather than floating short beside it.
             HStack(alignment: .top, spacing: Self.duoSpacing) {
-                streak.frame(width: streakColumn)
+                streak.frame(width: streakColumn, alignment: .top).frame(maxHeight: .infinity)
                 reads(screen).frame(maxWidth: .infinity)
             }
             // **`grid-template-columns:1fr 1.15fr`, measured rather than approximated.** Equal halves were the

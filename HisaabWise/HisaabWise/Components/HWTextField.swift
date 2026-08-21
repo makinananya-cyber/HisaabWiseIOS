@@ -105,9 +105,17 @@ struct HWTextField: View {
         appearance == .brand ? theme.palette.brand.ink : theme.palette.surface.ink
     }
 
-    /// What the caret and the placeholder take.
+    /// What the caret takes. The placeholder is drawn in ``placeholderInk`` instead — see there.
     private var caretColour: Color {
         appearance == .brand ? theme.palette.brand.inkAccent : theme.palette.accent.base
+    }
+
+    /// What the greyed placeholder takes — **the muted ink, not the accent tint**. A plain `TextField` draws its
+    /// placeholder in the `.tint` colour, which on surface is `--planetary`: a dark blue that on the light ground
+    /// reads as unfilled text nobody can make out. The muted tertiary ink is the same lighter grey the combo and
+    /// date fields already draw their placeholders in, so the whole form's unfilled state matches.
+    private var placeholderInk: Color {
+        appearance == .brand ? theme.palette.brand.inkSecondary : theme.palette.surface.inkTertiary
     }
 
     var body: some View {
@@ -216,7 +224,10 @@ struct HWTextField: View {
     @ViewBuilder
     private var prompt: some View {
         if let placeholder {
+            // The foreground is set on the prompt itself so it wins over the field's `.tint`, which would
+            // otherwise colour the placeholder in the accent (see ``placeholderInk``).
             Text(placeholder)
+                .foregroundStyle(placeholderInk)
         } else {
             Text(verbatim: "")
         }

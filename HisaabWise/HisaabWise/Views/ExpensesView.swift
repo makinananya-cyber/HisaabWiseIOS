@@ -373,7 +373,7 @@ struct ExpensesPage: View {
             .accessibilityElement(children: .combine)
             .accessibilityAddTraits(.isHeader)
 
-            ForEach(screen.categories) { category in
+            ForEach(orderedCategories) { category in
                 // A `NavigationLink` rather than a button plus a path append: the row *is* the destination, and
                 // the shell already wraps this tab in a stack.
                 NavigationLink(value: ExpenseCategoryRoute(id: category.id)) {
@@ -398,6 +398,16 @@ struct ExpensesPage: View {
             radius: .extraLarge,
             border: theme.palette.surface.separator
         )
+    }
+
+    /// The categories with **income first**, then the outgoing categories in the server's order.
+    ///
+    /// Money coming in is the row a reader reaches for after payday, so it leads the list rather than sitting
+    /// wherever the payload happened to place it. A stable partition rather than a `sorted` — `Array.sorted` is
+    /// not guaranteed stable, and the outgoing rows must keep the order the server sent them in.
+    private var orderedCategories: [ExpensesScreen.Category] {
+        screen.categories.filter { $0.flow == .incoming }
+            + screen.categories.filter { $0.flow != .incoming }
     }
 
     /// `.bubble{background:linear-gradient(180deg,rgba(208,227,255,.62),rgba(186,214,235,.34))}`.

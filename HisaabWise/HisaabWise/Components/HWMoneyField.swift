@@ -107,7 +107,10 @@ struct HWMoneyField: View {
                 // twice — and a bare "₹" read on its own is not something a screen reader can say usefully.
                 .accessibilityHidden(true)
 
-            TextField(text: $text) { Text(label) }
+            // The placeholder (the label, shown while the box is empty) is drawn in the muted ink rather than the
+            // `.tint` accent below — on surface the accent is `--planetary`, a dark blue that reads as unreadable
+            // greyed text. See ``placeholderInk``.
+            TextField(text: $text) { Text(label).foregroundStyle(placeholderInk) }
                 .textFieldStyle(.plain)
                 .font(.hw(entryStyle).weight(prominence == .prominent ? .heavy : .regular))
                 .foregroundStyle(primaryInk)
@@ -171,9 +174,15 @@ struct HWMoneyField: View {
         isBrand ? theme.palette.brand.ink : theme.palette.surface.ink
     }
 
-    /// What the symbol, the caret, and the placeholder take.
+    /// What the symbol and the caret take. The placeholder is drawn in ``placeholderInk`` instead.
     private var accentInk: Color {
         isBrand ? theme.palette.brand.inkAccent : theme.palette.accent.base
+    }
+
+    /// What the greyed placeholder takes — the muted ink rather than the accent, so an empty box reads as
+    /// unfilled rather than as a dark-blue value nobody typed. The same lighter grey the other fields use.
+    private var placeholderInk: Color {
+        isBrand ? theme.palette.brand.inkSecondary : theme.palette.surface.inkTertiary
     }
 
     /// `.amount .cur{font-size:22px}` against `.money-sym`'s 19.

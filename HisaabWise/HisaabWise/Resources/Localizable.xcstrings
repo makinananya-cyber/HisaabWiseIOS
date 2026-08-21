@@ -3217,6 +3217,30 @@
         }
       }
     },
+    "expenses.notice.wantsShareUpdated": {
+      "comment": "Toast after the wants budget share is changed.",
+      "extractionState": "manual",
+      "localizations": {
+        "ar": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "تم تحديث الميزانية."
+          }
+        },
+        "en": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "Budget updated."
+          }
+        },
+        "hi": {
+          "stringUnit": {
+            "state": "translated",
+            "value": "बजट अपडेट हो गया।"
+          }
+        }
+      }
+    },
     "expenses.notice.entryAdded": {
       "comment": "Toast after an entry is logged.",
       "extractionState": "manual",
@@ -3609,19 +3633,19 @@
         "en": {
           "stringUnit": {
             "state": "translated",
-            "value": "Adjust"
+            "value": "Edit budget"
           }
         },
         "hi": {
           "stringUnit": {
             "state": "new",
-            "value": "Adjust"
+            "value": "Edit budget"
           }
         },
         "ar": {
           "stringUnit": {
             "state": "new",
-            "value": "Adjust"
+            "value": "Edit budget"
           }
         }
       }
